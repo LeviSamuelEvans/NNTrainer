@@ -18,16 +18,11 @@ class ColouredFormatter(logging.Formatter):
 def configure_logging():
     logging.basicConfig(level=logging.INFO)
 
-    # Set up colorized formatter
+    # Set up colourised formatter
     formatter = ColouredFormatter('%(asctime)s - %(levelname)s - %(message)s')
 
-      # Apply the formatter to the root logger
-
-    root_logger = logging.getLogger()
-    for handler in root_logger.handlers:
-        handler.setFormatter(formatter)
-
     # Apply the formatter to the root logger
+
     root_logger = logging.getLogger()
     for handler in root_logger.handlers:
         handler.setFormatter(formatter)
