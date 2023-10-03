@@ -1,0 +1,109 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch_geometric.transforms as T
+from torch_geometric.nn import EdgeConv, global_mean_pool
+from torch.nn import Sequential as Seq, Linear as Lin, ReLU, BatchNorm1d
+from torch_scatter import scatter_mean
+from torch_geometric.nn import MetaLayer
+import numpy as np
+
+hidden = 16
+outputs = 2
+
+
+class LorentzEdgeBlock(torch.nn.Module):
+    def __init__(self):
+        super(LorentzEdgeBlock, self).__init__()
+        self.edge_mlp = Seq(Lin(4, hidden), ReLU(), Lin(hidden, hidden))
+        self.minkowski = torch.from_numpy(
+            np.array(
+                [
+                    [-1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+                dtype=np.float32,
+            )
+        )
+
+    def psi(self, x):
+        return torch.sign(x) * torch.log(torch.abs(x) + 1)
+
+    def innerprod(self, x1, x2):
+        return torch.sum(
+            torch.mul(torch.matmul(x1, self.minkowski), x2), 1, keepdim=True
+        )
+
+    def forward(self, src, dest, edge_attr, u, batch):
+        out = torch.cat(
+            [
+                self.innerprod(src, src),
+                self.innerprod(src, dest),
+                self.psi(self.innerprod(dest, dest)),
+                self.psi(self.innerprod(src - dest, src - dest)),
+            ],
+            dim=1,
+        )
+        return self.edge_mlp(out)
+
+
+class LorentzNodeBlock(torch.nn.Module):
+    def __init__(self):
+        super(LorentzNodeBlock, self).__init__()
+        self.node_mlp_1 = Seq(Lin(1 + hidden, hidden), ReLU(), Lin(hidden, hidden))
+        self.node_mlp_2 = Seq(Lin(1 + hidden, hidden), ReLU(), Lin(hidden, hidden))
+        self.minkowski = torch.from_numpy(
+            np.array(
+                [
+                    [-1.0, 0.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0, 1.0],
+                ],
+                dtype=np.float32,
+            )
+        )
+
+    def innerprod(self, x1, x2):
+        return torch.sum(
+            torch.mul(torch.matmul(x1, self.minkowski), x2), 1, keepdim=True
+        )
+
+    def forward(self, x, edge_index, edge_attr, u, batch):
+        row, col = edge_index
+        out = torch.cat([self.innerprod(x[row], x[row]), edge_attr], dim=1)
+        out = self.node_mlp_1(out)
+        out = scatter_mean(out, col, dim=0, dim_size=x.size(0))
+        out = torch.cat([self.innerprod(x, x), out], dim=1)
+        return self.node_mlp_2(out)
+
+
+class GlobalBlock(torch.nn.Module):
+    def __init__(self):
+        super(GlobalBlock, self).__init__()
+        self.global_mlp = Seq(Lin(hidden, hidden), ReLU(), Lin(hidden, outputs))
+
+    def forward(self, x, edge_index, edge_attr, u, batch):
+        out = scatter_mean(x, batch, dim=0)
+        return self.global_mlp(out)
+
+
+class LorentzInteractionNetwork(torch.nn.Module):
+    def __init__(self):
+        super(LorentzInteractionNetwork, self).__init__()
+        self.lorentzinteractionnetwork = MetaLayer(
+            LorentzEdgeBlock(), LorentzNodeBlock(), GlobalBlock()
+        )
+
+    def forward(self, x, edge_index, batch):
+
+        x, edge_attr, u = self.lorentzinteractionnetwork(
+            x, edge_index, None, None, batch
+        )
+        return u
+
+
+model = LorentzInteractionNetwork() #.to(device)
+# optimizer = torch.optim.Adam(model.parameters()) # called elsewhere, need to input
