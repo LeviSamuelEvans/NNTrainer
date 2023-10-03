@@ -14,6 +14,7 @@ Then, proceed to setup the correct enviroment needed to run the conversion and t
 ```
 pip install virtualenv # if not already installed
 virtualenv MyVirtualEnviroment
+source MyVirtualEnviroment/bin/activate
 pip install -r requirements.txt
 ```
 
