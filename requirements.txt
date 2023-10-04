@@ -1,3 +1,5 @@
+awkward==2.4.4
+awkward-cpp==24
 blosc2==2.0.0
 certifi==2023.7.22
 charset-normalizer==3.3.0
@@ -7,6 +9,7 @@ Cython==3.0.2
 filelock==3.12.4
 fonttools==4.43.0
 idna==3.4
+importlib-metadata==6.8.0
 importlib-resources==6.1.0
 Jinja2==3.1.2
 joblib==1.3.2
@@ -45,5 +48,6 @@ tqdm==4.66.1
 typing_extensions==4.8.0
 tzdata==2023.3
 uhi==0.3.3
+uproot==5.0.12
 urllib3==2.0.6
 zipp==3.17.0

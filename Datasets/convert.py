@@ -26,6 +26,7 @@ Version 1.0:
            - The store contains a single dataframe with all the events.
            - Variables to be read from the ROOT tree are specified in a YAML file.
            - overwriteIsEnabled flag to overwrite existing store, or prevent overwriting.
+           - handle jagged root arrays
 
 TODO:
         - Add support for multiple dataframes in the store.
@@ -45,6 +46,7 @@ import argparse         # For parsing command-line arguments
 import yaml             # For processing yaml config files
 from tqdm import tqdm   # For displaying progress bars
 import awkward as ak    # For manipulating jagged arrays
+import numpy as np      # For numpy arrays
 
 
 class DataImporter:
@@ -60,7 +62,7 @@ class DataImporter:
         DATA_STRUCTURE (dict): The data structure to be used for importing the data.
     """
 
-    def __init__(self, storeName, directory, variables, overwriteIsEnabled, generate_data_structure, DATA_STRUCTURE):
+    def __init__(self, storeName, directory, variables, overwriteIsEnabled):
         """
         Initializes a DataImporter object with the specified parameters.
 
@@ -77,8 +79,7 @@ class DataImporter:
         self.variables = variables
         self.overwriteIsEnabled = overwriteIsEnabled
         self.store = None
-        self.DATA_STRUCTURE = DATA_STRUCTURE
-        DataImporter.generate_data_structure = generate_data_structure
+        self.DATA_STRUCTURE = DataImporter.generate_data_structure(self.variables)
 
     def __enter__(self):
         """
@@ -148,7 +149,7 @@ class DataImporter:
             print(f"Trying to extract the following variables: {self.variables}")
             tree = uproot.open(filepath)["nominal_Loose"]
             all_branches = tree.keys()
-            print(f"All branches in the tree: {all_branches}")
+            #print(f"All branches in the tree: {all_branches}") # DEBUG
 
             # Check if the variables are present in the specifief tree
             for var in self.variables:
@@ -163,12 +164,21 @@ class DataImporter:
             # Flatten and pad the jagged arrays
             flattened_data = self.DATA_STRUCTURE.copy()
             for key in flattened_data.keys():
-                if key in events:
+                if key in events.fields:
                     flattened_data[key] = ak.pad_none(events[key], 20, clip=True).to_list()
                 else:
                     flattened_data[key] = [[None, None, None] for _ in range(len(events))]
 
+            # Convert the data to a DataFrame
             df = pd.DataFrame(flattened_data)
+
+            # Convert the None values to NaN
+            df.replace({None: np.nan}, inplace=True)
+            for i in range(1, 21):
+                column_name = f"jet_pt_{i}"
+                if column_name in df.columns:
+                    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
+
 
             print(f"Saving DataFrame to HDF5 store with key: {storeKey}...")
             df.to_hdf(self.store, key=storeKey)
@@ -227,7 +237,7 @@ def handleCommandLineArgs():
 
 def main():
     """Main function to execute the data import process."""
-    args = DataImporter.handleCommandLineArgs()
+    args = handleCommandLineArgs()
     with DataImporter(args.storeName, args.directory, args.variables, args.overwrite) as importer:
         importer.processAllFiles()
 

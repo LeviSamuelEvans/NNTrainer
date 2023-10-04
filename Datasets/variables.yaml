@@ -1,12 +1,12 @@
 features:
   - jet_pt
-  # - jet_eta
-  # - jet_phi
-  # - jet_e
+  - jet_eta
+  - jet_phi
+  - jet_e
   # - jet_truthmatch
   # - jet_charge
   # - jet_tagWeightBin_DL1r_Continuous
-  # - jet_jvt
+  - jet_jvt
   # - HT_all
   # - HT_jets
   # - H0_all
