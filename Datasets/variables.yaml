@@ -3,43 +3,42 @@ features:
   - jet_eta
   - jet_phi
   - jet_e
-  # - jet_truthmatch
-  # - jet_charge
-  # - jet_tagWeightBin_DL1r_Continuous
-  - jet_jvt
-  # - HT_all
-  # - HT_jets
-  # - H0_all
-  # - H1_all
-  # - jet_truthflav
-  # - met_phi
-  # - met_met
-  # - mu_charge
-  # - mu_pt
-  # - mu_eta
-  # - mu_phi
-  # - mu_e
-  # - el_charge
-  # - el_pt
-  # - el_eta
-  # - el_phi
-  # - el_e
-  # - nJets
-  # - mwt_mwt
-  # - mwt_phi
-  # - truth_higgs_pt
-  # - truth_higgs_phi
-  # - truth_higgs_e
-  # - HF_SimpleClassification
-  # - HF_Classification
-  # - dRbb_HiggsMass_70
-  # - dRbb_avg_70
-  # - dRbb_avg_Sort4
-  # - Aplanarity_jets
-  # - Centrality_all
-  # - dRlj_MindR
-  # - tagWeightBin
-  # - truth_jet_pt
-  # - truth_jet_eta
-  # - truth_jet_phi
-  # - truth_jet_m
+#  - jet_truthmatch
+#  - jet_charge
+  - jet_tagWeightBin_DL1r_Continuous
+#  - jet_jvt
+  - HT_all
+  - HT_jets
+  - H0_all
+  - H1_all
+ # - jet_truthflav
+  - met_phi
+  - met_met
+  - mu_charge
+  - mu_pt
+  - mu_eta
+  - mu_phi
+  - mu_e
+  - el_charge
+  - el_pt
+  - el_eta
+  - el_phi
+  - el_e
+  - nJets
+  - mwt_mwt
+  - mwt_phi
+  - truth_higgs_pt
+  - truth_higgs_phi
+  - truth_higgs_e
+  - HF_SimpleClassification
+  - HF_Classification
+  - dRbb_HiggsMass_70
+  - dRbb_avg_70
+  - dRbb_avg_Sort4
+  - Aplanarity_jets
+  - Centrality_all
+  - dRlj_MindR
+  - truth_jet_pt
+  - truth_jet_eta
+  - truth_jet_phi
+  - truth_jet_m

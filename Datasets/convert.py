@@ -10,7 +10,7 @@ Pandas dataframes, which are then saved using the HDF5 storage format. This is
 particularly useful for machine learning applications.
 
 How to use:
-python3 convert.py -d <directory> -s <storeName.h5> -v <variables.yaml>
+python3 convert.py --directory <directory> --variables <variables.yaml>
 Mounting:
 sshfs -r levans@linappserv0.pp.rhul.ac.uk:/juicefs/data/levans/L2_ttHbb_Production_212238_v3/MLSamples/Datasets/1l/ ~/Desktop/PhD/MountPoint/
 Dismounting:
@@ -26,83 +26,62 @@ Version 1.0:
            - The store contains a single dataframe with all the events.
            - Variables to be read from the ROOT tree are specified in a YAML file.
            - overwriteIsEnabled flag to overwrite existing store, or prevent overwriting.
-           - handle jagged root arrays
+           - handle jagged arrays
 
 TODO:
         - Add support for multiple dataframes in the store.
         - Add support for reading multiple directories.
         - Add support for reading multiple YAML files (perhaps for different samples).
+        - Add support for reading multiple variables from the YAML file.
         - Add support for reading variables from different branches.
+        - Add support for reading variables from different trees.
 
 """
 
 # Required modules:
 import pandas as pd
-import uproot           # For reading ROOT files using Python and Numpy
-import os               # For OS-related operations like directory handling
-import sys              # For accessing Python interpreter attributes and functions
-import glob             # For searching specific file patterns using wildcards
-import argparse         # For parsing command-line arguments
-import yaml             # For processing yaml config files
-from tqdm import tqdm   # For displaying progress bars
-import awkward as ak    # For manipulating jagged arrays
-import numpy as np      # For numpy arrays
+import uproot                          # For reading ROOT files using Python and Numpy
+import os                              # For OS-related operations like directory handling
+import sys                             # For accessing Python interpreter attributes and functions
+import glob                            # For searching specific file patterns using wildcards
+import argparse                        # For parsing command-line arguments
+import yaml                            # For processing yaml config files
+from tqdm import tqdm                  # For displaying progress bars
+from utils.dataTypes import DATA_TYPES # For converting data types
+import numpy as np                     # For use in handling jagged arrays
 
-
-class DataImporter:
+class DataImporter(object):
     """
-    A class that imports data from ROOT files and stores it in an HDF5 file.
-
-    Attributes:
-        storeName (str): The name of the data store.
-        directory (str): The directory where the data is stored.
-        variables (list): A list of variables to be imported.
-        overwriteIsEnabled (bool): Whether or not to overwrite existing data.
-        store (pd.HDFStore): The HDF5 store where the data is stored.
-        DATA_STRUCTURE (dict): The data structure to be used for importing the data.
+    Class to handle the import of data from ROOT files and save them as Pandas
+    dataframes in HDF5 format.
     """
 
     def __init__(self, storeName, directory, variables, overwriteIsEnabled):
         """
-        Initializes a DataImporter object with the specified parameters.
+        Constructor for the DataImporter class.
 
-        Args:
-            storeName (str): The name of the data store.
-            directory (str): The directory where the data is stored.
-            variables (list): A list of variables to be imported.
-            overwriteIsEnabled (bool): Whether or not to overwrite existing data.
-            generate_data_structure (bool): Whether or not to generate a data structure.
-            DATA_STRUCTURE (dict): The data structure to be used for importing the data.
+        Parameters:
+        - storeName (str): Path for the HDF5 store to be created.
+        - directory (str): Directory containing the ROOT files.
+        - variables (list): Variables to be read from the ROOT tree.
+        - overwriteIsEnabled (bool): Flag to overwrite existing store.
         """
         self.storeName = storeName
         self.directory = directory
         self.variables = variables
         self.overwriteIsEnabled = overwriteIsEnabled
         self.store = None
-        self.DATA_STRUCTURE = DataImporter.generate_data_structure(self.variables)
 
     def __enter__(self):
-        """
-        Prepare the HDF5 store for writing.
-
-        Returns:
-            DataImporter: The DataImporter object.
-        """
+        """Prepare the HDF5 store for writing."""
         if self.overwriteIsEnabled and os.path.exists(self.storeName):
             os.remove(self.storeName)
             print(f"Overwriting enabled. Removed existing file: {self.storeName}")
-        self.store = pd.HDFStore(self.storeName)
+        self.store = pd.HDFStore(self.storeName, min_itemsize=500)
         return self
 
     def __exit__(self, type, value, tb):
-        """
-        Ensure the HDF5 store is closed properly.
-
-        Args:
-            type: The type of the exception.
-            value: The exception object.
-            tb: The traceback object.
-        """
+        """Ensure the HDF5 store is closed properly."""
         self.store.close()
 
     def getRootFilepaths(self):
@@ -116,31 +95,28 @@ class DataImporter:
         listOfFiles = sorted(glob.glob(absDirectory + "/*.root"))
         return listOfFiles
 
-    @classmethod
-    def generate_data_structure(cls, variables, max_length=20):
-        """
-        Generate a data structure for importing the data.
+    @staticmethod
+    def flatten_jagged_array(array, var_name, max_length, pad_value=0):
+        """Flatten a jagged array to a fixed length and return a DataFrame."""
+        flattened_array = [np.pad(item, (0, max_length - len(item)), mode='constant', constant_values=pad_value) for item in array]
+        column_names = [f"{var_name}_{i+1}" for i in range(max_length)]
+        return pd.DataFrame(flattened_array, columns=column_names)
 
-        Args:
-            variables (list): A list of variables to be imported.
-            max_length (int): The maximum length of the jagged arrays.
-
-        Returns:
-            dict: The data structure to be used for importing the data.
-        """
-        data_structure = {}
-        for var in variables:
-            for i in range(1, max_length + 1):
-                data_structure[f"{var}_{i}"] = []
-        return data_structure
-
+    def flatten_and_concat(self, df, column_name):
+        """Flatten a jagged array column and concatenate it with the original DataFrame."""
+        max_length = df[column_name].apply(len).max()
+        flattened_df = self.flatten_jagged_array(df[column_name].tolist(), column_name, max_length)
+        return pd.concat([df.drop(columns=[column_name]), flattened_df], axis=1)
 
     def getDataFrameFromRootfile(self, filepath):
         """
-        Convert a ROOT file to a DataFrame and store it in the HDF5 store.
+        Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
+        The final h5 file will have two keys:
+        - 'df': A single dataframe with all the events.
+        - 'IndividualFiles/<filename>': A dataframe for each ROOT file.
 
-        Args:
-            filepath (str): The path to the ROOT file.
+        Parameters:
+        - filepath (str): Path to the ROOT file.
         """
         filename = os.path.basename(filepath)
         storeKey = f"IndividualFiles/{filename.replace('.', '_')}"
@@ -149,54 +125,58 @@ class DataImporter:
             print(f"Trying to extract the following variables: {self.variables}")
             tree = uproot.open(filepath)["nominal_Loose"]
             all_branches = tree.keys()
-            #print(f"All branches in the tree: {all_branches}") # DEBUG
+            #print(f"All branches in the tree: {all_branches}") #DEBUG
 
-            # Check if the variables are present in the specifief tree
+            #Check if your variables are in the tree
             for var in self.variables:
                 if var in all_branches:
                     print(f"Variable {var} is present in the tree.")
                 else:
                     print(f"Variable {var} is NOT present in the tree.")
-
             print(f"Converting tree from {filename} to DataFrame...")
-            events = tree.arrays(self.variables, library="ak")
+            # Create a dictionary of arrays from the ROOT tree
+            df_dict = {}
+            for var in self.variables:
+                df_dict[var] = tree[var].array(library="np")
+            # Convert the dictionary to a DataFrame
+            df = pd.DataFrame(df_dict)
+            #print(type(df)) #DEBUG
+            #print(df) #DEBUG
 
-            # Flatten and pad the jagged arrays
-            flattened_data = self.DATA_STRUCTURE.copy()
-            for key in flattened_data.keys():
-                if key in events.fields:
-                    flattened_data[key] = ak.pad_none(events[key], 20, clip=True).to_list()
-                else:
-                    flattened_data[key] = [[None, None, None] for _ in range(len(events))]
+            # Handle jagged-array columns
+            jagged_columns = ['jet_pt', 'jet_e', 'jet_eta', 'jet_phi', 'jet_tagWeightBin_DL1r_Continuous']  # Add anymore jagged array-type vars
+            for column in jagged_columns:
+                if column in df.columns:
+                    print(f'Processing {column}...')
+                    df = self.flatten_and_concat(df, column)
 
-            # Convert the data to a DataFrame
-            df = pd.DataFrame(flattened_data)
+            #print(type(df)) # DEBUG
+            #print(df) # DEBUG
 
-            # Convert the None values to NaN
-            df.replace({None: np.nan}, inplace=True)
-            for i in range(1, 21):
-                column_name = f"jet_pt_{i}"
-                if column_name in df.columns:
-                    df[column_name] = pd.to_numeric(df[column_name], errors='coerce')
-
+            # Convert the data types of the columns
+            for col, dtype in DATA_TYPES:
+                if col in df.columns:
+                    if dtype == 'float32':
+                        df[col] = df[col].astype(str).astype(dtype, errors='ignore')
+                        print()
+                    else:
+                        df[col] = df[col].astype(dtype, errors='ignore')
 
             print(f"Saving DataFrame to HDF5 store with key: {storeKey}...")
-            df.to_hdf(self.store, key=storeKey)
+            df.to_hdf(self.store, key = "IndividualFiles/%s" % filepath.split("/")[-1].replace(".", "_"))
             print(f"Appending DataFrame to 'df' in the store...")
             self.store.append("df", df)
             print(f"Finished processing {filename}.")
         else:
             print(f"A file named {filename} already exists in the store. Ignored.")
 
-
     def processAllFiles(self):
         """
-        Process all ROOT files in the specified directory and store them in the HDF5 store.
+        Process all ROOT files in the specified directory and display a progress bar.
         """
         filepaths = self.getRootFilepaths()
         for filepath in tqdm(filepaths, desc="Processing files",unit="files",unit_scale=1, unit_divisor=60):
             self.getDataFrameFromRootfile(filepath)
-
 
 def handleCommandLineArgs():
     """
@@ -221,7 +201,6 @@ def handleCommandLineArgs():
         else:
             print("The YAML file does not contain a 'features' key.")
             sys.exit(1)
-
 
     if args.overwrite:
         while True:

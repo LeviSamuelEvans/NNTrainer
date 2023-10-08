@@ -1,5 +1,6 @@
 plots/*
 Datasets/*.h5
 __pycache__/
-/utils/__pycache__
-/models/__pycache__
+models/__pycache__
+utils/__pycache__
+utils/convert_old.py
