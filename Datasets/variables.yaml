@@ -3,27 +3,13 @@ features:
   - jet_eta
   - jet_phi
   - jet_e
-#  - jet_truthmatch
-#  - jet_charge
   - jet_tagWeightBin_DL1r_Continuous
-#  - jet_jvt
   - HT_all
   - HT_jets
   - H0_all
   - H1_all
- # - jet_truthflav
   - met_phi
   - met_met
-  - mu_charge
-  - mu_pt
-  - mu_eta
-  - mu_phi
-  - mu_e
-  - el_charge
-  - el_pt
-  - el_eta
-  - el_phi
-  - el_e
   - nJets
   - mwt_mwt
   - mwt_phi
@@ -38,7 +24,11 @@ features:
   - Aplanarity_jets
   - Centrality_all
   - dRlj_MindR
-  - truth_jet_pt
-  - truth_jet_eta
-  - truth_jet_phi
-  - truth_jet_m
+
+
+  # to include in next dataset creation
+  # - H2_jets
+  # - H2_all
+  # - H3_jets
+  # - H3_all
+  # perform feature creation task directly too [decay angles, colour flow variables?] etc.

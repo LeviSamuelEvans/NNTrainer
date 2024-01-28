@@ -99,5 +99,6 @@ class ResidualComplexNN(nn.Module):
         out = self.dropout6(out)
 
         out = self.sigmoid(self.fc7(out))
+        #out = self.fc7(out) # if using BCEWithLogitsLoss, don't use sigmoid here
         return out
 

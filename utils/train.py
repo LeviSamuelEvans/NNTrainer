@@ -1,3 +1,4 @@
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -5,16 +6,17 @@ import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import mplhep as hep
-import torch.nn.init as init  # Add this import for weight initialization
-from sklearn.utils.class_weight import compute_class_weight # Add this import for computing class weights
+import torch.nn.init as init  #  weight initialization
+from sklearn.utils.class_weight import compute_class_weight # computing class weights
 from utils.config_utils import log_with_separator
-#plt.rcParams['agg.path.chunksize'] = 10000
-'''
+
+"""
 TODO:
     - Add model saving
     - Add model loading
     - Add model evaluation/comparisons
-'''
+"""
+logging.basicConfig(level=logging.INFO)
 
 class Trainer:
     """
@@ -35,20 +37,21 @@ class Trainer:
         class_weights (torch.Tensor, optional): The class weights to use for the loss function. Defaults to None.
     """
 
-    def __init__(self, model, train_loader, val_loader, num_epochs, lr, weight_decay, patience,
+    def __init__(self, model, train_loader, val_loader, num_epochs, lr, weight_decay, patience,criterion,
                  early_stopping=False, use_scheduler=False, factor=None, initialise_weights=False,
-                 class_weights=None, balance_classes=False):
+                 class_weights=None, balance_classes=False, network_type=None):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.num_epochs = num_epochs
         self.lr = lr
-        self.criterion = torch.nn.BCEWithLogitsLoss(weight=class_weights)
+        self.class_weights = class_weights
+        self.criterion = criterion
         self.optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=factor, patience=patience, verbose=True)
         self.train_losses = []
         self.val_losses = []
-        self.train_accuracies = []  # List to store training accuracies
+        self.train_accuracies = []
         self.val_accuracies = []
         self.early_stopping = early_stopping
         self.weight_decay = weight_decay
@@ -57,7 +60,18 @@ class Trainer:
         self.factor = factor
         self.initialise_weights = initialise_weights
         self.balance_classes = balance_classes
+        self.network_type = network_type
 
+        if self.balance_classes == True:
+            all_labels = torch.cat([labels for *_, labels in self.train_loader])
+            class_weights = self.get_class_weights(all_labels)
+            # Assuming binary classification and labels are either 0 or 1
+            positive_examples = float((all_labels == 1).sum())
+            negative_examples = float((all_labels == 0).sum())
+            pos_weight = torch.tensor([negative_examples / positive_examples])
+            self.criterion = torch.nn.BCEWithLogitsLoss(weight=pos_weight)
+        else:
+            self.criterion = torch.nn.BCELoss()
 
     def get_class_weights(self, y):
         """
@@ -69,9 +83,11 @@ class Trainer:
         Returns:
         - class_weights (torch.Tensor): Computed class weights.
         """
+        print("Computing class weights..."
+        )
         y_np = y.numpy().squeeze()  # Convert tensor to numpy array
         class_weights = compute_class_weight('balanced', classes=[0, 1], y=y_np)
-        return torch.tensor(class_weights, dtype=torch.float32)
+        return torch.tensor(class_weights, dtype=torch.float32).to(y.device)
 
     def initialise_weights(model):
             """
@@ -111,27 +127,45 @@ class Trainer:
         logging.info(f"factor: {self.factor}")
         logging.info(f"weight_decay: {self.weight_decay}")
         logging.info(f"initialise_weights: {self.initialise_weights}")
+        logging.info(f"criterion: {self.criterion}")
         logging.info(f"optimizer: {self.optimizer}")
         logging.info(f"balance_classes: {self.balance_classes}")
 
         logging.info("Training model...")
+        start_time = time.time()  # Start time of training
+        logging.info(f"Training for {self.num_epochs} epochs...")
+        logging.info("Training on {} samples, validating on {} samples".format(len(self.train_loader.dataset), len(self.val_loader.dataset)))
+        logging.info("Start time: {}".format(time.strftime("%H:%M:%S", time.localtime())))
         # Onwards with the training...
         best_val_loss = float('inf')
         patience_counter = 0
         self.val_labels_list = []
         self.val_outputs_list = []
-        if self.balance_classes == True:
-            self.criterion = torch.nn.BCEWithLogitsLoss(weight=Trainer.class_weights)
-        if Trainer.initialise_weights == True:
-            self.model.initialise_weights()
+
+        if self.initialise_weights:
+            Trainer.initialise_weights(self.model)
+
         for epoch in range(self.num_epochs):
             self.model.train()
             running_loss = 0.0
             correct = 0  # Counter for correct predictions
             total = 0  # Counter for total predictions
-            for batch_idx, (inputs, labels) in enumerate(self.train_loader):
+
+            for batch_idx, data in enumerate(self.train_loader):
+                if self.network_type == ["GNN"]:
+                    node_features, edge_features, global_features, labels = data
+                    print("Node Features Shape:", node_features.shape) #DEBUG
+                    print("Edge Features Shape:", edge_features.shape)
+                    print("Global Features Shape:", global_features.shape)
+                    print("Labels Shape:", labels.shape)
+                    outputs = self.model(node_features, edge_features, global_features)
+                elif self.network_type == ["FFNN"]:
+                    inputs, labels = data
+                    outputs = self.model(inputs)
+                else:
+                    raise ValueError(f"Unsupported network type: {self.network_type}")
+
                 self.optimizer.zero_grad()
-                outputs = self.model(inputs)
                 loss = self.criterion(outputs, labels)
                 loss.backward()
                 self.optimizer.step()
@@ -151,7 +185,7 @@ class Trainer:
 
             epoch_accuracy = correct / total  # Compute training accuracy for this epoch
             self.train_accuracies.append(epoch_accuracy)  # Store training accuracy for this epoch
-            logging.info(f"Epoch [{epoch+1}/{self.num_epochs}] Average Loss: {epoch_loss:.4f} Avergae Accuracy: {epoch_accuracy:.4f}")
+            #logging.info(f"Epoch [{epoch+1}/{self.num_epochs}] Average Loss: {epoch_loss:.4f} Avergae Accuracy: {epoch_accuracy:.4f}")
 
             # Validation loss for the epoch
             self.model.eval()
@@ -179,10 +213,14 @@ class Trainer:
 
 
             val_epoch_loss /= len(self.val_loader.dataset)
-            self.val_losses.append(val_epoch_loss)  # Store validation loss for this epoch
-            val_epoch_accuracy = val_correct / val_total  # Compute validation accuracy for this epoch
+            self.val_losses.append(val_epoch_loss)          # Store validation loss for this epoch
+            val_epoch_accuracy = val_correct / val_total    # Compute validation accuracy for this epoch
             self.val_accuracies.append(val_epoch_accuracy)  # Store validation accuracy for this epoch
-            logging.info(f"Epoch [{epoch+1}/{self.num_epochs}] Validation Loss: {val_epoch_loss:.4f}, Accuracy: {val_epoch_accuracy:.4f}")
+            logging.info(
+                f"Epoch {epoch+1}/{self.num_epochs} - "
+                f"Train Loss: {epoch_loss:.4f}, Train Acc: {epoch_accuracy:.4f}, "
+                f"Val Loss: {val_epoch_loss:.4f}, Val Acc: {val_epoch_accuracy:.4f}"
+            )
 
             # Check for early stopping
             if self.early_stopping == True:
@@ -194,10 +232,21 @@ class Trainer:
                     if patience_counter >= self.patience:
                         logging.info(f"Validation loss hasn't improved for {self.patience} epochs. Stopping early.")
                         break
-
+        end_time = time.time()
+        training_time = end_time - start_time
+        
         logging.info("Training complete.")
+        
+        logging.info(f"Training time: {training_time:.2f} seconds")
 
-# Add model saving
+        # Print CPU/GPU usage
+        if torch.cuda.is_available():
+            logging.info(f"GPU Usage: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB")
+        else:
+            logging.info("GPU not available. Using CPU.")
+        
+        # Save our model for further use
+        torch.save(self.model, '/Users/levievans/Desktop/PhD/3rd-YEAR/HiggsGNN/ttH-Network/models/outputs/model.pt')
 
 # put into class when time
 def plot_losses(trainer):

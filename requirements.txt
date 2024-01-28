@@ -1,6 +1,6 @@
 awkward==2.4.4
 awkward-cpp==24
-blosc2==2.0.0
+blosc2==2.3.0
 certifi==2023.7.22
 charset-normalizer==3.3.0
 contourpy==1.1.1
@@ -38,7 +38,7 @@ scipy==1.11.3
 seaborn==0.13.0
 six==1.16.0
 sympy==1.12
-tables==3.8.0
+tables==3.9.2
 termcolor==2.3.0
 threadpoolctl==3.2.0
 torch==2.0.1
