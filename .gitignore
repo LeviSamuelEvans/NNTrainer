@@ -1,5 +1,8 @@
 plots/*
 Datasets/*.h5
+Datasets/graphsets
+models/outputs
 __pycache__/
 models/__pycache__
 utils/__pycache__
+change.log

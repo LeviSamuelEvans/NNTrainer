@@ -96,19 +96,39 @@ class DataImporter(object):
         return listOfFiles
 
     @staticmethod
-    def flatten_jagged_array(array, var_name, max_length, pad_value=0):
+    def flatten_jagged_array(array, var_name, fixed_length, pad_value=0):
         """Flatten a jagged array to a fixed length and return a DataFrame."""
-        flattened_array = [np.pad(item, (0, max_length - len(item)), mode='constant', constant_values=pad_value) for item in array]
-        column_names = [f"{var_name}_{i+1}" for i in range(max_length)]
+        # Ensure the array is truncated or padded to the fixed length
+        truncated_array = [item[:fixed_length] if len(item) > fixed_length else item for item in array]
+        flattened_array = [np.pad(item, (0, fixed_length - len(item)), mode='constant', constant_values=pad_value) for item in truncated_array]
+        column_names = [f"{var_name}_{i+1}" for i in range(fixed_length)]
         return pd.DataFrame(flattened_array, columns=column_names)
 
-    def flatten_and_concat(self, df, column_name):
+
+    def flatten_and_concat(self, df, column_name, fixed_length):
         """Flatten a jagged array column and concatenate it with the original DataFrame."""
-        max_length = df[column_name].apply(len).max()
-        flattened_df = self.flatten_jagged_array(df[column_name].tolist(), column_name, max_length)
+        flattened_df = self.flatten_jagged_array(df[column_name].tolist(), column_name, fixed_length)
         return pd.concat([df.drop(columns=[column_name]), flattened_df], axis=1)
 
-    def getDataFrameFromRootfile(self, filepath):
+# @staticmethod
+# def flatten_jagged_array(array, fixed_length, pad_value=0):
+#     """Flatten a jagged array to a fixed length and return a numpy array."""
+#     # Ensure the array is truncated or padded to the fixed length
+#     truncated_array = [item[:fixed_length] if len(item) > fixed_length else item for item in array]
+#     flattened_array = [np.pad(item, (0, fixed_length - len(item)), mode='constant', constant_values=pad_value) for item in truncated_array]
+#     return np.array(flattened_array)
+# import h5py
+
+# # Assume `data` is a list of jagged arrays
+# data_flattened = flatten_jagged_array(data, fixed_length=10)
+
+# with h5py.File('data.h5', 'w') as f:
+#     dset = f.create_dataset("my_dataset", data=data_flattened)
+# with h5py.File('data.h5', 'r') as f:
+#     data_loaded = f['my_dataset'][:]
+
+
+    def getDataFrameFromRootfile(self, filepath, fixed_jet_length):
         """
         Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
         The final h5 file will have two keys:
@@ -136,19 +156,34 @@ class DataImporter(object):
             print(f"Converting tree from {filename} to DataFrame...")
             # Create a dictionary of arrays from the ROOT tree
             df_dict = {}
+
             for var in self.variables:
                 df_dict[var] = tree[var].array(library="np")
             # Convert the dictionary to a DataFrame
             df = pd.DataFrame(df_dict)
-            #print(type(df)) #DEBUG
-            #print(df) #DEBUG
+
+            # Log basic DataFrame information  DEBUGGING
+            print(f"\nDataFrame Info for file {filename}:")
+            print(f"Shape: {df.shape}")
+            print("Columns and Data Types:")
+            print(df.dtypes)
 
             # Handle jagged-array columns
             jagged_columns = ['jet_pt', 'jet_e', 'jet_eta', 'jet_phi', 'jet_tagWeightBin_DL1r_Continuous']  # Add anymore jagged array-type vars
             for column in jagged_columns:
                 if column in df.columns:
                     print(f'Processing {column}...')
-                    df = self.flatten_and_concat(df, column)
+                    df = self.flatten_and_concat(df, column, fixed_jet_length)
+
+            # Additional logging after handling jagged arrays DEBUGGING
+            print(f"\nDataFrame Info after processing jagged arrays for file {filename}:")
+            print(f"Shape: {df.shape}")
+            print("Columns and Data Types:")
+            print(df.dtypes)
+
+            # Log a sample of the DataFrame after processing jagged arrays DEBUGGING
+            print("\nDataFrame Sample after processing jagged arrays:")
+            print(df.head())  # Prints the first 5 rows of the DataFrame
 
             #print(type(df)) # DEBUG
             #print(df) # DEBUG
@@ -157,10 +192,19 @@ class DataImporter(object):
             for col, dtype in DATA_TYPES:
                 if col in df.columns:
                     if dtype == 'float32':
-                        df[col] = df[col].astype(str).astype(dtype, errors='ignore')
-                        print()
+                        df[col] = df[col].astype(str).astype(dtype, errors='ignore') # Convert to string first to avoid errors
                     else:
                         df[col] = df[col].astype(dtype, errors='ignore')
+
+             # Log final DataFrame structure before appending to HDF5 DEBUGGING
+            print(f"\nFinal DataFrame structure before appending to HDF5 for file {filename}:")
+            print(f"Shape: {df.shape}")
+            print("Columns and Data Types:")
+            print(df.dtypes)
+
+            # Log a final sample of the DataFrame DEBUGGING
+            print("\nFinal DataFrame Sample before appending to HDF5:")
+            print(df.head())
 
             print(f"Saving DataFrame to HDF5 store with key: {storeKey}...")
             df.to_hdf(self.store, key = "IndividualFiles/%s" % filepath.split("/")[-1].replace(".", "_"))
@@ -174,9 +218,11 @@ class DataImporter(object):
         """
         Process all ROOT files in the specified directory and display a progress bar.
         """
+        fixed_jet_length = 12  # Specify the fixed length for jet columns
         filepaths = self.getRootFilepaths()
         for filepath in tqdm(filepaths, desc="Processing files",unit="files",unit_scale=1, unit_divisor=60):
-            self.getDataFrameFromRootfile(filepath)
+            self.getDataFrameFromRootfile(filepath, fixed_jet_length)
+
 
 def handleCommandLineArgs():
     """

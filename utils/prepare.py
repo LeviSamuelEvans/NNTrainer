@@ -134,8 +134,3 @@ class DataPreparation:
         logging.info(f"Batch size: {self.batch_size}")
 
         return train_loader, val_loader
-
-# Future class to perform data augmentation on the original data
-class DataAugmentation:
-    def __init__(self) -> None:
-        pass
