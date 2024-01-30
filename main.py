@@ -12,7 +12,7 @@ trains the model, and evaluates the model.
 # -*- coding: utf-8 -*-
 
 import logging
-from utils import LoadingFactory, PreparationFactory, DataPlotter
+from utils import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
 from utils.train import Trainer, plot_losses, plot_accuracy
 from models.importer import load_networks_from_directory
 from utils.cli import handleCommandLineArgs
@@ -42,14 +42,37 @@ def main(config, config_path):
 
     # Print configuration summary
     print_config_summary(config_dict)
+    
+    ################################################
+    ################################################
 
     # Get the network type from the config file
     network_type = config_dict['Network_type'][0]  # 'FFNN' or 'GNN' currently
+    
 
     # Employ the appropriate data loader and data preparation classes
     loaded_data = LoadingFactory.load_data(network_type, config_dict)
+    
+    # Unpack the loaded data into signal and background DataFrames
+    signal_data, background_data = loaded_data
+    
+    fe_config = config_dict['feature_engineering']
+    
+    feature_maker = FeatureFactory.make(max_particles=fe_config['max_particles'],
+                                        n_leptons=fe_config['n_leptons'],
+                                        extra_feats=fe_config.get('extra_feats'))
+
+    
+    signal_fvectors = feature_maker.get_four_vectors(signal_data)
+    background_fvectors = feature_maker.get_four_vectors(background_data)
+    
+    ### NOW need to link into data preparation...
+    
     train_loader, val_loader = PreparationFactory.prep_data(network_type, loaded_data, config_dict)
 
+    ################################################
+    ################################################
+    
     # Plotting inputs
     plot_inputs = DataPlotter(config_dict)
     plot_inputs.plot_all_features()
@@ -59,6 +82,9 @@ def main(config, config_path):
 
     logging.info("Starting the training process...")
 
+    ################################################
+    ################################################
+    
     # Load the models from the models directory
     all_networks = load_networks_from_directory('models/networks')
     input_dim = len(config['features']) # Number of input features from the config file
@@ -83,7 +109,12 @@ def main(config, config_path):
         logging.error(f"Failed to iterate over train_loader: {e}")
 
     logging.info(f"Model '{model_name}' loaded. Starting training.")
-    # Train the model
+    
+    
+    ################################################
+    ################################################
+    
+    # Train the model..
     trainer = Trainer(model=model, train_loader=train_loader, val_loader=val_loader,
     num_epochs=config['training']['num_epochs'],
     lr=config['training']['learning_rate'],
@@ -102,6 +133,9 @@ def main(config, config_path):
 
     plot_losses(trainer)  # pass the Trainer object to the plot_losses() function
     plot_accuracy(trainer) # pass the Trainer object to the plot_accuracy() function
+    
+    ################################################
+    ################################################
 
     # Now, evaluate the model..
     accuracy, roc_auc = evaluate_model(model, val_loader)
