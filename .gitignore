@@ -1,3 +1,4 @@
+configs/test*.yaml
 plots/*
 Datasets/*.h5
 Datasets/graphsets

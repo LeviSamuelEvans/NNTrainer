@@ -1,34 +1,52 @@
 features:
+  # JETS (objects)
   - jet_pt
   - jet_eta
   - jet_phi
   - jet_e
   - jet_tagWeightBin_DL1r_Continuous
+  - jet_index_PCBT_ordered
+  - jet_tagWeightBin
+  
+  # LEPTONS (objects)
+  - el_pt
+  - el_eta
+  - el_phi
+  - el_e
+  - mu_pt
+  - mu_eta
+  - mu_phi
+  - mu_e
+
+  # MET (objects)
+  - met_met
+  - met_phi
+
+  # EVENT
+  - nJets
   - HT_all
   - HT_jets
   - H0_all
   - H1_all
-  - met_phi
-  - met_met
-  - nJets
-  - mwt_mwt
-  - mwt_phi
-  - truth_higgs_pt
-  - truth_higgs_phi
-  - truth_higgs_e
-  - HF_SimpleClassification
-  - HF_Classification
+  - H2_all
+  - H2_jets
+  - Aplanarity_jets
   - dRbb_HiggsMass_70
   - dRbb_avg_70
   - dRbb_avg_Sort4
-  - Aplanarity_jets
-  - Centrality_all
   - dRlj_MindR
+  - Centrality_all
 
+  # TRUTH
+  - HF_Classification
+  - HF_SimpleClassification
+  - truth_higgs_pt
+  - truth_higgs_phi
+  - truth_higgs_e
+  - truth_higgs_eta
+  - truth_higgs_mass
+  - jet_truthmatch
 
-  # to include in next dataset creation
-  # - H2_jets
-  # - H2_all
-  # - H3_jets
-  # - H3_all
-  # perform feature creation task directly too [decay angles, colour flow variables?] etc.
+  # RECO
+  - L2_Reco_higgs_pt
+  - L2_Reco_higgs_m

@@ -35,11 +35,11 @@ features:
 
 # Hyperparameters for training the model
 training:
-  num_epochs: 100            # number of epochs to train the model, which are the number of times the model sees the entire training dataset
-  learning_rate: 0.00001      # learning rate for the optimiser, which is a technique to update the weights
-  weight_decay: 0.0001        # L2 regularization, which is a technique to reduce overfitting
-  batch_size: 200           # batch size for training, which is the number of samples per gradient update
-  patience: 20               # epochs before early stopping/learning rate decay
+  num_epochs: 20            # number of epochs to train the model, which are the number of times the model sees the entire training dataset
+  learning_rate: 0.000001   # learning rate for the optimiser, which is a technique to update the weights
+  weight_decay: 0.001       # L2 regularization, which is a technique to reduce overfitting
+  batch_size: 32            # batch size for training, which is the number of samples per gradient update
+  patience: 6               # epochs before early stopping/learning rate decay
   early_stopping: True      # early stopping if validation loss does not improve
   use_scheduler: True       # learning rate decay if validation loss does not improve
   factor: 0.5               # factor by which the learning rate will be reduced, if use_scheduler is True
