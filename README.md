@@ -48,7 +48,7 @@ The data loading, preparation and training are handled by dedicated classes. It 
 - Preparation block - specifies dataset splits, data augmentation and feature makers (P)
 - Features block - the feature variables to use in the training.
 - Training block - specify hyperparameters
-- Evaluation block
+- Evaluation block - specify whether to use pre-trained models
 
 ## Feature Validation
 During the pre-processing stage before training, validation plots will be created of all feature inputs for the signal and background models. Alongside this, correlation matrices are also created. These will be found in `plots/Inputs`
