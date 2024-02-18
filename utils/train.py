@@ -9,6 +9,7 @@ import mplhep as hep
 import torch.nn.init as init  #  weight initialization
 from sklearn.utils.class_weight import compute_class_weight # computing class weights
 from utils.config_utils import log_with_separator
+from utils.scheduler import CosineRampUpDownLR
 
 """
 TODO:
@@ -38,13 +39,12 @@ class Trainer:
     """
 
     def __init__(self, model, train_loader, val_loader, num_epochs, lr, weight_decay, patience,criterion,
-                 early_stopping=False, use_scheduler=False, factor=None, initialise_weights=False,
+                 early_stopping=False, use_scheduler=False, use_cosine_burnin=False,factor=None, initialise_weights=False,
                  class_weights=None, balance_classes=False, network_type=None):
         
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") # Use GPU if available
         self.model = model
         self.model.to(self.device)                                                   # Move model to GPU if available
-        
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.num_epochs = num_epochs
@@ -52,7 +52,6 @@ class Trainer:
         self.class_weights = class_weights
         self.criterion = criterion
         self.optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=factor, patience=patience, verbose=True)
         self.train_losses = []
         self.val_losses = []
         self.train_accuracies = []
@@ -60,11 +59,14 @@ class Trainer:
         self.early_stopping = early_stopping
         self.weight_decay = weight_decay
         self.use_scheduler = use_scheduler
+        self.use_cosine_burnin = use_cosine_burnin
         self.patience = patience
         self.factor = factor
         self.initialise_weights = initialise_weights
         self.balance_classes = balance_classes
         self.network_type = network_type
+        self.scheduler = None
+        self.cosine_scheduler = None
 
         if self.balance_classes == True:
             all_labels = torch.cat([labels for *_, labels in self.train_loader])
@@ -82,6 +84,12 @@ class Trainer:
             logging.info("GPU is available. Using GPU for training.")
         else:
             logging.info("GPU not available. Using CPU for training.")
+        
+        if use_scheduler == True:
+            self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=factor, patience=patience, verbose=True)
+        
+        if use_cosine_burnin == True:
+            self.cosine_scheduler = CosineRampUpDownLR(self.optimizer, burn_in=10, ramp_up=10, plateau=20, ramp_down=100, last_epoch=-1)
 
     def get_class_weights(self, y):
         """
@@ -116,6 +124,25 @@ class Trainer:
                     init.kaiming_normal_(m.weight, nonlinearity='leaky_relu')
                     if m.bias is not None:
                         init.constant_(m.bias, 0)
+    
+    def validate(self):
+            """
+            Perform validation on the model.
+
+            Returns:
+                float: The validation loss.
+            """
+            self.model.eval()
+            val_epoch_loss = 0.0
+            with torch.no_grad():
+                for inputs, labels in self.val_loader:
+                    inputs, labels = inputs.to(self.device), labels.to(self.device)
+                    outputs = self.model(inputs)
+                    loss = self.criterion(outputs, labels)
+                    val_epoch_loss += loss.item() * inputs.size(0)
+            val_epoch_loss /= len(self.val_loader.dataset)
+            logging.info(f"Validation Loss: {val_epoch_loss:.4f}")
+            return val_epoch_loss
 
     def train_model(self):
         """
@@ -141,6 +168,9 @@ class Trainer:
         logging.info(f"criterion: {self.criterion}")
         logging.info(f"optimizer: {self.optimizer}")
         logging.info(f"balance_classes: {self.balance_classes}")
+        logging.info(f"Burn-in Cosine Scheduler: {self.cosine_scheduler}")
+        logging.info(f"Initial learning-rate: {self.lr}")
+        logging.info(f"Early Stopping: {self.early_stopping}")
 
         logging.info("Training model...")
         start_time = time.time()  # Start time of training
@@ -158,9 +188,17 @@ class Trainer:
 
         for epoch in range(self.num_epochs):
             self.model.train()
+            
+            if self.cosine_scheduler:
+                lr = self.cosine_scheduler(epoch)
+                for param_group in self.optimizer.param_groups:
+                    param_group['lr'] = lr
+                logging.info(f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {lr:.6f}")
+        
             running_loss = 0.0
             correct = 0  # Counter for correct predictions
             total = 0  # Counter for total predictions
+            
 
             for batch_idx, data in enumerate(self.train_loader):
                 if self.network_type == ["GNN"]:
@@ -205,20 +243,18 @@ class Trainer:
             #logging.info(f"Epoch [{epoch+1}/{self.num_epochs}] Average Loss: {epoch_loss:.4f} Avergae Accuracy: {epoch_accuracy:.4f}")
 
             # Validation loss for the epoch
-            self.model.eval()
-            val_epoch_loss = 0.0
-            val_correct = 0  # Counter for correct predictions on validation set
+            val_epoch_loss = self.validate()
+            if self.scheduler:
+                self.scheduler.step(val_epoch_loss)  # Adjust learning rate based on validation loss, using ReduceLROnPlateau
+                current_lr = self.optimizer.param_groups[0]['lr']
+                logging.info(f"Epoch {epoch+1}: ReduceLROnPlateau sets learning rate to {current_lr:.6f}")
+                
+            val_correct = 0
             val_total = 0
             with torch.no_grad():
                 for inputs, labels in self.val_loader:
                     inputs, labels = inputs.to(self.device), labels.to(self.device)
                     outputs = self.model(inputs)
-                    loss = self.criterion(outputs, labels)
-                    val_epoch_loss += loss.item() * inputs.size(0)
-                if self.use_scheduler == True:
-                    self.scheduler.step(val_epoch_loss) # Adjust learning rate based on validation loss, using ReduceLROnPlateau
-
-                    # Compute accuracy for this batch on validation set
                     predicted = torch.round(torch.sigmoid(outputs))
                     val_correct += (predicted == labels).sum().item()
                     val_total += labels.size(0)
@@ -226,11 +262,7 @@ class Trainer:
                     # Store the predicted scores and true labels
                     self.val_labels_list.extend(labels.cpu().numpy())
                     self.val_outputs_list.extend(torch.sigmoid(outputs).cpu().numpy())
-            print("Number of validation labels:", len(self.val_labels_list))
-            print("Number of validation outputs:", len(self.val_outputs_list))
 
-
-            val_epoch_loss /= len(self.val_loader.dataset)
             self.val_losses.append(val_epoch_loss)          # Store validation loss for this epoch
             val_epoch_accuracy = val_correct / val_total    # Compute validation accuracy for this epoch
             self.val_accuracies.append(val_epoch_accuracy)  # Store validation accuracy for this epoch
@@ -265,6 +297,7 @@ class Trainer:
         
         # Save our model for further use
         torch.save(self.model, '/scratch4/levans/tth-network/models/outputs/model.pt')
+
 
 # put into class when time
 def plot_losses(trainer):
