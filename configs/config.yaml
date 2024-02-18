@@ -6,13 +6,13 @@
 # Name of the model to use and the input dimension
 model:
   #name: 'ResidualComplexNN'
-  name: 'ResidualComplexNNwithattention'
-  input_dim: 9 # number of features
+  name: 'ResidualComplexNNwith_MH_attention'
+  input_dim: 8 # number of features
 
 # Path to the data
 data:
-  signal_path: Datasets/signal2.h5
-  background_path: Datasets/ttbarbackground2.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/signal2.h5
+  background_path: /scratch4/levans/tth-network/Datasets/ttbarBackground2.h5
 
 Network_type:
   - FFNN
@@ -22,13 +22,12 @@ Network_type:
 features:
   - HT_all
   - H0_all
-  - dRbb_HiggsMass_70
-  - dRbb_avg_70
   - dRbb_avg_Sort4
   - nJets
   - Aplanarity_jets
   - Centrality_all
   - dRlj_MindR
+  - mu_pt
 
 # Preparation: Coming soon!
 # -
@@ -36,9 +35,9 @@ features:
 # Hyperparameters for training the model
 training:
   num_epochs: 20            # number of epochs to train the model, which are the number of times the model sees the entire training dataset
-  learning_rate: 0.000001   # learning rate for the optimiser, which is a technique to update the weights
+  learning_rate: 0.00001   # learning rate for the optimiser, which is a technique to update the weights
   weight_decay: 0.001       # L2 regularization, which is a technique to reduce overfitting
-  batch_size: 32            # batch size for training, which is the number of samples per gradient update
+  batch_size: 128            # batch size for training, which is the number of samples per gradient update
   patience: 6               # epochs before early stopping/learning rate decay
   early_stopping: True      # early stopping if validation loss does not improve
   use_scheduler: True       # learning rate decay if validation loss does not improve

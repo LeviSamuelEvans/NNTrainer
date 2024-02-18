@@ -47,6 +47,14 @@ features:
   - truth_higgs_mass
   - jet_truthmatch
 
-  # RECO
+  # LEGACY RECO
   - L2_Reco_higgs_pt
   - L2_Reco_higgs_m
+
+  # LEGACY TRANSFORMER
+  - L2_Class_ttH_discriminant
+  - L2_Class_ttbb_discriminant
+  - L2_Class_ttc_discriminant
+  - L2_Class_tt1B_discriminant
+  - L2_Class_tt1b_discriminant
+  - L2_Class_ttlight_discriminant
