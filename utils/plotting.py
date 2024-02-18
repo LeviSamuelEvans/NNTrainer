@@ -32,6 +32,7 @@ class DataPlotter:
         Returns:
         None
         """
+        plt.style.use(hep.style.ROOT)
         self.signal_path = config_dict['data']['signal_path']
         self.background_path = config_dict['data']['background_path']
         self.features = config_dict['features']
@@ -53,6 +54,10 @@ class DataPlotter:
         logging.debug(self.df_bkg.head()) # Print the first few rows of the background DataFrame
         # Set the number of bins
         num_bins = 50
+        
+        if feature == 'HT_all':
+            self.df_sig[feature] *= 0.001  # Convert to GeV
+            self.df_bkg[feature] *= 0.001  # Convert to GeV
 
         sig = self.df_sig[feature]
         bkg = self.df_bkg[feature]
@@ -60,7 +65,14 @@ class DataPlotter:
         # Determine the bin edges based on the data range
         min_val = min(sig.min(), bkg.min())
         max_val = max(sig.max(), bkg.max())
+        if feature == 'HT_all':
+            min_val = 200
+            max_val = 3000
         bin_edges = np.linspace(min_val, max_val, num_bins)
+        
+        if feature == 'nJets':
+            num_bins = 8
+            bin_edges = np.arange(5, 12, 1)
 
         # Plot histograms with normalisation (i.e shape differences only)
 
@@ -97,6 +109,7 @@ class DataPlotter:
         Parameters:
         data_type (str): Specifies which data to use. Options are 'signal' or 'background'.
         """
+        plt.style.use(hep.style.ATLAS)
         if data_type == 'signal':
             data = self.df_sig
             save_path = "/scratch4/levans/tth-network/plots/Inputs/Signal_CorrelationMatrix.png"
