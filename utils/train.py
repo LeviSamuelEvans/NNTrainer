@@ -40,7 +40,11 @@ class Trainer:
     def __init__(self, model, train_loader, val_loader, num_epochs, lr, weight_decay, patience,criterion,
                  early_stopping=False, use_scheduler=False, factor=None, initialise_weights=False,
                  class_weights=None, balance_classes=False, network_type=None):
+        
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") # Use GPU if available
         self.model = model
+        self.model.to(self.device)                                                   # Move model to GPU if available
+        
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.num_epochs = num_epochs
@@ -69,9 +73,15 @@ class Trainer:
             positive_examples = float((all_labels == 1).sum())
             negative_examples = float((all_labels == 0).sum())
             pos_weight = torch.tensor([negative_examples / positive_examples])
+            pos_weight = pos_weight.to(self.device)
             self.criterion = torch.nn.BCEWithLogitsLoss(weight=pos_weight)
         else:
             self.criterion = torch.nn.BCELoss()
+        
+        if torch.cuda.is_available():
+            logging.info("GPU is available. Using GPU for training.")
+        else:
+            logging.info("GPU not available. Using CPU for training.")
 
     def get_class_weights(self, y):
         """
@@ -83,12 +93,13 @@ class Trainer:
         Returns:
         - class_weights (torch.Tensor): Computed class weights.
         """
-        print("Computing class weights..."
-        )
-        y_np = y.numpy().squeeze()  # Convert tensor to numpy array
-        class_weights = compute_class_weight('balanced', classes=[0, 1], y=y_np)
+        print("Computing class weights...")
+        y_np = y.numpy().squeeze()                                                      # Convert tensor to numpy array
+        classes_array = np.array([0, 1])                                                # Explicitly create a numpy array for classes
+        class_weights = compute_class_weight('balanced', classes=classes_array, y=y_np)
         return torch.tensor(class_weights, dtype=torch.float32).to(y.device)
 
+    @staticmethod
     def initialise_weights(model):
             """
             Initializes the weights of the given model using He initialization for linear layers
@@ -158,9 +169,15 @@ class Trainer:
                     print("Edge Features Shape:", edge_features.shape)
                     print("Global Features Shape:", global_features.shape)
                     print("Labels Shape:", labels.shape)
+                    node_features = node_features.to(self.device)
+                    edge_features = edge_features.to(self.device)
+                    global_features = global_features.to(self.device)
+                    labels = labels.to(self.device)
                     outputs = self.model(node_features, edge_features, global_features)
                 elif self.network_type == ["FFNN"]:
                     inputs, labels = data
+                    inputs = inputs.to(self.device)
+                    labels = labels.to(self.device)
                     outputs = self.model(inputs)
                 else:
                     raise ValueError(f"Unsupported network type: {self.network_type}")
@@ -194,6 +211,7 @@ class Trainer:
             val_total = 0
             with torch.no_grad():
                 for inputs, labels in self.val_loader:
+                    inputs, labels = inputs.to(self.device), labels.to(self.device)
                     outputs = self.model(inputs)
                     loss = self.criterion(outputs, labels)
                     val_epoch_loss += loss.item() * inputs.size(0)
@@ -246,7 +264,7 @@ class Trainer:
             logging.info("GPU not available. Using CPU.")
         
         # Save our model for further use
-        torch.save(self.model, '/Users/levievans/Desktop/PhD/3rd-YEAR/HiggsGNN/ttH-Network/models/outputs/model.pt')
+        #torch.save(self.model, '/Users/levievans/Desktop/PhD/3rd-YEAR/HiggsGNN/ttH-Network/models/outputs/model.pt')
 
 # put into class when time
 def plot_losses(trainer):
@@ -271,8 +289,8 @@ def plot_losses(trainer):
     plt.legend()
     hep.atlas.label(loc=0, label="Internal",)
     plt.tight_layout()
-    plt.savefig('plots/Validation/loss.png')
-    logging.info("Loss plot saved to plots/Validation/loss.png")
+    plt.savefig('/scratch4/levans/tth-network/plots/Validation/loss.png')
+    logging.info("Loss plot saved to /scratch4/levans/tth-network/plots/Validation/loss.png")
 
 def plot_accuracy(trainer):
     """
@@ -293,5 +311,5 @@ def plot_accuracy(trainer):
     plt.legend()
     hep.atlas.label(loc=0, label="Internal",)
     plt.tight_layout()
-    plt.savefig('plots/Validation/accuracy.png')
-    logging.info("Accuracy plot saved to plots/Validation/accuracy.png")
+    plt.savefig('/scratch4/levans/tth-network/plots/Validation/accuracy.png')
+    logging.info("Accuracy plot saved to /scratch4/levans/tth-network/plots/Validation/accuracy.png")
