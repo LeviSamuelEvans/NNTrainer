@@ -67,7 +67,7 @@ class DataPlotter:
         max_val = max(sig.max(), bkg.max())
         if feature == 'HT_all':
             min_val = 200
-            max_val = 3000
+            max_val = 2000
         bin_edges = np.linspace(min_val, max_val, num_bins)
         
         if feature == 'nJets':
