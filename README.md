@@ -89,3 +89,4 @@ The trained model is evaluated by examing the ROC curve and confusion matrix, wh
 - SHAP https://shap.readthedocs.io/en/latest/
 - Att. Maps https://www.mdpi.com/2076-3417/12/8/3846
 - Layer-wise relevance propagation https://arxiv.org/abs/1803.08782
+- [ATLAS GPU Training](https://indico.cern.ch/event/1331139/overview)
