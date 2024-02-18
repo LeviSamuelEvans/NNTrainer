@@ -56,15 +56,15 @@ def main(config, config_path):
     # Unpack the loaded data into signal and background DataFrames
     signal_data, background_data = loaded_data
     
-    fe_config = config_dict['feature_engineering']
+    # fe_config = config_dict['feature_engineering']
     
-    feature_maker = FeatureFactory.make(max_particles=fe_config['max_particles'],
-                                        n_leptons=fe_config['n_leptons'],
-                                        extra_feats=fe_config.get('extra_feats'))
+    # feature_maker = FeatureFactory.make(max_particles=fe_config['max_particles'],
+    #                                     n_leptons=fe_config['n_leptons'],
+    #                                     extra_feats=fe_config.get('extra_feats'))
 
     
-    signal_fvectors = feature_maker.get_four_vectors(signal_data)
-    background_fvectors = feature_maker.get_four_vectors(background_data)
+    # signal_fvectors = feature_maker.get_four_vectors(signal_data)
+    # background_fvectors = feature_maker.get_four_vectors(background_data)
     
     ### NOW need to link into data preparation...
     
