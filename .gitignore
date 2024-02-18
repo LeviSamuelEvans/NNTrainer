@@ -2,6 +2,8 @@ configs/test*.yaml
 plots/*
 Datasets/*.h5
 Datasets/graphsets
+Datasets/basic
+Datasets/full
 models/outputs
 __pycache__/
 models/__pycache__
