@@ -58,3 +58,7 @@ features:
   - L2_Class_tt1B_discriminant
   - L2_Class_tt1b_discriminant
   - L2_Class_ttlight_discriminant
+
+  # EVENT ID
+  - eventNumber
+  - mcChannelNumber
