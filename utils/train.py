@@ -264,7 +264,7 @@ class Trainer:
             logging.info("GPU not available. Using CPU.")
         
         # Save our model for further use
-        #torch.save(self.model, '/Users/levievans/Desktop/PhD/3rd-YEAR/HiggsGNN/ttH-Network/models/outputs/model.pt')
+        torch.save(self.model, '/scratch4/levans/tth-network/models/outputs/model.pt')
 
 # put into class when time
 def plot_losses(trainer):
