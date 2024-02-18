@@ -12,13 +12,13 @@ trains the model, and evaluates the model.
 # -*- coding: utf-8 -*-
 
 import logging
-from utils import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
-from utils.train import Trainer, plot_losses, plot_accuracy
-from models.importer import load_networks_from_directory
+from utils.config_utils import print_config_summary, print_intro
 from utils.cli import handleCommandLineArgs
 from utils.logging import configure_logging
-from utils.evaluation import evaluate_model #,plot_pr_curve
-from utils.config_utils import print_config_summary, print_intro
+from models.importer import load_networks_from_directory
+from utils import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
+from utils.train import Trainer, plot_losses, plot_accuracy
+from utils.evaluation import ModelEvaluator
 
 
 def main(config, config_path):
@@ -43,13 +43,14 @@ def main(config, config_path):
     # Print configuration summary
     print_config_summary(config_dict)
     
+    #mode = config_dict.get('mode', 'training') //next
+    
     ################################################
     ################################################
 
     # Get the network type from the config file
     network_type = config_dict['Network_type'][0]  # 'FFNN' or 'GNN' currently
     
-
     # Employ the appropriate data loader and data preparation classes
     loaded_data = LoadingFactory.load_data(network_type, config_dict)
     
@@ -131,21 +132,28 @@ def main(config, config_path):
     logging.info (f"Training model '{model_name}' for {config['training']['num_epochs']} epochs.")
     trainer.train_model()
 
-    plot_losses(trainer)  # pass the Trainer object to the plot_losses() function
+    plot_losses(trainer)   # pass the Trainer object to the plot_losses() function
     plot_accuracy(trainer) # pass the Trainer object to the plot_accuracy() function
     
     ################################################
     ################################################
 
     # Now, evaluate the model..
-    accuracy, roc_auc = evaluate_model(model, val_loader)
+        
+    evaluator = ModelEvaluator(config=config, model=None if config.get('evaluation', {}).get('use_saved_model', False) else trainer.model, val_loader=trainer.val_loader)
+    
+    accuracy, roc_auc, average_precision = evaluator.evaluate_model()
+    
+    # print the final accuracy and AUC score
     logging.info(f"Final Accuracy: {accuracy:.2f}%")
     logging.info(f"Final AUC: {roc_auc:.4f}")
+    logging.info(f"Average Precision: {average_precision:.4f}")
+    logging.info("Program finished successfully.")
 
 
 if __name__ == '__main__':
-    configure_logging()  # Set up logging
+    configure_logging()                                   # Set up logging
     all_networks = load_networks_from_directory('models') # Load the models from the models directory
-    logging.debug(all_networks) # Print the dictionary of models
-    config, config_path = handleCommandLineArgs() # Handle command line arguments
-    main(config, config_path) # Call the main function
+    logging.debug(all_networks)                           # Print the dictionary of models
+    config, config_path = handleCommandLineArgs()         # Handle command line arguments
+    main(config, config_path)                             # Call the main function
