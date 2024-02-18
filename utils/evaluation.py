@@ -87,8 +87,8 @@ def plot_roc_curve(fpr, tpr, roc_auc):
     plt.legend(loc="lower right")
     hep.atlas.label(loc=0, label="Internal",)
     plt.tight_layout()
-    plt.savefig('plots/Evaluation/roc_curve.png')
-    logging.info("ROC curve plot produced and saved to 'plots/Evaluation/roc_curve.png'")
+    plt.savefig('/scratch4/levans/tth-network/plots/Evaluation/roc_curve.png')
+    logging.info("ROC curve plot produced and saved to '/scratch4/levans/tth-network/plots/Evaluation/roc_curve.png'")
 
 
 def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> None:
@@ -104,16 +104,19 @@ def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> None:
     """
     predicted_labels = (y_pred > 0.5).astype(int)
     cm = confusion_matrix(y_true, predicted_labels)
+    
+    cm_percentage = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    cm_percentage = cm_percentage * 100 
 
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt='g', cmap='Blues', cbar=False)
+    sns.heatmap(cm_percentage, annot=True, fmt='g', cmap='Blues', cbar=False, annot_kws={"size": 12})
     plt.xlabel('Predicted labels')
     plt.ylabel('True labels')
     #plt.title('Confusion Matrix')
     hep.atlas.label(loc=0, label="Internal",)
     plt.tight_layout()
-    plt.savefig('plots/Evaluation/confusion_matrix.png')
-    logging.info("Confusion matrix plot produced and saved as 'plots/Evaluation/confusion_matrix.png'")
+    plt.savefig('/scratch4/levans/tth-network/plots/Evaluation/confusion_matrix.png')
+    logging.info("Confusion matrix plot produced and saved as '/scratch4/levans/tth-network/plots/Evaluation/confusion_matrix.png'")
 
 # NOT CURRENTLY WORING :( - NEED TO FIX
 # def plot_pr_curve(precision, recall, average_precision):

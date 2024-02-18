@@ -72,7 +72,7 @@ class DataPlotter:
         plt.ylabel("Probability Density")
         plt.legend(loc='upper right')
         hep.atlas.label(loc=0, label="Internal", lumi="140.0", com="13")
-        plt.savefig(f"plots/Inputs/{feature}.png")
+        plt.savefig(f"/scratch4/levans/tth-network/plots/Inputs/{feature}.png")
         logging.info(f"Plot of {feature} saved to plots/Inputs/{feature}.png")
         # Close the plot to free up memory
         plt.close()
@@ -99,10 +99,10 @@ class DataPlotter:
         """
         if data_type == 'signal':
             data = self.df_sig
-            save_path = "plots/Inputs/Signal_CorrelationMatrix.png"
+            save_path = "/scratch4/levans/tth-network/plots/Inputs/Signal_CorrelationMatrix.png"
         elif data_type == 'background':
             data = self.df_bkg
-            save_path = "plots/Inputs/Background_CorrelationMatrix.png"
+            save_path = "/scratch4/levans/tth-network/plots/Inputs/Background_CorrelationMatrix.png"
         else:
             raise ValueError("data_type must be either 'signal' or 'background'.")
 
