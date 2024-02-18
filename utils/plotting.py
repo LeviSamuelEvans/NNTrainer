@@ -33,9 +33,9 @@ class DataPlotter:
         None
         """
         plt.style.use(hep.style.ROOT)
-        self.signal_path = config_dict['data']['signal_path']
-        self.background_path = config_dict['data']['background_path']
-        self.features = config_dict['features']
+        self.signal_path = config_dict["data"]["signal_path"]
+        self.background_path = config_dict["data"]["background_path"]
+        self.features = config_dict["features"]
         self.df_sig = pd.read_hdf(self.signal_path, key="df")
         self.df_bkg = pd.read_hdf(self.background_path, key="df")
 
@@ -50,12 +50,16 @@ class DataPlotter:
         None
         """
         plt.figure()
-        logging.debug(self.df_sig.head()) # Print the first few rows of the signal DataFrame
-        logging.debug(self.df_bkg.head()) # Print the first few rows of the background DataFrame
+        logging.debug(
+            self.df_sig.head()
+        )  # Print the first few rows of the signal DataFrame
+        logging.debug(
+            self.df_bkg.head()
+        )  # Print the first few rows of the background DataFrame
         # Set the number of bins
         num_bins = 50
-        
-        if feature == 'HT_all':
+
+        if feature == "HT_all":
             self.df_sig[feature] *= 0.001  # Convert to GeV
             self.df_bkg[feature] *= 0.001  # Convert to GeV
 
@@ -65,24 +69,24 @@ class DataPlotter:
         # Determine the bin edges based on the data range
         min_val = min(sig.min(), bkg.min())
         max_val = max(sig.max(), bkg.max())
-        if feature == 'HT_all':
+        if feature == "HT_all":
             min_val = 200
             max_val = 2000
         bin_edges = np.linspace(min_val, max_val, num_bins)
-        
-        if feature == 'nJets':
+
+        if feature == "nJets":
             num_bins = 8
             bin_edges = np.arange(5, 12, 1)
 
         # Plot histograms with normalisation (i.e shape differences only)
 
-        plt.hist(sig, bins=bin_edges, alpha=0.5, label='Signal', density=True)
-        plt.hist(bkg, bins=bin_edges, alpha=0.5, label='Background', density=True)
+        plt.hist(sig, bins=bin_edges, alpha=0.5, label="Signal", density=True)
+        plt.hist(bkg, bins=bin_edges, alpha=0.5, label="Background", density=True)
 
         # Plot the distributions
         plt.xlabel(feature)
         plt.ylabel("Probability Density")
-        plt.legend(loc='upper right')
+        plt.legend(loc="upper right")
         hep.atlas.label(loc=0, label="Internal", lumi="140.0", com="13")
         plt.savefig(f"/scratch4/levans/tth-network/plots/Inputs/{feature}.png")
         logging.info(f"Plot of {feature} saved to plots/Inputs/{feature}.png")
@@ -110,10 +114,12 @@ class DataPlotter:
         data_type (str): Specifies which data to use. Options are 'signal' or 'background'.
         """
         plt.style.use(hep.style.ATLAS)
-        if data_type == 'signal':
+        if data_type == "signal":
             data = self.df_sig
-            save_path = "/scratch4/levans/tth-network/plots/Inputs/Signal_CorrelationMatrix.png"
-        elif data_type == 'background':
+            save_path = (
+                "/scratch4/levans/tth-network/plots/Inputs/Signal_CorrelationMatrix.png"
+            )
+        elif data_type == "background":
             data = self.df_bkg
             save_path = "/scratch4/levans/tth-network/plots/Inputs/Background_CorrelationMatrix.png"
         else:
@@ -121,15 +127,22 @@ class DataPlotter:
 
         # Compute the correlation matrix
         corr_matrix = data[self.features].corr()
-        print(corr_matrix,"Correlation matrix:")
+        print(corr_matrix, "Correlation matrix:")
 
         # Plot the heatmap
         plt.figure(figsize=(10, 8))  # Adjust the size as needed
-        sns.heatmap(corr_matrix, annot=True, fmt='.2f', cmap='coolwarm', vmin=-1, vmax=1,)
-        plt.yticks(rotation=0, ha='right')
-        plt.xticks(rotation=45, ha='right')
+        sns.heatmap(
+            corr_matrix,
+            annot=True,
+            fmt=".2f",
+            cmap="coolwarm",
+            vmin=-1,
+            vmax=1,
+        )
+        plt.yticks(rotation=0, ha="right")
+        plt.xticks(rotation=45, ha="right")
         # Add title and show plot
-        #plt.title(f'{data_type.capitalize()} Linear Correlation Matrix')
+        # plt.title(f'{data_type.capitalize()} Linear Correlation Matrix')
         hep.atlas.label(loc=0, label="Internal")
         plt.tight_layout()
         plt.savefig(save_path)

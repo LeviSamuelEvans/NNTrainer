@@ -1,4 +1,3 @@
-
 # Future script to perform feature engineering on the original data
 import numpy as np
 import pandas as pd
@@ -17,18 +16,14 @@ TODO:
 """
 
 # Objects for matching
-matching_objects = [
-    'H',
-    'b_had_top',
-    'b_lep_top',
-    'W'
-    ]
+matching_objects = ["H", "b_had_top", "b_lep_top", "W"]
 
 
 class FeatureFactory:
     @staticmethod
     def make(max_particles, n_leptons, extra_feats=None):
         return FeatureMaker(max_particles, n_leptons, extra_feats)
+
 
 class FeatureMaker:
     """
@@ -52,11 +47,11 @@ class FeatureMaker:
         self.max_particles = max_particles
         self.n_leptons = n_leptons
         self.extra_feats = extra_feats if extra_feats else []
-    
+
     def get_jet_features(self, sample, feature_name, max_jets):
         # get all the jet features from our input files
         ## FUTURE -> move to mutli-dim h5 file as will be easier and neater
-        feature_columns = [f'{feature_name}_{i+1}' for i in range(max_jets)]
+        feature_columns = [f"{feature_name}_{i+1}" for i in range(max_jets)]
         jet_features = sample[feature_columns].values
         return jet_features
 
@@ -75,7 +70,14 @@ class FeatureMaker:
         # create an empty array of shape (n_samples, n_leptons)
         out = np.full((len(sample), self.n_leptons), np.nan)
         # loop over the samples
-        for i, (n_electrons, n_muons, el_data, mu_data) in enumerate(zip(sample['nElectrons'], sample['nMuons'], sample['el_' + array_name], sample['mu_' + array_name])):
+        for i, (n_electrons, n_muons, el_data, mu_data) in enumerate(
+            zip(
+                sample["nElectrons"],
+                sample["nMuons"],
+                sample["el_" + array_name],
+                sample["mu_" + array_name],
+            )
+        ):
             n_leptons = n_electrons + n_muons
             # make sure we have the right number of leptons
             assert n_leptons == self.n_leptons
@@ -95,19 +97,19 @@ class FeatureMaker:
 
         """
         # lepton info
-        lep_pt = self.compute_lepton_arrays(sample, 'pt')
-        lep_eta = self.compute_lepton_arrays(sample, 'eta')
-        lep_phi = self.compute_lepton_arrays(sample, 'phi')
-        lep_e = self.compute_lepton_arrays(sample, 'e')
-        
+        lep_pt = self.compute_lepton_arrays(sample, "pt")
+        lep_eta = self.compute_lepton_arrays(sample, "eta")
+        lep_phi = self.compute_lepton_arrays(sample, "phi")
+        lep_e = self.compute_lepton_arrays(sample, "e")
+
         # max jets is total particles minus the number of leptons
         max_jets = self.max_particles - self.n_leptons
 
         # jet info ( we already flattened in the HDF5 file so no need here)
-        jet_pt = self.get_jet_features(sample, 'jet_pt', max_jets)
-        jet_eta = self.get_jet_features(sample, 'jet_eta', max_jets)
-        jet_phi = self.get_jet_features(sample, 'jet_phi', max_jets)
-        jet_e = self.get_jet_features(sample, 'jet_e', max_jets)
+        jet_pt = self.get_jet_features(sample, "jet_pt", max_jets)
+        jet_eta = self.get_jet_features(sample, "jet_eta", max_jets)
+        jet_phi = self.get_jet_features(sample, "jet_phi", max_jets)
+        jet_e = self.get_jet_features(sample, "jet_e", max_jets)
 
         # concat the lepton and jet info
         p_pt = np.hstack((lep_pt, jet_pt))
@@ -116,12 +118,14 @@ class FeatureMaker:
         p_e = np.hstack((lep_e, jet_e))
 
         # calculate px, py, pz from pt, eta, phi
-        p_px = p_pt * np.cos(p_phi)    # cos(phi) = px/pt
-        p_py = p_pt * np.sin(p_phi)    # sin(phi) = py/pt
-        p_pz = p_pt * np.sinh(p_eta)   # sinh(eta) = pz/pt
+        p_px = p_pt * np.cos(p_phi)  # cos(phi) = px/pt
+        p_py = p_pt * np.sin(p_phi)  # sin(phi) = py/pt
+        p_pz = p_pt * np.sinh(p_eta)  # sinh(eta) = pz/pt
 
         # join together all our four vectors
-        four_vectors = np.stack((p_px, p_py, p_pz, p_e), axis=-1) # axis=-1 means stack along the last axis
+        four_vectors = np.stack(
+            (p_px, p_py, p_pz, p_e), axis=-1
+        )  # axis=-1 means stack along the last axis
 
         # add extra features if specified by user (i.e. the jet tagging weights, etc.)
         if self.extra_feats:
@@ -130,6 +134,6 @@ class FeatureMaker:
 
         # Return the array of four vectors and extra features
         return four_vectors
-    
+
     def get_matched_objetcs():
         return None  # TODO -> implement this method for the Higgs decay angles

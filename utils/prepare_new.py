@@ -1,4 +1,3 @@
-
 from logging import config
 import torch
 import numpy as np
@@ -11,19 +10,29 @@ from tqdm import tqdm
 class DataPreparationFactory:
     @staticmethod
     def prep_data(network_type, loaded_data, config):
-        batch_size = config['training']['batch_size']
-        features = config['features']
+        batch_size = config["training"]["batch_size"]
+        features = config["features"]
 
         if network_type == "FFNN":
             df_sig, df_bkg = loaded_data
             preparer = FFDataPreparation(df_sig, df_bkg, batch_size, features)
             return preparer.prepare_data()
         elif network_type == "GNN":
-            node_features_sig, edge_features_sig, global_features_sig, node_features_bkg, edge_features_bkg, global_features_bkg, df_sig, df_bkg = loaded_data
+            (
+                node_features_sig,
+                edge_features_sig,
+                global_features_sig,
+                node_features_bkg,
+                edge_features_bkg,
+                global_features_bkg,
+                df_sig,
+                df_bkg,
+            ) = loaded_data
             preparer = GraphDataPreparation(df_sig, df_bkg, batch_size, features)
             return preparer.prepare_GNN_data()
         else:
             raise ValueError("Invalid network type")
+
 
 class BaseDataPreparation:
 
@@ -94,8 +103,12 @@ class BaseDataPreparation:
         mean = torch.stack(X_train).mean(dim=0, keepdim=True)
         std = torch.stack(X_train).std(dim=0, keepdim=True)
 
-        train_dataset = [(((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in train_dataset]
-        val_dataset = [(((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in val_dataset]
+        train_dataset = [
+            (((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in train_dataset
+        ]
+        val_dataset = [
+            (((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in val_dataset
+        ]
         return train_dataset, val_dataset
 
     def prepare_data(self):
@@ -123,7 +136,9 @@ class BaseDataPreparation:
         logging.info(f"Sample data shape after (train_dataset): {sample_data.shape}")
         logging.info(f"Sample label shape after (train_dataset): {sample_label.shape}")
 
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        train_loader = DataLoader(
+            train_dataset, batch_size=self.batch_size, shuffle=True
+        )
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=True)
 
         # After creating the DataLoader
@@ -139,6 +154,7 @@ class BaseDataPreparation:
 
         return train_loader, val_loader
 
+
 class FFDataPreparation(BaseDataPreparation):
     """
     A class for preparing data for feed-forward neural networks.
@@ -153,6 +169,7 @@ class FFDataPreparation(BaseDataPreparation):
 
     def __init__(self, df_sig, df_bkg, batch_size, features, train_ratio=0.8):
         super().__init__(df_sig, df_bkg, batch_size, features, train_ratio)
+
 
 class GraphDataPreparation(BaseDataPreparation):
     """
@@ -181,7 +198,7 @@ class GraphDataPreparation(BaseDataPreparation):
         """
         # Count the number of jets with non-null data in the event
         num_jets = event.count() // 4  # Assuming 4 features per jet
-         # num_jets = event.shape[1] # for future move to multi-dim h5 file
+        # num_jets = event.shape[1] # for future move to multi-dim h5 file
 
         edge_indices = []
 
@@ -191,7 +208,7 @@ class GraphDataPreparation(BaseDataPreparation):
                     edge_indices.append((i, j))
 
         edge_index = torch.tensor(edge_indices, dtype=torch.long).t().contiguous()
-        #print("Edge Index Shape for a Graph:", edge_index.shape) # DEBUG
+        # print("Edge Index Shape for a Graph:", edge_index.shape) # DEBUG
         return edge_index
 
     def convert_to_graphs(self):
@@ -201,39 +218,65 @@ class GraphDataPreparation(BaseDataPreparation):
 
         # Iterate over each row in df_sig and df_bkg
         logging.info("Converting signal and background data to graphs...")
-        for event_data_sig, event_data_bkg in tqdm(zip(self.df_sig.iterrows(), self.df_bkg.iterrows()), total=len(self.df_sig)):
+        for event_data_sig, event_data_bkg in tqdm(
+            zip(self.df_sig.iterrows(), self.df_bkg.iterrows()), total=len(self.df_sig)
+        ):
             _, event_data_sig = event_data_sig
             _, event_data_bkg = event_data_bkg
 
             # Extract features for this event
-            node_features_sig = event_data_sig[self.features['node_features']].dropna().values
-            node_features_bkg = event_data_bkg[self.features['node_features']].dropna().values
+            node_features_sig = (
+                event_data_sig[self.features["node_features"]].dropna().values
+            )
+            node_features_bkg = (
+                event_data_bkg[self.features["node_features"]].dropna().values
+            )
 
-            edge_features_sig = event_data_sig[self.features['edge_features']].dropna().values
-            edge_features_bkg = event_data_bkg[self.features['edge_features']].dropna().values
+            edge_features_sig = (
+                event_data_sig[self.features["edge_features"]].dropna().values
+            )
+            edge_features_bkg = (
+                event_data_bkg[self.features["edge_features"]].dropna().values
+            )
 
-            global_features_sig = event_data_sig[self.features['global_features']].dropna().values
-            global_features_bkg = event_data_bkg[self.features['global_features']].dropna().values
+            global_features_sig = (
+                event_data_sig[self.features["global_features"]].dropna().values
+            )
+            global_features_bkg = (
+                event_data_bkg[self.features["global_features"]].dropna().values
+            )
 
             # Construct edge indices for this event
             edge_index_sig = self._construct_edge_index(event_data_sig)
             edge_index_bkg = self._construct_edge_index(event_data_bkg)
 
             # Create Data object for signal and background
-            #logging.info("Creating Data objects for signal and background...")
-            #n_features = len(self.features['node_features'])
-            n_features = 3 # DEBUG
-            data_sig = geo_data.Data(x=torch.tensor(node_features_sig, dtype=torch.float32).view(-1, n_features),
-                                    edge_index=edge_index_sig,
-                                    edge_attr=torch.tensor(edge_features_sig, dtype=torch.float32).view(-1, 1),
-                                    y=torch.tensor([1], dtype=torch.float32),
-                                    global_features=torch.tensor(global_features_sig, dtype=torch.float32))
+            # logging.info("Creating Data objects for signal and background...")
+            # n_features = len(self.features['node_features'])
+            n_features = 3  # DEBUG
+            data_sig = geo_data.Data(
+                x=torch.tensor(node_features_sig, dtype=torch.float32).view(
+                    -1, n_features
+                ),
+                edge_index=edge_index_sig,
+                edge_attr=torch.tensor(edge_features_sig, dtype=torch.float32).view(
+                    -1, 1
+                ),
+                y=torch.tensor([1], dtype=torch.float32),
+                global_features=torch.tensor(global_features_sig, dtype=torch.float32),
+            )
 
-            data_bkg = geo_data.Data(x=torch.tensor(node_features_bkg, dtype=torch.float32).view(-1, n_features),
-                                    edge_index=edge_index_bkg,
-                                    edge_attr=torch.tensor(edge_features_bkg, dtype=torch.float32).view(-1, 1),
-                                    y=torch.tensor([0], dtype=torch.float32),
-                                    global_features=torch.tensor(global_features_bkg, dtype=torch.float32))
+            data_bkg = geo_data.Data(
+                x=torch.tensor(node_features_bkg, dtype=torch.float32).view(
+                    -1, n_features
+                ),
+                edge_index=edge_index_bkg,
+                edge_attr=torch.tensor(edge_features_bkg, dtype=torch.float32).view(
+                    -1, 1
+                ),
+                y=torch.tensor([0], dtype=torch.float32),
+                global_features=torch.tensor(global_features_bkg, dtype=torch.float32),
+            )
 
             # Append the Data objects to the list
             data_list.extend([data_sig, data_bkg])
@@ -286,9 +329,15 @@ class GraphDataPreparation(BaseDataPreparation):
         mean = torch.stack(X_train).mean(dim=0, keepdim=True)
         std = torch.stack(X_train).std(dim=0, keepdim=True)
 
-        # Normalize input features in training and validation datasets
-        train_dataset = [(((node - mean) / (std + 1e-7)), edge, global_feature, y) for node, edge, global_feature, y in train_dataset]
-        val_dataset = [(((node - mean) / (std + 1e-7)), edge, global_feature, y) for node, edge, global_feature, y in val_dataset]
+        # Normalise input features in training and validation datasets
+        train_dataset = [
+            (((node - mean) / (std + 1e-7)), edge, global_feature, y)
+            for node, edge, global_feature, y in train_dataset
+        ]
+        val_dataset = [
+            (((node - mean) / (std + 1e-7)), edge, global_feature, y)
+            for node, edge, global_feature, y in val_dataset
+        ]
 
         return train_dataset, val_dataset
 
@@ -306,11 +355,13 @@ class GraphDataPreparation(BaseDataPreparation):
         # Split the graph data into training and validation datasets
         train_dataset, val_dataset = self.split_data(graph_data_list)
 
-        # Normalize the data
+        # Normalise the data
         train_dataset, val_dataset = self.normalize_data(train_dataset, val_dataset)
 
         # Create DataLoaders for training and validation datasets
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        train_loader = DataLoader(
+            train_dataset, batch_size=self.batch_size, shuffle=True
+        )
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
 
         # Logging for debugging
@@ -319,11 +370,11 @@ class GraphDataPreparation(BaseDataPreparation):
         logging.info(f"Validation graph samples: {len(val_dataset)}")
         logging.info(f"Batch size: {self.batch_size}")
 
-        pre_training_dir = config['data']['pre_training_dir']
+        pre_training_dir = config["data"]["pre_training_dir"]
 
         # Save the datasets
-        torch.save(train_dataset, 'train_dataset.pt')
-        torch.save(val_dataset, 'val_dataset.pt')
+        torch.save(train_dataset, "train_dataset.pt")
+        torch.save(val_dataset, "val_dataset.pt")
 
         logging.info(f"Graphs saved to {pre_training_dir}.")
 

@@ -1,8 +1,6 @@
 import os
 import importlib
 
-#NETWORK_DIR = 'models/networks/'
-
 def load_networks_from_directory(directory):
     """
     Dynamically load all networks from a directory.
@@ -14,11 +12,13 @@ def load_networks_from_directory(directory):
     - dict: Dictionary containing model names as keys and model classes as values.
     """
     networks = {}
-    #directory = NETWORK_DIR
+    # directory = NETWORK_DIR
     for filename in os.listdir(directory):
-        if filename.endswith('.py') and not filename.startswith('__'):
+        if filename.endswith(".py") and not filename.startswith("__"):
             module_name = filename[:-3]  # Remove .py extension
-            directory = directory.replace('/', '.') # Replace / with . in directory name
+            directory = directory.replace(
+                "/", "."
+            )  # Replace / with . in directory name
             module = importlib.import_module(f"{directory}.{module_name}")
             for attr_name in dir(module):
                 attr_value = getattr(module, attr_name)
