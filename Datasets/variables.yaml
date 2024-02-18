@@ -7,6 +7,12 @@ features:
   - jet_tagWeightBin_DL1r_Continuous
   - jet_index_PCBT_ordered
   - jet_tagWeightBin
+
+  # JETS (with soft mu correction)
+  - jet_pt_softmu_corr
+  - jet_eta_softmu_corr
+  - jet_phi_softmu_corr
+  - jet_e_softmu_corr
   
   # LEPTONS (objects)
   - el_pt
@@ -22,6 +28,10 @@ features:
   - met_met
   - met_phi
 
+  # TRANSVERSE MASS
+  - mwt_mwt
+  - mwt_phi
+
   # EVENT
   - nJets
   - HT_all
@@ -35,7 +45,10 @@ features:
   - dRbb_avg_70
   - dRbb_avg_Sort4
   - dRlj_MindR
+  - dRlepbb_MindR_70
   - Centrality_all
+  - dEtabb_MaxdEta_70 
+  - dEtajj_MaxdEta 
 
   # TRUTH
   - HF_Classification
@@ -62,3 +75,6 @@ features:
   # EVENT ID
   - eventNumber
   - mcChannelNumber
+
+  # EXTRA
+  - weight_ht_reweight_nominal
