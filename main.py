@@ -1,4 +1,4 @@
-'''
+"""
 ============================================
 == ttH NN Trainer Framework by Levi Evans ==
 ============================================
@@ -6,9 +6,9 @@
 This file is the main entry point of the program. It loads the data, prepares the data loaders, defines the model,
 trains the model, and evaluates the model.
 
-'''
+"""
 
-#usr/bin/env python3
+# usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import logging
@@ -42,63 +42,67 @@ def main(config, config_path):
 
     # Print configuration summary
     print_config_summary(config_dict)
-    
-    #mode = config_dict.get('mode', 'training') //next
-    
+
+    # mode = config_dict.get('mode', 'training') //next
+
     ################################################
     ################################################
 
     # Get the network type from the config file
-    network_type = config_dict['Network_type'][0]  # 'FFNN' or 'GNN' currently
-    
+    network_type = config_dict["Network_type"][0]  # 'FFNN' or 'GNN' currently
+
     # Employ the appropriate data loader and data preparation classes
     loaded_data = LoadingFactory.load_data(network_type, config_dict)
-    
+
     # Unpack the loaded data into signal and background DataFrames
     signal_data, background_data = loaded_data
-    
+
     # fe_config = config_dict['feature_engineering']
-    
+
     # feature_maker = FeatureFactory.make(max_particles=fe_config['max_particles'],
     #                                     n_leptons=fe_config['n_leptons'],
     #                                     extra_feats=fe_config.get('extra_feats'))
 
-    
     # signal_fvectors = feature_maker.get_four_vectors(signal_data)
     # background_fvectors = feature_maker.get_four_vectors(background_data)
-    
+
     ### NOW need to link into data preparation...
-    
-    train_loader, val_loader = PreparationFactory.prep_data(network_type, loaded_data, config_dict)
+
+    train_loader, val_loader = PreparationFactory.prep_data(
+        network_type, loaded_data, config_dict
+    )
 
     ################################################
     ################################################
-    
+
     # Plotting inputs
     plot_inputs = DataPlotter(config_dict)
     plot_inputs.plot_all_features()
-    plot_inputs.plot_correlation_matrix('background')
-    plot_inputs.plot_correlation_matrix('signal')
-
+    plot_inputs.plot_correlation_matrix("background")
+    plot_inputs.plot_correlation_matrix("signal")
 
     logging.info("Starting the training process...")
 
     ################################################
     ################################################
-    
+
     # Load the models from the models directory
-    all_networks = load_networks_from_directory('models/networks')
-    input_dim = len(config['features']) # Number of input features from the config file
-    model_name = config['model']['name']
+    all_networks = load_networks_from_directory("models/networks")
+    input_dim = len(config["features"])  # Number of input features from the config file
+    model_name = config["model"]["name"]
 
     if model_name in all_networks:
         model_class = all_networks[model_name]
-        if model_name == 'LorentzInteractionNetwork':
-            model = model_class(input_dim, config['model']['hidden_dim'], config['model']['output_dim'])
+        if model_name == "LorentzInteractionNetwork":
+            model = model_class(
+                input_dim, config["model"]["hidden_dim"], config["model"]["output_dim"]
+            )
         else:
             model = model_class(input_dim)
     else:
-        logging.error(f"Model '{model_name}' not found. Available models are: {list(all_networks.keys())}")
+        logging.error(
+            f"Model '{model_name}' not found. Available models are: {list(all_networks.keys())}"
+        )
         return
 
     # Debug before training
@@ -110,40 +114,54 @@ def main(config, config_path):
         logging.error(f"Failed to iterate over train_loader: {e}")
 
     logging.info(f"Model '{model_name}' loaded. Starting training.")
-    
-    
-    ################################################
-    ################################################
-    
-    # Train the model..
-    trainer = Trainer(model=model, train_loader=train_loader, val_loader=val_loader,
-    num_epochs=config['training']['num_epochs'],
-    lr=config['training']['learning_rate'],
-    weight_decay=config['training']['weight_decay'],
-    patience=config['training']['patience'],
-    early_stopping=config['training']['early_stopping'],
-    use_scheduler=config['training']['use_scheduler'],
-    factor = config['training']['factor'],
-    criterion=config['training']['criterion'],
-    initialise_weights=config['training']['initialise_weights'],
-    balance_classes=config['training']['balance_classes'],
-    network_type=config_dict['Network_type'],)
 
-    logging.info (f"Training model '{model_name}' for {config['training']['num_epochs']} epochs.")
+    ################################################
+    ################################################
+
+    # Train the model..
+    trainer = Trainer(
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        num_epochs=config["training"]["num_epochs"],
+        lr=config["training"]["learning_rate"],
+        weight_decay=config["training"]["weight_decay"],
+        patience=config["training"]["patience"],
+        early_stopping=config["training"]["early_stopping"],
+        use_scheduler=config["training"]["use_scheduler"],
+        factor=config["training"]["factor"],
+        criterion=config["training"]["criterion"],
+        initialise_weights=config["training"]["initialise_weights"],
+        balance_classes=config["training"]["balance_classes"],
+        use_cosine_burnin=config["training"]["use_cosine_burnin"],
+        network_type=config_dict["Network_type"],
+    )
+
+    logging.info(
+        f"Training model '{model_name}' for {config['training']['num_epochs']} epochs."
+    )
     trainer.train_model()
 
-    plot_losses(trainer)   # pass the Trainer object to the plot_losses() function
-    plot_accuracy(trainer) # pass the Trainer object to the plot_accuracy() function
-    
+    plot_losses(trainer)  # pass the Trainer object to the plot_losses() function
+    plot_accuracy(trainer)  # pass the Trainer object to the plot_accuracy() function
+
     ################################################
     ################################################
 
     # Now, evaluate the model..
-        
-    evaluator = ModelEvaluator(config=config, model=None if config.get('evaluation', {}).get('use_saved_model', False) else trainer.model, val_loader=trainer.val_loader)
-    
+
+    evaluator = ModelEvaluator(
+        config=config,
+        model=(
+            None
+            if config.get("evaluation", {}).get("use_saved_model", False)
+            else trainer.model
+        ),
+        val_loader=trainer.val_loader,
+    )
+
     accuracy, roc_auc, average_precision = evaluator.evaluate_model()
-    
+
     # print the final accuracy and AUC score
     logging.info(f"Final Accuracy: {accuracy:.2f}%")
     logging.info(f"Final AUC: {roc_auc:.4f}")
@@ -151,9 +169,11 @@ def main(config, config_path):
     logging.info("Program finished successfully.")
 
 
-if __name__ == '__main__':
-    configure_logging()                                   # Set up logging
-    all_networks = load_networks_from_directory('models') # Load the models from the models directory
-    logging.debug(all_networks)                           # Print the dictionary of models
-    config, config_path = handleCommandLineArgs()         # Handle command line arguments
-    main(config, config_path)                             # Call the main function
+if __name__ == "__main__":
+    configure_logging()  # Set up logging
+    all_networks = load_networks_from_directory(
+        "models"
+    )  # Load the models from the models directory
+    logging.debug(all_networks)  # Print the dictionary of models
+    config, config_path = handleCommandLineArgs()  # Handle command line arguments
+    main(config, config_path)  # Call the main function
