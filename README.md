@@ -71,7 +71,7 @@ The trained model is evaluated by examing the ROC curve and confusion matrix, wh
 - Finish Feature Factory
 - Validation Techniques (SHAP, LIME, Att.Maps, Data Adversarial Training)
 - Extend network block for full user configuration beyond standard supplied networks
-- Add scheduler options
+- Add scheduler options [done]
 - Improve .root conversion
 - add CI pipeline
 
