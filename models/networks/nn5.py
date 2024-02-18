@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from models.networks.self_attention import SelfAttention
+from models.networks.attention.self_attention import SelfAttention
 
 class ResidualComplexNNwithattention(nn.Module):
     """
