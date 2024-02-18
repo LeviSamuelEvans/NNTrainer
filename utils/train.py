@@ -78,6 +78,7 @@ class Trainer:
         self.val_losses = []
         self.train_accuracies = []
         self.val_accuracies = []
+        self.learning_rates = []            # list to store learning rates for each epoch 
         self.early_stopping = early_stopping
         self.weight_decay = weight_decay
         self.use_scheduler = use_scheduler
@@ -124,9 +125,9 @@ class Trainer:
                 lr_max=1e-3,
                 lr_final=1e-5,
                 burn_in=5,
-                ramp_up=3,
-                plateau=8,
-                ramp_down=10,
+                ramp_up=10,
+                plateau=15,
+                ramp_down=17,
                 last_epoch=-1,
             )
             self.cosine_scheduler = cosine_scheduler
@@ -135,9 +136,6 @@ class Trainer:
             )
         else:
             self.cosine_scheduler = None
-            
-        # list to store learning rates for each epoch
-        self.learning_rates = []
 
     def get_class_weights(self, y):
         """
@@ -247,7 +245,7 @@ class Trainer:
                 self.cosine_scheduler.step()
                 current_lr = self.optimizer.param_groups[0]['lr']
                 logging.info(f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {current_lr:.9f}")
-
+            self.learning_rates.append(current_lr)
             running_loss = 0.0
             correct = 0  # Counter for correct predictions
             total = 0  # Counter for total predictions
@@ -434,4 +432,34 @@ def plot_accuracy(trainer):
     plt.savefig("/scratch4/levans/tth-network/plots/Validation/accuracy.png")
     logging.info(
         "Accuracy plot saved to /scratch4/levans/tth-network/plots/Validation/accuracy.png"
+    )
+    
+def plot_lr(trainer):
+    """
+    Plots the learning rate over the number of epochs.
+
+    Args:
+        trainer: An instance of the Trainer class containing the learning rates.
+
+    Returns:
+        None
+    """
+    plt.clf()  # Clear previous plot
+    plt.style.use(hep.style.ATLAS)
+    plt.plot(
+        np.arange(trainer.num_epochs),
+        trainer.learning_rates,
+        label="Learning Rate",
+    )
+    plt.xlabel("Epoch")
+    plt.ylabel("Learning Rate")
+    plt.legend()
+    hep.atlas.label(
+        loc=0,
+        label="Internal",
+    )
+    plt.tight_layout()
+    plt.savefig("/scratch4/levans/tth-network/plots/Validation/learning_rate.png")
+    logging.info(
+        "Learning rate plot saved to /scratch4/levans/tth-network/plots/Validation/learning_rate.png"
     )

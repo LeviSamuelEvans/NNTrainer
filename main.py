@@ -17,7 +17,7 @@ from utils.cli import handleCommandLineArgs
 from utils.logging import configure_logging
 from models.importer import load_networks_from_directory
 from utils import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
-from utils.train import Trainer, plot_losses, plot_accuracy
+from utils.train import Trainer, plot_losses, plot_accuracy, plot_lr
 from utils.evaluation import ModelEvaluator
 
 
@@ -142,8 +142,9 @@ def main(config, config_path):
     )
     trainer.train_model()
 
-    plot_losses(trainer)  # pass the Trainer object to the plot_losses() function
+    plot_losses(trainer)    # pass the Trainer object to the plot_losses() function
     plot_accuracy(trainer)  # pass the Trainer object to the plot_accuracy() function
+    plot_lr(trainer)        # pass the Trainer object to the plot_lr() function
 
     ################################################
     ################################################
