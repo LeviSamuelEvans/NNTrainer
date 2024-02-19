@@ -1,4 +1,5 @@
 import pandas as pd
+from typing import Tuple
 
 class DataLoadingFactory:
     @staticmethod
@@ -39,7 +40,7 @@ class DataLoader:
         self.edge_features_bkg = self.df_bkg[self.features['edge_features']]
         self.global_features_bkg = self.df_bkg[self.features['global_features']]
 
-    def load_data(self):
+    def load_data(self) -> tuple:
         self._read_dataframes()
         self._check_columns()
         self._extract_features()

@@ -13,9 +13,9 @@ from utils.scheduler import CosineRampUpDownLR
 
 """
 TODO:
-    - Add model saving
-    - Add model loading
-    - Add model evaluation/comparisons
+    - Add model saving (state_dict)
+    - Add model loading (state_dict)
+    - Add model comparison feature
 """
 logging.basicConfig(level=logging.INFO)
 
@@ -364,6 +364,7 @@ class Trainer:
             logging.info("GPU not available. Using CPU.")
 
         # Save our model for further use
+        # saving just the state dictionary with torch.save(model.state_dict(), 'path_to_model_state_dict.pt') [MOVE TO THIS]
         torch.save(self.model, "/scratch4/levans/tth-network/models/outputs/model.pt")
 
 
