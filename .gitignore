@@ -5,6 +5,7 @@ Datasets/graphsets
 Datasets/basic
 Datasets/full
 models/outputs
+insights/__pycache__
 __pycache__/
 models/__pycache__
 utils/__pycache__
