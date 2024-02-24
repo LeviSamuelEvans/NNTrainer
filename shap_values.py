@@ -39,7 +39,7 @@ if not model_class:
     raise ValueError(f"Model '{model_name}' not found. Available models are: {list(all_networks.keys())}")
 input_dim = len(config_dict["features"])
 model = model_class(input_dim)
-model_path = '/scratch4/levans/tth-network/models/outputs/model.pt'
+model_path = '/scratch4/levans/tth-network/models/outputs/model_19_02_24_nn4.pt'
 logging.info("Loading the model from: {}".format(model_path))
 model = torch.load(model_path, map_location='cpu')
 model.eval()  # Set the model to evaluation mode
@@ -80,6 +80,8 @@ logging.info("Test examples prepared for explanation.")
 shap_values = explainer.shap_values(test_examples)
 logging.info("SHAP values calculated.")
 
+explanation = explainer.shap_values(test_examples)
+
 # Save SHAP values
 shap_values_path = '/scratch4/levans/tth-network/models/outputs/shap_values.csv'
 np.savetxt(shap_values_path, shap_values, delimiter=',')
@@ -92,7 +94,15 @@ feature_names = config_dict['features']
 logging.info("Generating SHAP summary plot...")
 shap.summary_plot(shap_values, test_examples_np, feature_names=feature_names,show=False)
 plt.savefig(save_path)
-logging.info("SHAP force plot displayed.")
+plt.close()
+logging.info("SHAP summary plot saved.")
+# Generating and saving scatter plots for each feature
+
+# Plotting using SHAP's scatter plot, coloring by the overall SHAP values
+shap.plots.scatter(shap_values, color=shap_values)
+plt.savefig('/scratch4/levans/tth-network/models/outputs/shap_scatter_plot.png')
+
+
 
 # shap.initjs()
 # shap.force_plot(explainer.expected_value[0], shap_values[0][0,:], test_examples.cpu().numpy()[0,:])

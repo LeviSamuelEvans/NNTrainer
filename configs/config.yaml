@@ -2,23 +2,34 @@
 # Example Configuration file for the training of the model #
 # ======================================================== #
 
+# mode: 'prepare'
+# mode: 'train'
+# mode: 'evaluate'
+# mode: 'predict'
 
-# Name of the model to use and the input dimension
+
 model:
-  #name: 'ResidualComplexNN'
-  name: 'ResidualComplexNNwith_MH_attention'
-  input_dim: 8 # number of features
+  name: 'ResidualComplexNN'
+  input_dim: 8 
 
+#============#
+# Data Block #
+#============#
 # Path to the data
 data:
-  signal_path: /scratch4/levans/tth-network/Datasets/signal2.h5
-  background_path: /scratch4/levans/tth-network/Datasets/ttbarBackground2.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/basic/signal2.h5
+  background_path: /scratch4/levans/tth-network/Datasets/basic/ttbarBackground2.h5
 
+#===============#
+# Network Block #
+#===============#
 Network_type:
   - FFNN
 
-# Example features to be used for training the model
 
+#===============#
+# Feature Block #
+#===============#
 features:
   - HT_all
   - H0_all
@@ -29,26 +40,34 @@ features:
   - dRlj_MindR
   - mu_pt
 
+#===================#
+# Preparation Block #
+#===================#
 # Preparation: Coming soon!
-# -
 
-# Hyperparameters for training the model
+
+#================#
+# Training Block #
+#================#
 training:
-  num_epochs: 20            # number of epochs to train the model, which are the number of times the model sees the entire training dataset
-  learning_rate: 0.00001   # learning rate for the optimiser, which is a technique to update the weights
-  weight_decay: 0.001       # L2 regularization, which is a technique to reduce overfitting
-  batch_size: 128            # batch size for training, which is the number of samples per gradient update
-  patience: 6               # epochs before early stopping/learning rate decay
-  early_stopping: True      # early stopping if validation loss does not improve
-  use_scheduler: True       # learning rate decay if validation loss does not improve
-  factor: 0.5               # factor by which the learning rate will be reduced, if use_scheduler is True
-  initialise_weights: True  # initialise weights of the model
-  balance_classes: True     # use class weights to balance the dataset
-  criterion: 'BCELoss'      # loss function to use
-  #save_model: False
-  #model_save_path: 'models/'
-  #save_frequency: 1
-  #save_plots: False
-  #
+  num_epochs: 20           
+  learning_rate: 0.00001   
+  weight_decay: 0.001      
+  batch_size: 100            
+  patience: 7               
+  early_stopping: True      
+  use_scheduler: False      
+  factor: 0.5               
+  initialise_weights: True  
+  balance_classes: True     
+  criterion: 'BCELoss'      
+  use_cosine_burnin: True   
+  save_frequency: 1
+  save_plots: False
 
-  # add check-points (use pickle files and save model after each epoch) etc.
+#===================#
+# Evaluataion Block #
+#===================#
+evaluation:
+  use_saved_model: False
+  saved_model_path: /scratch4/levans/tth-network/models/outputs/model.pt
