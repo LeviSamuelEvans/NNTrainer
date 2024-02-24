@@ -137,7 +137,7 @@ class Trainer:
         else:
             self.cosine_scheduler = None
 
-    def get_class_weights(self, y):
+    def get_class_weights(self, y)-> torch.Tensor:
         """
         Compute class weights based on the given labels.
 
@@ -154,7 +154,7 @@ class Trainer:
         return torch.tensor(class_weights, dtype=torch.float32).to(y.device)
 
     @staticmethod
-    def initialise_weights(model):
+    def initialise_weights(model)-> None:
         """
         Initialises the weights of the given model using He initialisation for linear layers
         and sets bias to 0.
@@ -171,7 +171,7 @@ class Trainer:
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
 
-    def validate(self):
+    def validate(self)-> float:
         """
         Perform validation on the model.
 
@@ -190,7 +190,7 @@ class Trainer:
         logging.info(f"Validation Loss: {val_epoch_loss:.4f}")
         return val_epoch_loss
 
-    def train_model(self):
+    def train_model(self)-> None:
         """
         Trains the model using the specified criterion, optimizer, and data loaders for a given number of epochs.
         Logs training and validation loss and accuracy, and stops early if validation loss doesn't improve for a given
