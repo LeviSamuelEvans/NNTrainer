@@ -1,13 +1,24 @@
+
+# test configs and output plots
 configs/test*.yaml
 plots/*
+
+# ignore all .h5 files 
+# NOTE: put ones for CI into sep folder
 Datasets/*.h5
 Datasets/graphsets
 Datasets/basic
 Datasets/full
+
+# all state dict and model files
 models/outputs
+
+# all .pyc files
 insights/__pycache__
 __pycache__/
 models/__pycache__
 utils/__pycache__
-change.log
+
+
+# enviroment
 MLenv/*
