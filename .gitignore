@@ -22,3 +22,6 @@ utils/__pycache__
 
 # enviroment
 MLenv/*
+
+# extra
+tips.txt
