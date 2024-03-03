@@ -130,8 +130,8 @@ class DataImporter(object):
         filename = os.path.basename(filepath)
         storeKey = f"IndividualFiles/{filename.replace('.', '_')}"
         if storeKey not in self.store.keys():
-            print(f"Opening ROOT file {filepath}")
-            print(f"Trying to extract the following variables: {self.variables}")
+            print(f"INFO: Opening ROOT file {filepath}")
+            print(f"INFO: Trying to extract the following variables: {self.variables}")
             tree = uproot.open(filepath)["nominal_Loose"]
             all_branches = tree.keys()
             # print(f"All branches in the tree: {all_branches}") #DEBUG
@@ -139,12 +139,12 @@ class DataImporter(object):
             # Check if your variables are in the tree
             for var in self.variables:
                 if var in all_branches:
-                    print(f"Variable {var} is present in the tree.")
+                    print(f"INFO: Variable {var} is present in the tree.")
                 else:
-                    print(f"Variable {var} is NOT present in the tree.")
-            print(f"Converting tree from {filename} to DataFrame...")
-            print(f"Max events to process: {max_events}")
-            print(f"Max jets to process: {max_jets}")
+                    print(f"INFO: Variable {var} is NOT present in the tree. You might to check this...")
+            print(f"INFO: Converting tree from {filename} to DataFrame...")
+            print(f"INFO: Max events to process: {max_events}")
+            print(f"INFO: Max jets in event to process: {max_jets}")
             # Create a dictionary of arrays from the ROOT tree
             df_dict = {}
 
@@ -206,7 +206,7 @@ class DataImporter(object):
 
             # Log final DataFrame structure before appending to HDF5 DEBUGGING
             print(
-                f"\nFinal DataFrame structure before appending to HDF5 for file {filename}:"
+                f"INFO: \nFinal DataFrame structure before appending to HDF5 for file {filename}:"
             )
             print(f"Shape: {df.shape}")
             print("Columns and Data Types:")
@@ -221,11 +221,11 @@ class DataImporter(object):
                 self.store,
                 key="IndividualFiles/%s" % filepath.split("/")[-1].replace(".", "_"),
             )
-            print(f"Appending DataFrame to 'df' in the store...")
+            print(f"INFO: Appending DataFrame to 'df' in the store...")
             self.store.append("df", df)
-            print(f"Finished processing {filename}.")
+            print(f"INFO: Finished processing {filename}.")
         else:
-            print(f"A file named {filename} already exists in the store. Ignored.")
+            print(f"INFO: A file named {filename} already exists in the store. Ignored.")
 
     def processAllFiles(self, max_events=None, max_jets=12):
         """
