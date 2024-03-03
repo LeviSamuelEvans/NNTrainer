@@ -6,19 +6,14 @@
 ============================
 
 This python module provides functionality to convert datasets from ROOT files into
-Pandas dataframes, which are then saved using the HDF5 storage format. This is
-particularly useful for machine learning applications.
+Pandas dataframes, which are then saved using the HDF5 storage format.
 
 How to use:
-python3 convert.py --directory <directory> --variables <variables.yaml>
+python3 convert.py -d <directory> -s <storeName> -v <variables> -n <num-events> -O <overwrite>
 Mounting:
 sshfs -r levans@linappserv0.pp.rhul.ac.uk:/juicefs/data/levans/L2_ttHbb_Production_212238_v3/MLSamples/Datasets/1l/ ~/Desktop/PhD/MountPoint/
 Dismounting:
 sudo diskutil umount force /Users/levievans/Desktop/PhD/MountPoint/
-
-path then equals -> /Users/levievans/Desktop/PhD/MountPoint/MLSamples/Datasets/1l/ttH for signal
-or /Users/levievans/Desktop/PhD/MountPoint/MLSamples/Datasets/1l/ttbar for background
-depends on the mount too -> /Users/levievans/Desktop/PhD/MountPoint/ttH/
 
 Version 1.0:
            - Initial version.
@@ -40,15 +35,15 @@ TODO:
 
 # Required modules:
 import pandas as pd
-import uproot  
-import os  
-import sys  
-import glob  
-import argparse  
-import yaml  
-from tqdm import tqdm  
-from utils.dataTypes import DATA_TYPES  
-import numpy as np  
+import uproot
+import os
+import sys
+import glob
+import argparse
+import yaml
+from tqdm import tqdm
+from utils.dataTypes import DATA_TYPES
+import numpy as np
 
 
 class DataImporter(object):
@@ -121,8 +116,8 @@ class DataImporter(object):
             df[column_name].tolist(), column_name, fixed_length
         )
         return pd.concat([df.drop(columns=[column_name]), flattened_df], axis=1)
-    
-    def getDataFrameFromRootfile(self, filepath, fixed_jet_length):
+
+    def getDataFrameFromRootfile(self, filepath, fixed_jet_length, max_events=None, max_jets=12):
         """
         Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
         The final h5 file will have two keys:
@@ -148,11 +143,16 @@ class DataImporter(object):
                 else:
                     print(f"Variable {var} is NOT present in the tree.")
             print(f"Converting tree from {filename} to DataFrame...")
+            print(f"Max events to process: {max_events}")
+            print(f"Max jets to process: {max_jets}")
             # Create a dictionary of arrays from the ROOT tree
             df_dict = {}
 
             for var in self.variables:
-                df_dict[var] = tree[var].array(library="np")
+                array = tree[var].array(library="np")
+                if max_events is not None:
+                    array = array[:max_events]
+                df_dict[var] = array
             # Convert the dictionary to a DataFrame
             df = pd.DataFrame(df_dict)
 
@@ -173,7 +173,7 @@ class DataImporter(object):
                 "jet_pt_softmu_corr",
                 "jet_phi_softmu_corr",
                 "jet_e_softmu_corr",
-            ]  # Add anymore jagged array-type vars
+            ]  # Add anymore jagged array-type vars TODO: 
             for column in jagged_columns:
                 if column in df.columns:
                     print(f"Processing {column}...")
@@ -227,11 +227,11 @@ class DataImporter(object):
         else:
             print(f"A file named {filename} already exists in the store. Ignored.")
 
-    def processAllFiles(self):
+    def processAllFiles(self, max_events=None, max_jets=12):
         """
         Process all ROOT files in the specified directory and display a progress bar.
         """
-        fixed_jet_length = 12  # Specify the fixed length for jet columns
+        fixed_jet_length = max_jets
         filepaths = self.getRootFilepaths()
         for filepath in tqdm(
             filepaths,
@@ -240,7 +240,7 @@ class DataImporter(object):
             unit_scale=1,
             unit_divisor=60,
         ):
-            self.getDataFrameFromRootfile(filepath, fixed_jet_length)
+            self.getDataFrameFromRootfile(filepath, fixed_jet_length, max_events, max_jets)
 
 
 def handleCommandLineArgs():
@@ -252,10 +252,15 @@ def handleCommandLineArgs():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-d", "--directory", help="Directory with ROOT files.", required=True
+        "-d", 
+        "--directory", 
+        help="Directory with ROOT files.", 
+        required=True
     )
     parser.add_argument(
-        "-s", "--storeName", help="Path for the HDF5 store.", default="store.h5"
+        "-s", "--storeName", 
+        help="Path for the HDF5 store.", 
+        default="store.h5"
     )
     parser.add_argument(
         "-v",
@@ -264,7 +269,23 @@ def handleCommandLineArgs():
         required=True,
     )
     parser.add_argument(
-        "-O", "--overwrite", help="Overwrite existing store.", action="store_true"
+        "-O", 
+        "--overwrite", 
+        help="Overwrite existing store.", 
+        action="store_true"
+    )
+    parser.add_argument(
+        "-n",
+        "--num-events",
+        type=int,
+        default=None,
+        help="Maximum number of events to process per file. Default is to process all.",
+    )
+    parser.add_argument(
+        "--max-jets",
+        type=int,
+        default=12,
+        help="Maximum number of jets to process per event. Default is 12.",
     )
     args = parser.parse_args()
 
@@ -297,7 +318,7 @@ def main():
     with DataImporter(
         args.storeName, args.directory, args.variables, args.overwrite
     ) as importer:
-        importer.processAllFiles()
+        importer.processAllFiles(max_events=args.num_events, max_jets=args.max_jets)
 
 
 if __name__ == "__main__":
