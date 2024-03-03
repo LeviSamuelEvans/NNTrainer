@@ -40,15 +40,16 @@ TODO:
 
 # Required modules:
 import pandas as pd
-import uproot                          # For reading ROOT files using Python and Numpy
-import os                              # For OS-related operations like directory handling
-import sys                             # For accessing Python interpreter attributes and functions
-import glob                            # For searching specific file patterns using wildcards
-import argparse                        # For parsing command-line arguments
-import yaml                            # For processing yaml config files
-from tqdm import tqdm                  # For displaying progress bars
-from utils.dataTypes import DATA_TYPES # For converting data types
-import numpy as np                     # For use in handling jagged arrays
+import uproot  
+import os  
+import sys  
+import glob  
+import argparse  
+import yaml  
+from tqdm import tqdm  
+from utils.dataTypes import DATA_TYPES  
+import numpy as np  
+
 
 class DataImporter(object):
     """
@@ -99,35 +100,28 @@ class DataImporter(object):
     def flatten_jagged_array(array, var_name, fixed_length, pad_value=0):
         """Flatten a jagged array to a fixed length and return a DataFrame."""
         # Ensure the array is truncated or padded to the fixed length
-        truncated_array = [item[:fixed_length] if len(item) > fixed_length else item for item in array]
-        flattened_array = [np.pad(item, (0, fixed_length - len(item)), mode='constant', constant_values=pad_value) for item in truncated_array]
+        truncated_array = [
+            item[:fixed_length] if len(item) > fixed_length else item for item in array
+        ]
+        flattened_array = [
+            np.pad(
+                item,
+                (0, fixed_length - len(item)),
+                mode="constant",
+                constant_values=pad_value,
+            ).astype(np.float32)
+            for item in truncated_array
+        ]
         column_names = [f"{var_name}_{i+1}" for i in range(fixed_length)]
         return pd.DataFrame(flattened_array, columns=column_names)
 
-
     def flatten_and_concat(self, df, column_name, fixed_length):
         """Flatten a jagged array column and concatenate it with the original DataFrame."""
-        flattened_df = self.flatten_jagged_array(df[column_name].tolist(), column_name, fixed_length)
+        flattened_df = self.flatten_jagged_array(
+            df[column_name].tolist(), column_name, fixed_length
+        )
         return pd.concat([df.drop(columns=[column_name]), flattened_df], axis=1)
-
-# @staticmethod
-# def flatten_jagged_array(array, fixed_length, pad_value=0):
-#     """Flatten a jagged array to a fixed length and return a numpy array."""
-#     # Ensure the array is truncated or padded to the fixed length
-#     truncated_array = [item[:fixed_length] if len(item) > fixed_length else item for item in array]
-#     flattened_array = [np.pad(item, (0, fixed_length - len(item)), mode='constant', constant_values=pad_value) for item in truncated_array]
-#     return np.array(flattened_array)
-# import h5py
-
-# # Assume `data` is a list of jagged arrays
-# data_flattened = flatten_jagged_array(data, fixed_length=10)
-
-# with h5py.File('data.h5', 'w') as f:
-#     dset = f.create_dataset("my_dataset", data=data_flattened)
-# with h5py.File('data.h5', 'r') as f:
-#     data_loaded = f['my_dataset'][:]
-
-
+    
     def getDataFrameFromRootfile(self, filepath, fixed_jet_length):
         """
         Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
@@ -145,9 +139,9 @@ class DataImporter(object):
             print(f"Trying to extract the following variables: {self.variables}")
             tree = uproot.open(filepath)["nominal_Loose"]
             all_branches = tree.keys()
-            #print(f"All branches in the tree: {all_branches}") #DEBUG
+            # print(f"All branches in the tree: {all_branches}") #DEBUG
 
-            #Check if your variables are in the tree
+            # Check if your variables are in the tree
             for var in self.variables:
                 if var in all_branches:
                     print(f"Variable {var} is present in the tree.")
@@ -169,14 +163,26 @@ class DataImporter(object):
             print(df.dtypes)
 
             # Handle jagged-array columns
-            jagged_columns = ['jet_pt', 'jet_e', 'jet_eta', 'jet_phi', 'jet_tagWeightBin_DL1r_Continuous']  # Add anymore jagged array-type vars
+            jagged_columns = [
+                "jet_pt",
+                "jet_e",
+                "jet_eta",
+                "jet_phi",
+                "jet_tagWeightBin_DL1r_Continuous",
+                "jet_eta_softmu_corr",
+                "jet_pt_softmu_corr",
+                "jet_phi_softmu_corr",
+                "jet_e_softmu_corr",
+            ]  # Add anymore jagged array-type vars
             for column in jagged_columns:
                 if column in df.columns:
-                    print(f'Processing {column}...')
+                    print(f"Processing {column}...")
                     df = self.flatten_and_concat(df, column, fixed_jet_length)
 
             # Additional logging after handling jagged arrays DEBUGGING
-            print(f"\nDataFrame Info after processing jagged arrays for file {filename}:")
+            print(
+                f"\nDataFrame Info after processing jagged arrays for file {filename}:"
+            )
             print(f"Shape: {df.shape}")
             print("Columns and Data Types:")
             print(df.dtypes)
@@ -185,19 +191,23 @@ class DataImporter(object):
             print("\nDataFrame Sample after processing jagged arrays:")
             print(df.head())  # Prints the first 5 rows of the DataFrame
 
-            #print(type(df)) # DEBUG
-            #print(df) # DEBUG
+            # print(type(df)) # DEBUG
+            # print(df) # DEBUG
 
             # Convert the data types of the columns
             for col, dtype in DATA_TYPES:
                 if col in df.columns:
-                    if dtype == 'float32':
-                        df[col] = df[col].astype(str).astype(dtype, errors='ignore') # Convert to string first to avoid errors
+                    if dtype == "float32":
+                        df[col] = (
+                            df[col].astype(str).astype(dtype, errors="ignore")
+                        )  # Convert to string first to avoid errors
                     else:
-                        df[col] = df[col].astype(dtype, errors='ignore')
+                        df[col] = df[col].astype(dtype, errors="ignore")
 
-             # Log final DataFrame structure before appending to HDF5 DEBUGGING
-            print(f"\nFinal DataFrame structure before appending to HDF5 for file {filename}:")
+            # Log final DataFrame structure before appending to HDF5 DEBUGGING
+            print(
+                f"\nFinal DataFrame structure before appending to HDF5 for file {filename}:"
+            )
             print(f"Shape: {df.shape}")
             print("Columns and Data Types:")
             print(df.dtypes)
@@ -207,7 +217,10 @@ class DataImporter(object):
             print(df.head())
 
             print(f"Saving DataFrame to HDF5 store with key: {storeKey}...")
-            df.to_hdf(self.store, key = "IndividualFiles/%s" % filepath.split("/")[-1].replace(".", "_"))
+            df.to_hdf(
+                self.store,
+                key="IndividualFiles/%s" % filepath.split("/")[-1].replace(".", "_"),
+            )
             print(f"Appending DataFrame to 'df' in the store...")
             self.store.append("df", df)
             print(f"Finished processing {filename}.")
@@ -220,7 +233,13 @@ class DataImporter(object):
         """
         fixed_jet_length = 12  # Specify the fixed length for jet columns
         filepaths = self.getRootFilepaths()
-        for filepath in tqdm(filepaths, desc="Processing files",unit="files",unit_scale=1, unit_divisor=60):
+        for filepath in tqdm(
+            filepaths,
+            desc="Processing files",
+            unit="files",
+            unit_scale=1,
+            unit_divisor=60,
+        ):
             self.getDataFrameFromRootfile(filepath, fixed_jet_length)
 
 
@@ -232,17 +251,28 @@ def handleCommandLineArgs():
     - Namespace: Parsed command-line arguments.
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d","--directory", help="Directory with ROOT files.", required=True)
-    parser.add_argument("-s","--storeName", help="Path for the HDF5 store.", default="store.h5")
-    parser.add_argument("-v","--variables", help="YAML file containing variables to read from ROOT files.", required=True)
-    parser.add_argument("-O","--overwrite", help="Overwrite existing store.", action="store_true")
+    parser.add_argument(
+        "-d", "--directory", help="Directory with ROOT files.", required=True
+    )
+    parser.add_argument(
+        "-s", "--storeName", help="Path for the HDF5 store.", default="store.h5"
+    )
+    parser.add_argument(
+        "-v",
+        "--variables",
+        help="YAML file containing variables to read from ROOT files.",
+        required=True,
+    )
+    parser.add_argument(
+        "-O", "--overwrite", help="Overwrite existing store.", action="store_true"
+    )
     args = parser.parse_args()
 
     # Load variables from the YAML file
-    with open(args.variables, 'r') as file:
+    with open(args.variables, "r") as file:
         yaml_content = yaml.safe_load(file)
-        if 'features' in yaml_content:
-            args.variables = yaml_content['features']
+        if "features" in yaml_content:
+            args.variables = yaml_content["features"]
             print("Variables to be used from the YAML file:", args.variables)
         else:
             print("The YAML file does not contain a 'features' key.")
@@ -260,11 +290,15 @@ def handleCommandLineArgs():
 
     return args
 
+
 def main():
     """Main function to execute the data import process."""
     args = handleCommandLineArgs()
-    with DataImporter(args.storeName, args.directory, args.variables, args.overwrite) as importer:
+    with DataImporter(
+        args.storeName, args.directory, args.variables, args.overwrite
+    ) as importer:
         importer.processAllFiles()
+
 
 if __name__ == "__main__":
     main()
