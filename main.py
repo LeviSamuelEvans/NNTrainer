@@ -55,8 +55,15 @@ def main(config, config_path):
     loaded_data = LoadingFactory.load_data(network_type, config_dict)
 
     # Unpack the loaded data into signal and background DataFrames
-    signal_data, background_data = loaded_data
-
+    
+    if network_type == "FFNN":
+        signal_data, background_data = loaded_data
+    elif network_type == "GNN" or network_type == "LENN":
+        (
+    node_features_signal, edge_features_signal, global_features_signal, labels_signal,
+    node_features_background, edge_features_background, global_features_background, labels_background
+    ) = loaded_data
+    print(loaded_data)
     # fe_config = config_dict['feature_engineering']
 
     # feature_maker = FeatureFactory.make(max_particles=fe_config['max_particles'],
@@ -94,8 +101,8 @@ def main(config, config_path):
     if model_name in all_networks:
         model_class = all_networks[model_name]
         if model_name == "LorentzInteractionNetwork":
+            print(f"About to instantiate class {model_class} defined in {model_class.__module__}")
             model = model_class(
-                input_dim, config["model"]["hidden_dim"], config["model"]["output_dim"]
             )
         else:
             model = model_class(input_dim)
