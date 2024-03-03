@@ -5,8 +5,6 @@ features:
   - jet_phi
   - jet_e
   - jet_tagWeightBin_DL1r_Continuous
-  - jet_index_PCBT_ordered
-  - jet_tagWeightBin
 
   # JETS (with soft mu correction)
   - jet_pt_softmu_corr
@@ -38,7 +36,6 @@ features:
   - HT_jets
   - H0_all
   - H1_all
-  - H2_all
   - H2_jets
   - Aplanarity_jets
   - dRbb_HiggsMass_70
@@ -57,8 +54,7 @@ features:
   - truth_higgs_phi
   - truth_higgs_e
   - truth_higgs_eta
-  - truth_higgs_mass
-  - jet_truthmatch
+  #- jet_truthmatch (in fullSim)
 
   # LEGACY RECO
   - L2_Reco_higgs_pt
@@ -66,7 +62,7 @@ features:
 
   # LEGACY TRANSFORMER
   - L2_Class_ttH_discriminant
-  - L2_Class_ttbb_discriminant
+  - L2_Class_tt2b_discriminant
   - L2_Class_ttc_discriminant
   - L2_Class_tt1B_discriminant
   - L2_Class_tt1b_discriminant
@@ -75,6 +71,3 @@ features:
   # EVENT ID
   - eventNumber
   - mcChannelNumber
-
-  # EXTRA
-  - weight_ht_reweight_nominal
