@@ -6,7 +6,7 @@ class DataLoadingFactory:
     def load_data(network_type, config):
         if network_type == "FFNN":
             loader = FFNNDataLoader(config['data']['signal_path'], config['data']['background_path'], features=config['features'])
-        elif network_type == "GNN":
+        elif network_type in ["GNN", "LENN"]:
             loader = DataLoader(config['data']['signal_path'], config['data']['background_path'], features=config['features'])
         else:
             raise ValueError("Invalid network type")
