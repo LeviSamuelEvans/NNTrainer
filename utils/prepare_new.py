@@ -17,7 +17,7 @@ class DataPreparationFactory:
             df_sig, df_bkg = loaded_data
             preparer = FFDataPreparation(df_sig, df_bkg, batch_size, features)
             return preparer.prepare_data()
-        elif network_type == "GNN":
+        elif network_type == "GNN" or network_type == "LENN":
             (
                 node_features_sig,
                 edge_features_sig,
@@ -251,9 +251,9 @@ class GraphDataPreparation(BaseDataPreparation):
             edge_index_bkg = self._construct_edge_index(event_data_bkg)
 
             # Create Data object for signal and background
-            # logging.info("Creating Data objects for signal and background...")
-            # n_features = len(self.features['node_features'])
-            n_features = 3  # DEBUG
+            #logging.info("Creating Data objects for signal and background...")
+            n_features = len(self.features['node_features'])
+            #n_features = 3  # DEBUG
             data_sig = geo_data.Data(
                 x=torch.tensor(node_features_sig, dtype=torch.float32).view(
                     -1, n_features
@@ -283,27 +283,26 @@ class GraphDataPreparation(BaseDataPreparation):
         logging.info("Graphs made, moving to the next step :D.")
         return data_list
 
-    def split_data(self, X, y):
+    def split_data(self, data_list):
         """
-        Splits the data into training and validation datasets.
+        Splits the list of Data objects into training and validation datasets.
 
         Args:
-            X (tuple): A tuple containing the node, edge, and global features as PyTorch tensors.
-            y (torch.Tensor): The target variable as a PyTorch tensor.
+            data_list (list): A list of torch_geometric.data.Data objects.
 
         Returns:
-            tuple: A tuple containing the training and validation datasets as TensorDatasets.
+            train_dataset (list): A list of Data objects for training.
+            val_dataset (list): A list of Data objects for validation.
         """
-        # Shuffle the data
-        indices = torch.randperm(X[0].size(0))
-        X = [x[indices] for x in X]
-        y = y[indices]
+        logging.info("Splitting the data into training and validation datasets...")
 
-        # Split the data
-        train_size = int(self.train_ratio * len(X[0]))
-        val_size = len(X[0]) - train_size
-        train_dataset = TensorDataset(*[x[:train_size] for x in X], y[:train_size])
-        val_dataset = TensorDataset(*[x[train_size:] for x in X], y[train_size:])
+        # Shuffle the data list
+        shuffled_data_list = [data_list[i] for i in torch.randperm(len(data_list))]
+
+        # Split the data list
+        train_size = int(self.train_ratio * len(data_list))
+        train_dataset = shuffled_data_list[:train_size]
+        val_dataset = shuffled_data_list[train_size:]
 
         return train_dataset, val_dataset
 
