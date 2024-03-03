@@ -262,6 +262,13 @@ class Trainer:
                     global_features = global_features.to(self.device)
                     labels = labels.to(self.device)
                     outputs = self.model(node_features, edge_features, global_features)
+                elif self.network_type == ["LENN"]:
+                    node_features, edge_index, batch_index, labels = data
+                    node_features = node_features.to(self.device)
+                    edge_index = edge_index.to(self.device)
+                    batch_index = batch_index.to(self.device)  # If batch indexing is used
+                    labels = labels.to(self.device)
+                    outputs = self.model(node_features, edge_index, batch_index)
                 elif self.network_type == ["FFNN"]:
                     inputs, labels = data
                     inputs = inputs.to(self.device)
