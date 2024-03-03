@@ -126,6 +126,9 @@ class DataImporter(object):
 
         Parameters:
         - filepath (str): Path to the ROOT file.
+        - fixed_jet_length (int): The fixed length to which jagged arrays will be truncated or padded.
+        - max_events (int): Maximum number of events to process per file.
+        - max_jets (int): Maximum number of jets to process per event.
         """
         filename = os.path.basename(filepath)
         storeKey = f"IndividualFiles/{filename.replace('.', '_')}"
