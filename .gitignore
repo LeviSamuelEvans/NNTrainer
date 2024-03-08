@@ -9,6 +9,7 @@ Datasets/*.h5
 Datasets/graphsets
 Datasets/basic
 Datasets/full
+Datasets/test
 
 # all state dict and model files
 models/outputs
