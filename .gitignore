@@ -3,10 +3,10 @@
 configs/test*.yaml
 plots/*
 
-# ignore all .h5 files 
+# ignore all .h5 files
 # NOTE: put ones for CI into sep folder
 Datasets/*.h5
-Datasets/graphsets
+Datasets/graphs
 Datasets/basic
 Datasets/full
 Datasets/test
