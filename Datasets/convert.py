@@ -137,7 +137,6 @@ class DataImporter(object):
             print(f"INFO: Trying to extract the following variables: {self.variables}")
             tree = uproot.open(filepath)["nominal_Loose"]
             all_branches = tree.keys()
-            # print(f"All branches in the tree: {all_branches}") #DEBUG
 
             # Check if your variables are in the tree
             for var in self.variables:
@@ -148,6 +147,7 @@ class DataImporter(object):
             print(f"INFO: Converting tree from {filename} to DataFrame...")
             print(f"INFO: Max events to process: {max_events}")
             print(f"INFO: Max jets in event to process: {max_jets}")
+
             # Create a dictionary of arrays from the ROOT tree
             df_dict = {}
 
@@ -156,6 +156,7 @@ class DataImporter(object):
                 if max_events is not None:
                     array = array[:max_events]
                 df_dict[var] = array
+
             # Convert the dictionary to a DataFrame
             df = pd.DataFrame(df_dict)
 
@@ -176,13 +177,13 @@ class DataImporter(object):
                 "jet_pt_softmu_corr",
                 "jet_phi_softmu_corr",
                 "jet_e_softmu_corr",
-            ]  # Add anymore jagged array-type vars TODO: 
+            ]  # Add anymore jagged array-type vars TODO:
             for column in jagged_columns:
                 if column in df.columns:
                     print(f"Processing {column}...")
                     df = self.flatten_and_concat(df, column, fixed_jet_length)
 
-            # Additional logging after handling jagged arrays DEBUGGING
+            # Additional logging after handling jagged arrays DEBUG
             print(
                 f"\nDataFrame Info after processing jagged arrays for file {filename}:"
             )
@@ -193,9 +194,6 @@ class DataImporter(object):
             # Log a sample of the DataFrame after processing jagged arrays DEBUGGING
             print("\nDataFrame Sample after processing jagged arrays:")
             print(df.head())  # Prints the first 5 rows of the DataFrame
-
-            # print(type(df)) # DEBUG
-            # print(df) # DEBUG
 
             # Convert the data types of the columns
             for col, dtype in DATA_TYPES:
@@ -255,14 +253,14 @@ def handleCommandLineArgs():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-d", 
-        "--directory", 
-        help="Directory with ROOT files.", 
+        "-d",
+        "--directory",
+        help="Directory with ROOT files.",
         required=True
     )
     parser.add_argument(
-        "-s", "--storeName", 
-        help="Path for the HDF5 store.", 
+        "-s", "--storeName",
+        help="Path for the HDF5 store.",
         default="store.h5"
     )
     parser.add_argument(
@@ -272,9 +270,9 @@ def handleCommandLineArgs():
         required=True,
     )
     parser.add_argument(
-        "-O", 
-        "--overwrite", 
-        help="Overwrite existing store.", 
+        "-O",
+        "--overwrite",
+        help="Overwrite existing store.",
         action="store_true"
     )
     parser.add_argument(
