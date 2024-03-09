@@ -1,9 +1,10 @@
 import os
 import importlib
+import inspect
 
 def load_networks_from_directory(directory):
     """
-    Dynamically load all networks from a directory.
+    Dynamically load all networks from a directory and its subdirectories.
 
     Parameters:
     - directory (str): Name of the directory containing model modules.
@@ -12,16 +13,17 @@ def load_networks_from_directory(directory):
     - dict: Dictionary containing model names as keys and model classes as values.
     """
     networks = {}
-    # directory = NETWORK_DIR
-    for filename in os.listdir(directory):
-        if filename.endswith(".py") and not filename.startswith("__"):
-            module_name = filename[:-3]  # Remove .py extension
-            directory = directory.replace(
-                "/", "."
-            )  # Replace / with . in directory name
-            module = importlib.import_module(f"{directory}.{module_name}")
-            for attr_name in dir(module):
-                attr_value = getattr(module, attr_name)
-                if isinstance(attr_value, type):  # Check if it's a class
-                    networks[attr_name] = attr_value
+
+    for root, dirs, files in os.walk(directory):
+        for filename in files:
+            if filename.endswith(".py") and not filename.startswith("__"):
+                module_name = filename[:-3]  # Remove .py extension
+                module_path = root.replace("/", ".")  # Replace / with . in directory path
+                module = importlib.import_module(f"{module_path}.{module_name}")
+
+                for attr_name in dir(module):
+                    attr_value = getattr(module, attr_name)
+                    if inspect.isclass(attr_value) and attr_value.__module__ == module.__name__:
+                        networks[attr_name] = attr_value
+
     return networks
