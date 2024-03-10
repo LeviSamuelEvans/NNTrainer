@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class ComplexNN(nn.Module):
     """
     A neural network with 6 fully connected layers and batch normalization.

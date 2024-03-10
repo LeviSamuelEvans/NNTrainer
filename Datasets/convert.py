@@ -117,7 +117,9 @@ class DataImporter(object):
         )
         return pd.concat([df.drop(columns=[column_name]), flattened_df], axis=1)
 
-    def getDataFrameFromRootfile(self, filepath, fixed_jet_length, max_events=None, max_jets=12):
+    def getDataFrameFromRootfile(
+        self, filepath, fixed_jet_length, max_events=None, max_jets=12
+    ):
         """
         Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
         The final h5 file will have two keys:
@@ -143,7 +145,9 @@ class DataImporter(object):
                 if var in all_branches:
                     print(f"INFO: Variable {var} is present in the tree.")
                 else:
-                    print(f"INFO: Variable {var} is NOT present in the tree. You might to check this...")
+                    print(
+                        f"INFO: Variable {var} is NOT present in the tree. You might to check this..."
+                    )
             print(f"INFO: Converting tree from {filename} to DataFrame...")
             print(f"INFO: Max events to process: {max_events}")
             print(f"INFO: Max jets in event to process: {max_jets}")
@@ -227,7 +231,9 @@ class DataImporter(object):
             self.store.append("df", df)
             print(f"INFO: Finished processing {filename}.")
         else:
-            print(f"INFO: A file named {filename} already exists in the store. Ignored.")
+            print(
+                f"INFO: A file named {filename} already exists in the store. Ignored."
+            )
 
     def processAllFiles(self, max_events=None, max_jets=12):
         """
@@ -242,7 +248,9 @@ class DataImporter(object):
             unit_scale=1,
             unit_divisor=60,
         ):
-            self.getDataFrameFromRootfile(filepath, fixed_jet_length, max_events, max_jets)
+            self.getDataFrameFromRootfile(
+                filepath, fixed_jet_length, max_events, max_jets
+            )
 
 
 def handleCommandLineArgs():
@@ -254,15 +262,10 @@ def handleCommandLineArgs():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-d",
-        "--directory",
-        help="Directory with ROOT files.",
-        required=True
+        "-d", "--directory", help="Directory with ROOT files.", required=True
     )
     parser.add_argument(
-        "-s", "--storeName",
-        help="Path for the HDF5 store.",
-        default="store.h5"
+        "-s", "--storeName", help="Path for the HDF5 store.", default="store.h5"
     )
     parser.add_argument(
         "-v",
@@ -271,10 +274,7 @@ def handleCommandLineArgs():
         required=True,
     )
     parser.add_argument(
-        "-O",
-        "--overwrite",
-        help="Overwrite existing store.",
-        action="store_true"
+        "-O", "--overwrite", help="Overwrite existing store.", action="store_true"
     )
     parser.add_argument(
         "-n",

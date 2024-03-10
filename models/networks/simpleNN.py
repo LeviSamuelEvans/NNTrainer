@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class SimpleNN(nn.Module):
     """
     A simple neural network with 4 fully connected layers and sigmoid activation function.
@@ -11,6 +12,7 @@ class SimpleNN(nn.Module):
     Returns:
     torch.Tensor: The output tensor of the neural network.
     """
+
     def __init__(self, input_dim):
         super(SimpleNN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 128)
