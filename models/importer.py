@@ -1,10 +1,12 @@
 import os
 import importlib
 import inspect
+# https://www.tutorialspoint.com/python/os_walk.htm
 
 def load_networks_from_directory(directory):
     """
-    Dynamically load all networks from a directory and its subdirectories.
+    Dynamically load all networks from a directory and its subdirectories,
+    making use of os.walk
 
     Parameters:
     - directory (str): Name of the directory containing model modules.
