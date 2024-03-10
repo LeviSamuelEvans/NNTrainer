@@ -60,9 +60,15 @@ def main(config, config_path):
         signal_data, background_data = loaded_data
     elif network_type == "GNN" or network_type == "LENN":
         (
-    node_features_signal, edge_features_signal, global_features_signal, labels_signal,
-    node_features_background, edge_features_background, global_features_background, labels_background
-    ) = loaded_data
+            node_features_signal,
+            edge_features_signal,
+            global_features_signal,
+            labels_signal,
+            node_features_background,
+            edge_features_background,
+            global_features_background,
+            labels_background,
+        ) = loaded_data
     print(loaded_data)
 
     # fe_config = config_dict['feature_engineering']
@@ -82,17 +88,16 @@ def main(config, config_path):
         config_dict,
     )
 
-
     ################################################
     ################################################
 
     # Plotting inputs
-    if config_dict["data"]["plot_inputs"] == 'True':
+    if config_dict["data"]["plot_inputs"] == "True":
         plot_inputs = DataPlotter(config_dict)
         plot_inputs.plot_all_features()
         plot_inputs.plot_correlation_matrix("background")
         plot_inputs.plot_correlation_matrix("signal")
-    else :
+    else:
         logging.info("Skipping plotting of inputs")
 
     logging.info("Starting the training process...")
@@ -108,11 +113,14 @@ def main(config, config_path):
     if model_name in all_networks:
         model_class = all_networks[model_name]
         if model_name == "LorentzInteractionNetwork":
-            print(f"About to instantiate class {model_class} defined in {model_class.__module__}")
-            model = model_class(
+            print(
+                f"About to instantiate class {model_class} defined in {model_class.__module__}"
             )
+            model = model_class()
         elif model_name == "TransformerClassifier1":
-            print(f"About to instantiate class {model_class} defined in {model_class.__module__}")
+            print(
+                f"About to instantiate class {model_class} defined in {model_class.__module__}"
+            )
             model = model_class(input_dim, 128, 4, 4)
         else:
             model = model_class(input_dim)
@@ -129,8 +137,6 @@ def main(config, config_path):
         logging.info(f"First batch successfully retrieved: {first_batch}")
     except Exception as e:
         logging.error(f"Failed to iterate over train_loader: {e}")
-
-
 
     logging.info(f"Model '{model_name}' loaded. Starting training.")
 
@@ -156,11 +162,15 @@ def main(config, config_path):
         lr_init=float(config["training"]["lr_init"]),
         lr_max=float(config["training"]["lr_max"]),
         lr_final=float(config["training"]["lr_final"]),
-        burn_in = config["training"]["burn_in"],
-        ramp_up = config["training"]["ramp_up"],
+        burn_in=config["training"]["burn_in"],
+        ramp_up=config["training"]["ramp_up"],
         plateau=config["training"]["plateau"],
         ramp_down=config["training"]["ramp_down"],
-        network_type=config_dict["Network_type"][0] if isinstance(config_dict["Network_type"], list) else config_dict["Network_type"],
+        network_type=(
+            config_dict["Network_type"][0]
+            if isinstance(config_dict["Network_type"], list)
+            else config_dict["Network_type"]
+        ),
     )
 
     logging.info(
@@ -201,7 +211,7 @@ if __name__ == "__main__":
     configure_logging()  # Set up logging
     all_networks = load_networks_from_directory(
         "models"
-    )                                              # Load the models from the models directory
-    logging.debug(all_networks)                    # Print the dictionary of models
+    )  # Load the models from the models directory
+    logging.debug(all_networks)  # Print the dictionary of models
     config, config_path = handleCommandLineArgs()  # Handle command line arguments
-    main(config, config_path)                      # Call the main function
+    main(config, config_path)  # Call the main function

@@ -8,6 +8,7 @@ global_features_dim = 1
 hidden_dim = 64
 output_dim = 1
 
+
 class ResidualGNN1(nn.Module):
     """
     A graph neural network with residual connections.
@@ -73,47 +74,55 @@ class ResidualGNN1(nn.Module):
         self.global_fc2 = nn.Linear(hidden_dim, output_dim)
 
         # Update the input dimension of the final linear layer
-        combined_dim = 2 + output_dim  # 32 is the output dimension of the last GCN layer, adjust if needed
+        combined_dim = (
+            2 + output_dim
+        )  # 32 is the output dimension of the last GCN layer, adjust if needed
         self.fc = nn.Linear(combined_dim, 1)
 
     def forward(self, x, edge_index, global_features):
 
-            max_edge_index = edge_index.max().item()
-            num_nodes = x.size(0)
-            if max_edge_index >= num_nodes:
-                print(f"Adjusted max edge index from {max_edge_index} to {num_nodes-1} for debugging.")
-                edge_index = torch.clamp(edge_index, max=num_nodes-1)
-                # print(f"Out-of-bounds edge indices detected: Max edge index {max_edge_index}, Number of nodes {num_nodes}")
-                # raise ValueError("Out-of-bounds edge index detected. Check your graphs!")
+        max_edge_index = edge_index.max().item()
+        num_nodes = x.size(0)
+        if max_edge_index >= num_nodes:
+            print(
+                f"Adjusted max edge index from {max_edge_index} to {num_nodes-1} for debugging."
+            )
+            edge_index = torch.clamp(edge_index, max=num_nodes - 1)
+            # print(f"Out-of-bounds edge indices detected: Max edge index {max_edge_index}, Number of nodes {num_nodes}")
+            # raise ValueError("Out-of-bounds edge index detected. Check your graphs!")
 
-            print("Input x shape:", x.shape)
-            print(f"Max index in edge_index: {edge_index.max().item()}, Size of x: {x.size(0)}")
-            identity = F.leaky_relu(self.bn1(self.conv1(x, edge_index)))
-            print("After conv1 shape:", identity.shape) # DEBUG
-            out = self.dropout1(identity)
+        print("Input x shape:", x.shape)
+        print(
+            f"Max index in edge_index: {edge_index.max().item()}, Size of x: {x.size(0)}"
+        )
+        identity = F.leaky_relu(self.bn1(self.conv1(x, edge_index)))
+        print("After conv1 shape:", identity.shape)  # DEBUG
+        out = self.dropout1(identity)
 
-            out = F.leaky_relu(self.bn2(self.conv2(out, edge_index)) + identity)  # Residual connection
-            out = self.dropout2(out)
+        out = F.leaky_relu(
+            self.bn2(self.conv2(out, edge_index)) + identity
+        )  # Residual connection
+        out = self.dropout2(out)
 
-            out = F.leaky_relu(self.bn3(self.conv3(out, edge_index)))
-            out = self.dropout3(out)
+        out = F.leaky_relu(self.bn3(self.conv3(out, edge_index)))
+        out = self.dropout3(out)
 
-            out = F.leaky_relu(self.bn4(self.conv4(out, edge_index)))
-            out = self.dropout4(out)
+        out = F.leaky_relu(self.bn4(self.conv4(out, edge_index)))
+        out = self.dropout4(out)
 
-            out = F.leaky_relu(self.bn5(self.conv5(out, edge_index)))
-            out = self.dropout5(out)
+        out = F.leaky_relu(self.bn5(self.conv5(out, edge_index)))
+        out = self.dropout5(out)
 
-            out = F.leaky_relu(self.bn6(self.conv6(out, edge_index)))
-            out = self.dropout6(out)
+        out = F.leaky_relu(self.bn6(self.conv6(out, edge_index)))
+        out = self.dropout6(out)
 
-            # Incorporate global features
-            global_out = F.leaky_relu(self.global_fc1(global_features))
-            global_out = self.global_fc2(global_out)
-            print(out.shape, global_out.shape) # DEBUG
+        # Incorporate global features
+        global_out = F.leaky_relu(self.global_fc1(global_features))
+        global_out = self.global_fc2(global_out)
+        print(out.shape, global_out.shape)  # DEBUG
 
-            # Combine node and global outputs
-            combined_out = torch.cat((out, global_out), dim=1)
+        # Combine node and global outputs
+        combined_out = torch.cat((out, global_out), dim=1)
 
-            final_out = self.sigmoid(self.fc(combined_out))
-            return final_out
+        final_out = self.sigmoid(self.fc(combined_out))
+        return final_out

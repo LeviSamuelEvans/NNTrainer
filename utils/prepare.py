@@ -3,6 +3,7 @@ import numpy as np
 from torch.utils.data import DataLoader, TensorDataset, random_split
 import logging
 
+
 class DataPreparation:
     """
     A class for preparing data for training and validation by converting the input dataframes to tensors, splitting the data into
@@ -18,14 +19,14 @@ class DataPreparation:
     Returns:
     - train_loader (torch.utils.data.dataloader.DataLoader): A PyTorch DataLoader object containing the training data.
     - val_loader (torch.utils.data.dataloader.DataLoader): A PyTorch DataLoader object containing the validation data.
-     """
+    """
+
     def __init__(self, df_sig, df_bkg, batch_size, features, train_ratio=0.8):
         self.df_sig = df_sig
         self.df_bkg = df_bkg
         self.batch_size = batch_size
         self.features = features
         self.train_ratio = train_ratio
-
 
     def convert_to_tensors(self):
         """
@@ -36,12 +37,22 @@ class DataPreparation:
         - y: PyTorch tensor containing concatenated target values (1 for signal, 0 for background)
         """
         logging.info("1. Converting to Tensors...")
-        X_sig = torch.tensor(self.df_sig[self.features].values, dtype=torch.float32) # Convert the dataframes to tensors
-        X_bkg = torch.tensor(self.df_bkg[self.features].values, dtype=torch.float32) # Convert the dataframes to tensors
-        y_sig = torch.ones((X_sig.shape[0], 1), dtype=torch.float32) # Create a tensor of ones for signal label
-        y_bkg = torch.zeros((X_bkg.shape[0], 1), dtype=torch.float32) # Create a tensor of zeros for background label
-        X = torch.cat([X_sig, X_bkg]) # Concatenate signal and background data
-        y = torch.cat([y_sig, y_bkg]) # Concatenate signal and background targets/labels
+        X_sig = torch.tensor(
+            self.df_sig[self.features].values, dtype=torch.float32
+        )  # Convert the dataframes to tensors
+        X_bkg = torch.tensor(
+            self.df_bkg[self.features].values, dtype=torch.float32
+        )  # Convert the dataframes to tensors
+        y_sig = torch.ones(
+            (X_sig.shape[0], 1), dtype=torch.float32
+        )  # Create a tensor of ones for signal label
+        y_bkg = torch.zeros(
+            (X_bkg.shape[0], 1), dtype=torch.float32
+        )  # Create a tensor of zeros for background label
+        X = torch.cat([X_sig, X_bkg])  # Concatenate signal and background data
+        y = torch.cat(
+            [y_sig, y_bkg]
+        )  # Concatenate signal and background targets/labels
         return X, y
 
     def split_data(self, X, y):
@@ -87,10 +98,13 @@ class DataPreparation:
         mean = torch.stack(X_train).mean(dim=0, keepdim=True)
         std = torch.stack(X_train).std(dim=0, keepdim=True)
 
-        train_dataset = [(((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in train_dataset]
-        val_dataset = [(((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in val_dataset]
+        train_dataset = [
+            (((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in train_dataset
+        ]
+        val_dataset = [
+            (((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in val_dataset
+        ]
         return train_dataset, val_dataset
-
 
     def prepare_data(self):
         """
@@ -106,11 +120,13 @@ class DataPreparation:
 
         X, y = self.convert_to_tensors()
         train_dataset, val_dataset = self.split_data(X, y)
-         # before normalization DEBUG
+        # before normalization DEBUG
         sample_data, sample_label = train_dataset[0]
 
         logging.debug(f"Sample data shape before (train_dataset): {sample_data.shape}")
-        logging.debug(f"Sample label shape before (train_dataset): {sample_label.shape}")
+        logging.debug(
+            f"Sample label shape before (train_dataset): {sample_label.shape}"
+        )
 
         train_dataset, val_dataset = self.normalize_data(train_dataset, val_dataset)
         # After normalization DEBUG
@@ -119,7 +135,9 @@ class DataPreparation:
         logging.debug(f"Sample data shape after (train_dataset): {sample_data.shape}")
         logging.debug(f"Sample label shape after (train_dataset): {sample_label.shape}")
 
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        train_loader = DataLoader(
+            train_dataset, batch_size=self.batch_size, shuffle=True
+        )
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size, shuffle=True)
 
         # After creating the DataLoader

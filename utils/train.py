@@ -28,6 +28,7 @@ def gather_all_labels(loader, device):
         all_labels.append(labels)
     return torch.cat(all_labels, dim=0)
 
+
 def compute_class_weights(all_labels):
     """for graphs"""
     # for binary class initially
@@ -35,6 +36,7 @@ def compute_class_weights(all_labels):
     negative_examples = float((all_labels == 0).sum())
     pos_weight = negative_examples / positive_examples
     return torch.tensor([pos_weight], dtype=torch.float32)
+
 
 class Trainer:
     """
@@ -81,7 +83,7 @@ class Trainer:
         ramp_up=10,
         plateau=15,
         ramp_down=20,
-        ):
+    ):
 
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -92,7 +94,7 @@ class Trainer:
         if network_type in ["GNN", "LENN"]:
             self.train_loader = GeoDataLoader(train_loader, shuffle=True)
             self.val_loader = GeoDataLoader(val_loader, shuffle=False)
-            print(f"Initial train_loader type: {type(self.train_loader)}") # DEBUG
+            print(f"Initial train_loader type: {type(self.train_loader)}")  # DEBUG
         else:
             self.train_loader = train_loader
             self.val_loader = val_loader
@@ -182,7 +184,7 @@ class Trainer:
         else:
             self.cosine_scheduler = None
 
-    def get_class_weights(self, y)-> torch.Tensor:
+    def get_class_weights(self, y) -> torch.Tensor:
         """
         Compute class weights based on the given labels.
 
@@ -199,7 +201,7 @@ class Trainer:
         return torch.tensor(class_weights, dtype=torch.float32).to(y.device)
 
     @staticmethod
-    def initialise_weights(model)-> None:
+    def initialise_weights(model) -> None:
         """
         Initialises the weights of the given model using He initialisation for linear layers
         and sets bias to 0.
@@ -216,7 +218,7 @@ class Trainer:
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
 
-    def validate(self)-> float:
+    def validate(self) -> float:
         """
         Perform validation on the model.
 
@@ -235,7 +237,7 @@ class Trainer:
         logging.info(f"Validation Loss: {val_epoch_loss:.4f}")
         return val_epoch_loss
 
-    def train_model(self)-> None:
+    def train_model(self) -> None:
         """
         Trains the model using the specified criterion, optimizer, and data loaders for a given number of epochs.
         Logs training and validation loss and accuracy, and stops early if validation loss doesn't improve for a given
@@ -291,7 +293,9 @@ class Trainer:
                 if self.network_type in ["GNN", "LENN"]:
                     data = torch.tensor(data).to(self.device)
                     outputs = self.model(data.x, data.edge_index, data.global_features)
-                    logging.info(f"Max node index in edge_index: {data.edge_index.max()}, Number of nodes: {data.x.size(0)}")
+                    logging.info(
+                        f"Max node index in edge_index: {data.edge_index.max()}, Number of nodes: {data.x.size(0)}"
+                    )
                     labels = data.y
                 else:
                     break
@@ -300,12 +304,16 @@ class Trainer:
 
             if self.cosine_scheduler:
                 self.cosine_scheduler.step()
-                current_lr = self.optimizer.param_groups[0]['lr']
-                logging.info(f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {current_lr:.9f}")
-            self.learning_rates.append(current_lr) # movce to after optimiser for >PyT v1.2
+                current_lr = self.optimizer.param_groups[0]["lr"]
+                logging.info(
+                    f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {current_lr:.9f}"
+                )
+            self.learning_rates.append(
+                current_lr
+            )  # movce to after optimiser for >PyT v1.2
             running_loss = 0.0
             correct = 0  # Counter for correct predictions
-            total = 0    # Counter for total predictions
+            total = 0  # Counter for total predictions
 
             for batch_idx, (inputs, labels) in enumerate(data_iter):
                 if self.network_type in ["GNN", "LENN"]:
@@ -315,7 +323,9 @@ class Trainer:
                     # if labels.dim() > 2:
                     #     labels = labels.mean(dim=1, keepdim=True)
                     loss = self.criterion(outputs, labels)
-                    print(f"Batch {batch_idx}: Max node index in edge_index: {data.edge_index.max()}, Number of nodes: {data.x.size(0)}")
+                    print(
+                        f"Batch {batch_idx}: Max node index in edge_index: {data.edge_index.max()}, Number of nodes: {data.x.size(0)}"
+                    )
                     print(f"Max node index: {data.edge_index.max()}")
                     print(f"Number of nodes: {data.x.size(0)}")
                 elif self.network_type in ["FFNN"]:
@@ -332,7 +342,7 @@ class Trainer:
                 running_loss += loss.item() * inputs.size(0)
 
                 # Compute accuracy for this batch
-                #predicted = torch.round(outputs) # no need for sigmoid here as in the final layer of the models we have sigmoid (need to add safeguard for this!)
+                # predicted = torch.round(outputs) # no need for sigmoid here as in the final layer of the models we have sigmoid (need to add safeguard for this!)
                 probabilities = torch.sigmoid(outputs)
                 predicted = torch.round(probabilities)
                 correct += (predicted == labels).sum().item()
@@ -347,10 +357,8 @@ class Trainer:
             epoch_loss = running_loss / len(self.train_loader.dataset)
             self.train_losses.append(epoch_loss)  # Store training loss for this epoch
 
-            epoch_accuracy = correct / total      # Compute training accuracy for this epoch
-            self.train_accuracies.append(
-                epoch_accuracy
-            )
+            epoch_accuracy = correct / total  # Compute training accuracy for this epoch
+            self.train_accuracies.append(epoch_accuracy)
             # Validation loss for the epoch
             val_epoch_loss = self.validate()
             if self.scheduler:
@@ -367,13 +375,15 @@ class Trainer:
             with torch.no_grad():
                 if self.network_type in ["GNN", "LENN"]:
                     for data in self.val_loader:
-                            data = data.to(self.device)
-                            outputs = self.model(data.x, data.edge_index, data.batch)
-                            labels = data.y
+                        data = data.to(self.device)
+                        outputs = self.model(data.x, data.edge_index, data.batch)
+                        labels = data.y
                 else:
                     for inputs, labels in self.val_loader:
                         inputs, labels = inputs.to(self.device), labels.to(self.device)
-                        probabilities = torch.sigmoid(outputs)  # Convert logits to probabilities!
+                        probabilities = torch.sigmoid(
+                            outputs
+                        )  # Convert logits to probabilities!
                         predicted = torch.round(probabilities)
                 val_correct += (predicted == labels).sum().item()
                 val_total += labels.size(0)
@@ -427,6 +437,7 @@ class Trainer:
         # Save our model for further use
         # saving just the state dictionary with torch.save(model.state_dict(), 'path_to_model_state_dict.pt') [MOVE TO THIS]
         torch.save(self.model, "/scratch4/levans/tth-network/models/outputs/model.pt")
+
 
 # put into class when time
 def plot_losses(trainer):
@@ -494,6 +505,7 @@ def plot_accuracy(trainer):
     logging.info(
         "Accuracy plot saved to /scratch4/levans/tth-network/plots/Validation/accuracy.png"
     )
+
 
 def plot_lr(trainer):
     """

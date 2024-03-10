@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class ModifiedNN(nn.Module):
     """
     A modified neural network with 4 fully connected layers and dropout.
@@ -24,6 +25,7 @@ class ModifiedNN(nn.Module):
         forward(x): Defines the forward pass of the neural network.
 
     """
+
     def __init__(self, input_dim, dropout_prob=0.5):
         super(ModifiedNN, self).__init__()
 

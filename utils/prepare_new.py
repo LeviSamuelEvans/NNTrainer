@@ -14,8 +14,8 @@ class DataPreparationFactory:
     def prep_data(network_type, loaded_data, config):
         batch_size = config["training"]["batch_size"]
         features = config["features"]
-        train_ratio=config["data"]["train_ratio"]
-        value_threshold=float(config["data"]["value_threshold"])
+        train_ratio = config["data"]["train_ratio"]
+        value_threshold = float(config["data"]["value_threshold"])
         # Pytorch's usual DataLoader used for the standard FFNNs
         if network_type == "FFNN":
             df_sig, df_bkg = loaded_data
@@ -34,11 +34,7 @@ class DataPreparationFactory:
                 shuffle=True,
             )
 
-            val_loader = DataLoader(
-                val_dataset,
-                batch_size=batch_size,
-                shuffle=False
-            )
+            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
             return train_loader, val_loader
 
         # We use the GeoDataLoader for the GNNs
@@ -89,7 +85,9 @@ class DataPreparationFactory:
 
 class BaseDataPreparation:
 
-    def __init__(self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold):
+    def __init__(
+        self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+    ):
         self.df_sig = df_sig
         self.df_bkg = df_bkg
         self.batch_size = batch_size
@@ -126,7 +124,9 @@ class BaseDataPreparation:
         X_sig = torch.tensor(self.df_sig[self.features].values, dtype=torch.float32)
         X_bkg = torch.tensor(self.df_bkg[self.features].values, dtype=torch.float32)
 
-        logging.info(f"Removing small values at {self.value_threshold} threshold value...")
+        logging.info(
+            f"Removing small values at {self.value_threshold} threshold value..."
+        )
         # veto small values for training stability
         X_sig = self.mask_small_values(X_sig, self.value_threshold)
         X_bkg = self.mask_small_values(X_bkg, self.value_threshold)
@@ -234,8 +234,12 @@ class FFDataPreparation(BaseDataPreparation):
         value_threshold (float, optional): The threshold for removing small values in the input data.
     """
 
-    def __init__(self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold):
-        super().__init__(df_sig, df_bkg, batch_size, features, train_ratio, value_threshold)
+    def __init__(
+        self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+    ):
+        super().__init__(
+            df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+        )
 
 
 class GraphDataPreparation(BaseDataPreparation):
@@ -250,8 +254,12 @@ class GraphDataPreparation(BaseDataPreparation):
         train_ratio (float): The ratio of data to use for training.
     """
 
-    def __init__(self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold):
-        super().__init__(df_sig, df_bkg, batch_size, features, train_ratio, value_threshold)
+    def __init__(
+        self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+    ):
+        super().__init__(
+            df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+        )
 
     def _construct_edge_index(self, event, num_nodes):
         """
@@ -377,8 +385,8 @@ class GraphDataPreparation(BaseDataPreparation):
             n_features = len(self.features["node_features"])
 
             # correcting edge indices to be zero-based to prevent out-of-bounds errors when batched
-            edge_index_sig = edge_index_sig - 1 # BUG
-            edge_index_bkg = edge_index_bkg - 1 # BUG
+            edge_index_sig = edge_index_sig - 1  # BUG
+            edge_index_bkg = edge_index_bkg - 1  # BUG
 
             data_sig = geo_data.Data(
                 x=torch.tensor(node_features_sig, dtype=torch.float32).view(
@@ -487,6 +495,7 @@ class GraphDataPreparation(BaseDataPreparation):
 
         return train_dataset, val_dataset
 
+
 def verify_data(self, data_list):
     """
     Verify if the edge indices in each graph in the data list are within bounds.
@@ -501,7 +510,9 @@ def verify_data(self, data_list):
         max_edge_index = data.edge_index.max().item()
         num_nodes = data.x.size(0)
         if max_edge_index >= num_nodes:
-            print(f"Graph {i} has out-of-bounds edge indices: Max edge index {max_edge_index}, Number of nodes {num_nodes}")
+            print(
+                f"Graph {i} has out-of-bounds edge indices: Max edge index {max_edge_index}, Number of nodes {num_nodes}"
+            )
             return False
     print("All graphs have valid edge indices.")
     return True

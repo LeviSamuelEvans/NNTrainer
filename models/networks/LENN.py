@@ -92,6 +92,7 @@ class GlobalBlock(torch.nn.Module):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class LorentzInteractionNetwork(torch.nn.Module):
     def __init__(self):
         super(LorentzInteractionNetwork, self).__init__()
@@ -100,21 +101,21 @@ class LorentzInteractionNetwork(torch.nn.Module):
         )
 
     def forward(self, x, edge_index, batch):
-        print(f"x shape: {x.shape}")                    # DEBUG
+        print(f"x shape: {x.shape}")  # DEBUG
         print(f"edge_index shape: {edge_index.shape}")  # DEBUG
-        print(f"batch shape: {batch.shape}")            # DEBUG
-        print(f"max edge_index: {edge_index.max()}")    # DEBUG
-        
+        print(f"batch shape: {batch.shape}")  # DEBUG
+        print(f"max edge_index: {edge_index.max()}")  # DEBUG
+
         x, edge_attr, u = self.lorentzinteractionnetwork(
             x, edge_index, None, None, batch
         )
         return u
-    
+
     # ensure all modules are moved to the device :/
     def to(self, device):
         super(LorentzInteractionNetwork, self).to(device)
-        
+
         for module in self.modules():
-            if hasattr(module, 'minkowski'):
+            if hasattr(module, "minkowski"):
                 module.minkowski = module.minkowski.to(device)
         return self

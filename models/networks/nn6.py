@@ -13,6 +13,7 @@ def iqr_pooling(tensor, dim):
     iqr = q75 - q25
     return iqr
 
+
 class ResidualComplexNNwith_MH_attention(nn.Module):
     """
     Residual Complex Neural Network with Multi-Head Attention.
@@ -22,32 +23,33 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
         dropout_prob (float, optional): The dropout probability. Defaults to 0.5.
         num_heads (int, optional): The number of attention heads. Defaults to 8.
     """
+
     def __init__(self, input_dim, dropout_prob=0.5, num_heads=8):
         super(ResidualComplexNNwith_MH_attention, self).__init__()
-        
+
         self.fc1 = nn.Linear(input_dim, 512)
         self.bn1 = nn.BatchNorm1d(512)
         self.dropout1 = nn.Dropout(dropout_prob)
-        
-        self.fc2 = nn.Linear(512, 512) 
+
+        self.fc2 = nn.Linear(512, 512)
         self.bn2 = nn.BatchNorm1d(512)
         self.dropout2 = nn.Dropout(dropout_prob)
-        
+
         self.attention = MultiHeadSelfAttention(input_dim=512, num_heads=num_heads)
-        self.ln1 = nn.LayerNorm(512) 
+        self.ln1 = nn.LayerNorm(512)
 
         # Feed-Forward Network within Attention Block
         self.ffn = nn.Sequential(
-            nn.Linear(512, 2048), # expand dimensions
+            nn.Linear(512, 2048),  # expand dimensions
             nn.ReLU(),
-            nn.Linear(2048, 512), # contracts dimenions back
+            nn.Linear(2048, 512),  # contracts dimenions back
         )
         self.ln2 = nn.LayerNorm(512)
-        
-        self.fc3 = nn.Linear(512 * 3, 256) 
+
+        self.fc3 = nn.Linear(512 * 3, 256)
         self.ln3 = nn.LayerNorm(256)
         self.dropout3 = nn.Dropout(dropout_prob)
-        
+
         self.fc4 = nn.Linear(256, 128)
         self.ln4 = nn.LayerNorm(128)
         self.dropout4 = nn.Dropout(dropout_prob)
@@ -66,34 +68,36 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
     def forward(self, x):
         identity = F.leaky_relu(self.bn1(self.fc1(x)))
         out = self.dropout1(identity)
-        
+
         out = F.leaky_relu(self.bn2(self.fc2(out)) + identity)  # a residual connection
         out = self.dropout2(out)
-        #print(out.shape)
-        
+        # print(out.shape)
+
         # Apply self-attention
         attention_out = self.attention(out)
-        out = self.ln1(attention_out + out)  # Apply residual connection and layer norm together
-        #print(out.shape)
+        out = self.ln1(
+            attention_out + out
+        )  # Apply residual connection and layer norm together
+        # print(out.shape)
         # Feed-forward network
         out = self.ffn(out)
         out = self.ln2(out)
-        #print(out.shape)
-        
+        # print(out.shape)
+
         # Global average pooling over the sequence dimension using mean (could use max, or others)
-        # out = out.mean(dim=1) 
-        
+        # out = out.mean(dim=1)
+
         # try to apply multiple pooling strategies together
         mean_pooled = torch.mean(out, dim=1)
         max_pooled, _ = torch.max(out, dim=1)
         iqr_pooled = iqr_pooling(out, dim=1)
-        
+
         # Combine pooled features
         combined_pooled = torch.cat([mean_pooled, max_pooled, iqr_pooled], dim=1)
-        
+
         out = F.leaky_relu(self.ln3(self.fc3(combined_pooled)))
         out = self.dropout3(out)
-        
+
         out = F.leaky_relu(self.ln4(self.fc4(out)))
         out = self.dropout4(out)
 
@@ -105,6 +109,7 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
 
         out = self.sigmoid(self.fc7(out))
         return out
+
 
 """
 Notes:
