@@ -92,7 +92,7 @@ def main(config, config_path):
     ################################################
 
     # Plotting inputs
-    if config_dict["data"]["plot_inputs"] == "True":
+    if config_dict["data"]["plot_inputs"] == True:
         plot_inputs = DataPlotter(config_dict)
         plot_inputs.plot_all_features()
         plot_inputs.plot_correlation_matrix("background")
@@ -117,7 +117,7 @@ def main(config, config_path):
                 f"About to instantiate class {model_class} defined in {model_class.__module__}"
             )
             model = model_class()
-        elif model_name == "TransformerClassifier1":
+        elif model_name == "TransformerClassifier1" or model_name == "TransformerClassifier2":
             print(
                 f"About to instantiate class {model_class} defined in {model_class.__module__}"
             )
