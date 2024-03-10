@@ -1,0 +1,18 @@
+features:
+  - jet_pt
+  - jet_index_PCBT_ordered
+  - HT_all
+  - dRbb_avg_Sort4
+  - el_pt
+  - mu_pt
+  - met_met
+  - mwt_mwt
+  - H0_all
+  - H1_all
+  - H2_jets
+  - dRlj_MindR
+  - dRlepbb_MindR_70
+  - Centrality_all
+  - dEtabb_MaxdEta_70
+  - L2_Reco_higgs_pt
+  - L2_Class_ttH_discriminant

@@ -69,7 +69,6 @@ class ResidualGNN1(nn.Module):
         self.fc = nn.Linear(32, 1)
         self.sigmoid = nn.Sigmoid()
 
-        # Assuming global_features_dim is the dimension of your global features
         self.global_fc1 = nn.Linear(global_features_dim, hidden_dim)
         self.global_fc2 = nn.Linear(hidden_dim, output_dim)
 
@@ -79,9 +78,16 @@ class ResidualGNN1(nn.Module):
 
     def forward(self, x, edge_index, global_features):
 
-            print("Input x shape:", x.shape)
-            print("Edge_index shape:", edge_index.shape) # DEBUG
+            max_edge_index = edge_index.max().item()
+            num_nodes = x.size(0)
+            if max_edge_index >= num_nodes:
+                print(f"Adjusted max edge index from {max_edge_index} to {num_nodes-1} for debugging.")
+                edge_index = torch.clamp(edge_index, max=num_nodes-1)
+                # print(f"Out-of-bounds edge indices detected: Max edge index {max_edge_index}, Number of nodes {num_nodes}")
+                # raise ValueError("Out-of-bounds edge index detected. Check your graphs!")
 
+            print("Input x shape:", x.shape)
+            print(f"Max index in edge_index: {edge_index.max().item()}, Size of x: {x.size(0)}")
             identity = F.leaky_relu(self.bn1(self.conv1(x, edge_index)))
             print("After conv1 shape:", identity.shape) # DEBUG
             out = self.dropout1(identity)

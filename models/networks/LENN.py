@@ -8,7 +8,7 @@ from torch_scatter import scatter_mean
 from torch_geometric.nn import MetaLayer
 import numpy as np
 
-hidden = 16
+hidden = 14
 outputs = 2
 
 
@@ -90,6 +90,8 @@ class GlobalBlock(torch.nn.Module):
         return self.global_mlp(out)
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class LorentzInteractionNetwork(torch.nn.Module):
     def __init__(self):
         super(LorentzInteractionNetwork, self).__init__()
@@ -98,12 +100,21 @@ class LorentzInteractionNetwork(torch.nn.Module):
         )
 
     def forward(self, x, edge_index, batch):
-
+        print(f"x shape: {x.shape}")                    # DEBUG
+        print(f"edge_index shape: {edge_index.shape}")  # DEBUG
+        print(f"batch shape: {batch.shape}")            # DEBUG
+        print(f"max edge_index: {edge_index.max()}")    # DEBUG
+        
         x, edge_attr, u = self.lorentzinteractionnetwork(
             x, edge_index, None, None, batch
         )
         return u
-
-
-model = LorentzInteractionNetwork() #.to(device)
-# optimizer = torch.optim.Adam(model.parameters()) # called elsewhere, need to input
+    
+    # ensure all modules are moved to the device :/
+    def to(self, device):
+        super(LorentzInteractionNetwork, self).to(device)
+        
+        for module in self.modules():
+            if hasattr(module, 'minkowski'):
+                module.minkowski = module.minkowski.to(device)
+        return self

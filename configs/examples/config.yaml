@@ -2,15 +2,29 @@
 # Example Configuration file for the training of the model #
 # ======================================================== #
 
+
+# ======================================================== #
+
+# Cmd line arguments for run modes (-p, -t, -e, -pr)
 # mode: 'prepare'
 # mode: 'train'
 # mode: 'evaluate'
 # mode: 'predict'
 
-
 model:
   name: 'ResidualComplexNN'
-  input_dim: 8
+  model_builder: True
+  input_dim: 6
+  output_dim: 1
+  num_layers: 3
+  hidden_dim: 64
+  dropout: 0.1
+  use_residual: True
+  use_complex: True
+  use_normalisation: True
+  use_batch_norm: True
+  use_skip_connection: True
+  use_layer_norm: True
 
 #============#
 # Data Block #
@@ -23,6 +37,8 @@ data:
   save_graph_data: False
   path_to_save_graph: /path/to/save   # make dir if does not exist!
   use_saved_graph_data: False
+  train_ratio: 0.8
+  value_threshold: 1e-6
 
 
 #===============#
@@ -35,7 +51,7 @@ Network_type:
 #===============#
 # Feature Block #
 #===============#
-features:
+features: # example
   - HT_all
   - H0_all
   - dRbb_avg_Sort4
@@ -49,6 +65,13 @@ features:
 # Preparation Block #
 #===================#
 # Preparation: Coming soon!
+  - feature_scaling: True
+  - feature_normalisation: True
+  - feature_standardisation: True
+  - feature_maker: True
+    - feature_maker_type: '4-vectors'
+    - feature_maker_type: 'decay-angles'
+    - feature_maker_type: 'colour-flows'
 
 
 #================#
@@ -69,6 +92,15 @@ training:
   use_cosine_burnin: True
   save_frequency: 1
   save_plots: False
+  k_fold_cross_validation:
+   k: 5
+   shuffle: True
+   stratified: True
+   random_state: 42
+   save_model: False
+   model_save_path: 'models/'
+   save_frequency: 1
+   save_plots: False
 
 #===================#
 # Evaluataion Block #
