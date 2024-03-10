@@ -177,6 +177,7 @@ class DataImporter(object):
                 "jet_pt_softmu_corr",
                 "jet_phi_softmu_corr",
                 "jet_e_softmu_corr",
+                "jet_index_PCBT_ordered",
             ]  # Add anymore jagged array-type vars TODO:
             for column in jagged_columns:
                 if column in df.columns:
