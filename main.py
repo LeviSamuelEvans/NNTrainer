@@ -55,7 +55,7 @@ def main(config, config_path):
     loaded_data = LoadingFactory.load_data(network_type, config_dict)
 
     # Unpack the loaded data into signal and background DataFrames
-    
+
     if network_type == "FFNN":
         signal_data, background_data = loaded_data
     elif network_type == "GNN" or network_type == "LENN":
@@ -64,6 +64,7 @@ def main(config, config_path):
     node_features_background, edge_features_background, global_features_background, labels_background
     ) = loaded_data
     print(loaded_data)
+
     # fe_config = config_dict['feature_engineering']
 
     # feature_maker = FeatureFactory.make(max_particles=fe_config['max_particles'],
@@ -76,17 +77,26 @@ def main(config, config_path):
     ### NOW need to link into data preparation...
 
     train_loader, val_loader = PreparationFactory.prep_data(
-        network_type, loaded_data, config_dict
+        network_type,
+        loaded_data,
+        config_dict,
+        train_ratio=config_dict["data"]["train_ratio"],
+        value_threshold=float(config_dict["data"]["value_threshold"]),
+
     )
+
 
     ################################################
     ################################################
 
     # Plotting inputs
-    plot_inputs = DataPlotter(config_dict)
-    plot_inputs.plot_all_features()
-    plot_inputs.plot_correlation_matrix("background")
-    plot_inputs.plot_correlation_matrix("signal")
+    if config_dict["data"]["plot_inputs"] == 'True':
+        plot_inputs = DataPlotter(config_dict)
+        plot_inputs.plot_all_features()
+        plot_inputs.plot_correlation_matrix("background")
+        plot_inputs.plot_correlation_matrix("signal")
+    else :
+        logging.info("Skipping plotting of inputs")
 
     logging.info("Starting the training process...")
 
@@ -104,6 +114,9 @@ def main(config, config_path):
             print(f"About to instantiate class {model_class} defined in {model_class.__module__}")
             model = model_class(
             )
+        elif model_name == "TransformerClassifier1":
+            print(f"About to instantiate class {model_class} defined in {model_class.__module__}")
+            model = model_class(input_dim, 128, 4, 4)
         else:
             model = model_class(input_dim)
     else:
@@ -119,6 +132,8 @@ def main(config, config_path):
         logging.info(f"First batch successfully retrieved: {first_batch}")
     except Exception as e:
         logging.error(f"Failed to iterate over train_loader: {e}")
+
+
 
     logging.info(f"Model '{model_name}' loaded. Starting training.")
 
@@ -141,17 +156,25 @@ def main(config, config_path):
         initialise_weights=config["training"]["initialise_weights"],
         balance_classes=config["training"]["balance_classes"],
         use_cosine_burnin=config["training"]["use_cosine_burnin"],
-        network_type=config_dict["Network_type"],
+        lr_init=float(config["training"]["lr_init"]),
+        lr_max=float(config["training"]["lr_max"]),
+        lr_final=float(config["training"]["lr_final"]),
+        burn_in = config["training"]["burn_in"],
+        ramp_up = config["training"]["ramp_up"],
+        plateau=config["training"]["plateau"],
+        ramp_down=config["training"]["ramp_down"],
+        network_type=config_dict["Network_type"][0] if isinstance(config_dict["Network_type"], list) else config_dict["Network_type"],
     )
 
     logging.info(
         f"Training model '{model_name}' for {config['training']['num_epochs']} epochs."
     )
+
     trainer.train_model()
 
-    plot_losses(trainer)    # pass the Trainer object to the plot_losses() function
-    plot_accuracy(trainer)  # pass the Trainer object to the plot_accuracy() function
-    plot_lr(trainer)        # pass the Trainer object to the plot_lr() function
+    plot_losses(trainer)
+    plot_accuracy(trainer)
+    plot_lr(trainer)
 
     ################################################
     ################################################
@@ -181,7 +204,7 @@ if __name__ == "__main__":
     configure_logging()  # Set up logging
     all_networks = load_networks_from_directory(
         "models"
-    )  # Load the models from the models directory
-    logging.debug(all_networks)  # Print the dictionary of models
+    )                                              # Load the models from the models directory
+    logging.debug(all_networks)                    # Print the dictionary of models
     config, config_path = handleCommandLineArgs()  # Handle command line arguments
-    main(config, config_path)  # Call the main function
+    main(config, config_path)                      # Call the main function
