@@ -80,9 +80,6 @@ def main(config, config_path):
         network_type,
         loaded_data,
         config_dict,
-        train_ratio=config_dict["data"]["train_ratio"],
-        value_threshold=float(config_dict["data"]["value_threshold"]),
-
     )
 
 
