@@ -1,5 +1,6 @@
 import pandas as pd
 from typing import Tuple
+import logging
 
 class DataLoadingFactory:
     @staticmethod
@@ -8,9 +9,18 @@ class DataLoadingFactory:
             loader = FFNNDataLoader(config['data']['signal_path'], config['data']['background_path'], features=config['features'])
         elif network_type in ["GNN", "LENN"]:
             loader = DataLoader(config['data']['signal_path'], config['data']['background_path'], features=config['features'])
+            logging.info(f"DataLoadingFactory: Loading data for {network_type} network")
         else:
             raise ValueError("Invalid network type")
-        return loader.load_data()
+
+        loaded_data = loader.load_data()
+
+         # Move logging to after load_data()
+        if network_type in ["GNN", "LENN"]:
+            logging.info(f"DataLoadingFactory: Loading data for {network_type} network")
+            logging.info(f"Preparing data for GNN/LENN with node_features_signal shape: {loader.node_features_sig.shape}, edge_features_signal shape: {loader.edge_features_sig.shape}")
+
+        return loaded_data
 
 class DataLoader:
     def __init__(self, signal_path, background_path, features):
