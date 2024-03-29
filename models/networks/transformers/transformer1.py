@@ -73,7 +73,7 @@ class TransformerClassifier1(nn.Module):
             nn.LayerNorm(128),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(128, 1),
+            nn.Linear(d_model, 1),
             # nn.Sigmoid() # REMOVE AS USING BCEwithLogitsLoss when balancing classes
         )
 
@@ -88,13 +88,14 @@ class TransformerClassifier1(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, 1).
 
         """
-        # x = x.unsqueeze(0)
+        x = x.unsqueeze(0)
         x = self.input_embedding(x)
         x = self.pos_encoder(x)
         x = self.transformer_encoder(x)
 
         # using global average pooling over the sequence dimension
         x = x.mean(dim=1)
+        output = output.view(-1, 1)
         output = self.classifier(x)
 
         # if not using global average pooling
