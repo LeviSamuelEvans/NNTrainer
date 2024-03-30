@@ -1,4 +1,4 @@
-from .prepare_new import (
+from .prepare import (
     DataPreparationFactory as PreparationFactory,
     FFDataPreparation as FFPrep,
     GraphDataPreparation as GNNPrep,
