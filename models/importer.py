@@ -33,10 +33,11 @@ class NetworkImporter:
         all_networks = self.networks
         input_dim = 4 if config.get("preparation", {}).get("use_four_vectors", False) else len(config["features"])
         model_name = config["model"]["name"]
-        if re.match(r"^TransformerClassifier\d+$", config["model"]["name"]):
+        if re.search(r"transformer", config["model"]["name"], re.IGNORECASE):
             d_model = config["model"]["d_model"]
             nhead = config["model"]["nhead"]
             num_layers = config["model"]["num_encoder_layers"]
+            dropout = config["model"]["dropout"] # should maybe be in training params
 
         if model_name in all_networks:
             model_class = all_networks[model_name]
@@ -45,11 +46,11 @@ class NetworkImporter:
                 #    f"About to instantiate class {model_class} defined in {model_class.__module__}"
                 #)
                 model = model_class()
-            elif model_name == "TransformerClassifier1" or model_name == "TransformerClassifier2":
+            elif re.search(r"transformer", config["model"]["name"], re.IGNORECASE):
                 #print(
                 #    f"About to instantiate class {model_class} defined in {model_class.__module__}"
                 #)
-                model = model_class(input_dim, d_model, nhead, num_layers)
+                model = model_class(input_dim, d_model, nhead, num_layers, dropout)
             else:
                 model = model_class(input_dim)
             return model

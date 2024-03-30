@@ -67,7 +67,7 @@ class ModelEvaluator:
         with torch.no_grad():
             for inputs, labels in self.val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
-                if self.model.__class__.__name__ == "TransformerClassifier2":
+                if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
                     outputs = self.model(inputs, inputs)  # pass inputs twice for x and x_coords
                 else:
                     outputs = self.model(inputs)

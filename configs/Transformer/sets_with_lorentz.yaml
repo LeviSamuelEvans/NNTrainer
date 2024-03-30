@@ -1,0 +1,132 @@
+# ========================================== #
+# Set Transformer Testing Configuration File #
+# ========================================== #
+
+# --------------------------------------------------------------------------------------
+
+#=============#
+# Model Block #
+#=============#
+model:
+  name: 'SetsTransformerClassifier'
+  input_dim: 5
+  d_model: 256
+  nhead: 4
+  num_encoder_layers: 4
+  dropout: 0.1
+
+#============#
+# Data Block #
+#============#
+data:
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/30_03_24/ttH_4vec_dev_250k_10j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/30_03_24/ttbb_4vec_dev_250k_10j.h5
+  train_ratio: 0.8
+  value_threshold: 1e-6
+  plot_inputs: False
+
+#===============#
+# Network Block #
+#===============#
+Network_type:
+  - FFNN
+
+#===============#
+# Feature Block #
+#===============#
+features:
+  - jet_pt_1
+  - jet_pt_2
+  - jet_pt_3
+  - jet_pt_4
+  - jet_pt_5
+  - jet_pt_6
+  - jet_pt_7
+  - jet_pt_8
+  - jet_pt_9
+  - jet_pt_10
+  - jet_eta_1
+  - jet_eta_2
+  - jet_eta_3
+  - jet_eta_4
+  - jet_eta_5
+  - jet_eta_6
+  - jet_eta_7
+  - jet_eta_8
+  - jet_eta_9
+  - jet_eta_10
+  - jet_phi_1
+  - jet_phi_2
+  - jet_phi_3
+  - jet_phi_4
+  - jet_phi_5
+  - jet_phi_6
+  - jet_phi_7
+  - jet_phi_8
+  - jet_phi_9
+  - jet_phi_10
+  - jet_e_1
+  - jet_e_2
+  - jet_e_3
+  - jet_e_4
+  - jet_e_5
+  - jet_e_6
+  - jet_e_7
+  - jet_e_8
+  - jet_e_9
+  - jet_e_10
+  - mu_pt
+  - mu_eta
+  - mu_phi
+  - mu_e
+  - el_pt
+  - el_eta
+  - el_phi
+  - el_e
+  - nElectrons
+  - nMuons
+
+#===================#
+# Preparation Block #
+#===================#
+preparation:
+  feature_maker: True
+  feature_type: '4-vectors'
+  max_particles: 5
+  n_leptons: 1
+  append_four_vectors: False
+  use_four_vectors: True
+
+#================#
+# Training Block #
+#================#
+training:
+  num_epochs: 10
+  learning_rate: 0.00001
+  weight_decay: 0.001
+  batch_size: 128
+  patience: 7
+  early_stopping: True
+  use_scheduler: False
+  factor: 0.5
+  initialise_weights: True
+  balance_classes: True
+  criterion: 'BCELoss'
+  use_cosine_burnin: True
+  lr_init: 1e-9
+  lr_max: 1e-5
+  lr_final: 1e-7
+  burn_in: 3
+  ramp_up: 5
+  plateau: 7
+  ramp_down: 9
+
+
+#==================#
+# Evaluation Block #
+#==================#
+evaluation:
+  use_saved_model: False
+  saved_model_path: /scratch4/levans/tth-network/models/outputs/sets_30_03_24.pt
+
+# --------------------------------------------------------------------------------------
