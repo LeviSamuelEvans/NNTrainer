@@ -1,9 +1,17 @@
-- Version 0.3 dev
+- Version 0.4 dev
+
+
+- Version 0.3
     - update scheduler and annealing functions options
     - added some attention models
     - add pre-processing factory for GNN and FNN models
     - added GPU support
+    - added some GNN models
     - added pr curve in evaluation
+    - added initial feature factory
+        - four-vector inputs of objects
+    - added NetworkImporter class
+    - added a lorentz attention network
 
 - Version 0.2
     - encapsulated plotting into a class
@@ -22,9 +30,9 @@
     - ability to easily select input features through config file
 
 
-FUTURE:
+FUTURE (notes):
     - add conversion to onnx
-    - add logging verbosity 
+    - add logging verbosity
     - upgrade to multidimensional arrays
     - add network builder, configured via yaml
     - add data augmentation methods

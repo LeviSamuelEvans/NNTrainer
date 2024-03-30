@@ -11,22 +11,45 @@ import os
 
 class DataPreparationFactory:
     @staticmethod
-    def prep_data(network_type, loaded_data, config):
+    def prep_data(network_type,
+                  loaded_data,
+                  config,
+                  signal_fvectors=None,
+                  background_fvectors=None,
+                  ):
+
         batch_size = config["training"]["batch_size"]
-        features = config["features"]
+        #features = config["features"]
         train_ratio = config["data"]["train_ratio"]
         value_threshold = float(config["data"]["value_threshold"])
         # Pytorch's usual DataLoader used for the standard FFNNs
         if network_type == "FFNN":
             df_sig, df_bkg = loaded_data
-            preparer = FFDataPreparation(
-                df_sig,
-                df_bkg,
-                batch_size,
-                features,
-                train_ratio,
-                value_threshold,
-            )
+            if config.get("preparation", {}).get("use_four_vectors", False):
+                if signal_fvectors is None or background_fvectors is None:
+                    raise ValueError("Four-vectors are required when use_four_vectors is true!")
+
+                preparer = FFDataPreparation(
+                    signal_fvectors,
+                    background_fvectors,
+                    batch_size,
+                    train_ratio,
+                    value_threshold,
+                    features_or_fvectors=signal_fvectors
+                )
+
+            else:
+                features = config["features"]
+
+                preparer = FFDataPreparation(
+                    df_sig,
+                    df_bkg,
+                    batch_size,
+                    train_ratio,
+                    value_threshold,
+                    features_or_fvectors=features,
+                )
+
             train_dataset, val_dataset = preparer.prepare_data()
             train_loader = DataLoader(
                 train_dataset,
@@ -86,12 +109,12 @@ class DataPreparationFactory:
 class BaseDataPreparation:
 
     def __init__(
-        self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+        self, df_sig, df_bkg, batch_size, train_ratio, value_threshold, features_or_fvectors
     ):
         self.df_sig = df_sig
         self.df_bkg = df_bkg
+        self.features_or_fvectors = features_or_fvectors
         self.batch_size = batch_size
-        self.features = features
         self.train_ratio = train_ratio
         self.value_threshold = value_threshold
 
@@ -121,8 +144,18 @@ class BaseDataPreparation:
         - y: PyTorch tensor containing concatenated target values (1 for signal, 0 for background)
         """
         logging.info("Converting to Tensors...")
-        X_sig = torch.tensor(self.df_sig[self.features].values, dtype=torch.float32)
-        X_bkg = torch.tensor(self.df_bkg[self.features].values, dtype=torch.float32)
+
+        if isinstance(self.features_or_fvectors, list):
+            logging.info("Using the pre-defined features...")
+            # use the pre-defined features
+            X_sig = torch.tensor(self.df_sig[self.features_or_fvectors].values, dtype=torch.float32)
+            X_bkg = torch.tensor(self.df_bkg[self.features_or_fvectors].values, dtype=torch.float32)
+        else:
+            logging.info("Using the constructed four-vectors...")
+            # Use the constructed four-vectors
+            X_sig = torch.tensor(self.df_sig, dtype=torch.float32)
+            X_bkg = torch.tensor(self.df_bkg, dtype=torch.float32)
+
 
         logging.info(
             f"Removing small values at {self.value_threshold} threshold value..."
@@ -207,7 +240,7 @@ class BaseDataPreparation:
         logging.info(f"Sample label shape before (train_dataset): {sample_label.shape}")
 
         train_dataset, val_dataset = self.normalize_data(train_dataset, val_dataset)
-        # After normalization DEBUG
+
         sample_data, sample_label = train_dataset[0]
 
         logging.info(f"Sample data shape after (train_dataset): {sample_data.shape}")
@@ -229,16 +262,16 @@ class FFDataPreparation(BaseDataPreparation):
         df_sig (pandas.DataFrame): The signal dataset.
         df_bkg (pandas.DataFrame): The background dataset.
         batch_size (int): The batch size for training.
-        features (list): A list of feature names.
         train_ratio (float, optional): The ratio of training data to total data.
         value_threshold (float, optional): The threshold for removing small values in the input data.
+        features_or_fvectors (list or numpy.ndarray): A list of feature names or four-vectors.
     """
 
     def __init__(
-        self, df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+        self, df_sig, df_bkg, batch_size, train_ratio, value_threshold, features_or_fvectors
     ):
         super().__init__(
-            df_sig, df_bkg, batch_size, features, train_ratio, value_threshold
+            df_sig, df_bkg, batch_size, train_ratio, value_threshold, features_or_fvectors
         )
 
 

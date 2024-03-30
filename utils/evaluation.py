@@ -67,7 +67,10 @@ class ModelEvaluator:
         with torch.no_grad():
             for inputs, labels in self.val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
-                outputs = self.model(inputs)
+                if self.model.__class__.__name__ == "TransformerClassifier2":
+                    outputs = self.model(inputs, inputs)  # pass inputs twice for x and x_coords
+                else:
+                    outputs = self.model(inputs)
                 scores = torch.sigmoid(outputs).cpu().numpy()
                 predicted = (outputs > 0.5).float()
                 total += labels.size(0)

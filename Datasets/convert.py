@@ -176,6 +176,14 @@ class DataImporter(object):
                 "jet_e",
                 "jet_eta",
                 "jet_phi",
+                # "el_pt",
+                # "el_e",
+                # "el_eta",
+                # "el_phi",
+                # "mu_pt",
+                # "mu_e",
+                # "mu_eta",
+                # "mu_phi",
                 "jet_tagWeightBin_DL1r_Continuous",
                 "jet_eta_softmu_corr",
                 "jet_pt_softmu_corr",
@@ -228,7 +236,7 @@ class DataImporter(object):
                 key="IndividualFiles/%s" % filepath.split("/")[-1].replace(".", "_"),
             )
             print(f"INFO: Appending DataFrame to 'df' in the store...")
-            self.store.append("df", df)
+            self.store.append("df", df, min_itemsize=16)
             print(f"INFO: Finished processing {filename}.")
         else:
             print(

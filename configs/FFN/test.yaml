@@ -8,18 +8,14 @@
 # Model Block #
 #=============#
 model:
-  name: 'TransformerClassifier2'
-  input_dim: 5
-  d_model: 128
-  nhead: 4
-  num_encoder_layers: 4
-
+  name: 'ResidualComplexNN'
+  input_dim: 11
 #============#
 # Data Block #
 #============#
 data:
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/30_03_24/ttH_4vec_dev_250k_10j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/30_03_24/ttbb_4vec_dev_250k_10j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/full/10_03_24/ttH/ttH_AFII.h5
+  background_path: /scratch4/levans/tth-network/Datasets/full/10_03_24/ttbb/ttbb_AFII.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -34,67 +30,28 @@ Network_type:
 # Feature Block #
 #===============#
 features:
-  - jet_pt_1
-  - jet_pt_2
-  - jet_pt_3
-  - jet_pt_4
-  - jet_pt_5
-  - jet_pt_6
-  - jet_pt_7
-  - jet_pt_8
-  - jet_pt_9
-  - jet_pt_10
-  - jet_eta_1
-  - jet_eta_2
-  - jet_eta_3
-  - jet_eta_4
-  - jet_eta_5
-  - jet_eta_6
-  - jet_eta_7
-  - jet_eta_8
-  - jet_eta_9
-  - jet_eta_10
-  - jet_phi_1
-  - jet_phi_2
-  - jet_phi_3
-  - jet_phi_4
-  - jet_phi_5
-  - jet_phi_6
-  - jet_phi_7
-  - jet_phi_8
-  - jet_phi_9
-  - jet_phi_10
-  - jet_e_1
-  - jet_e_2
-  - jet_e_3
-  - jet_e_4
-  - jet_e_5
-  - jet_e_6
-  - jet_e_7
-  - jet_e_8
-  - jet_e_9
-  - jet_e_10
-  - mu_pt
-  - mu_eta
-  - mu_phi
-  - mu_e
-  - el_pt
-  - el_eta
-  - el_phi
-  - el_e
-  - nElectrons
-  - nMuons
+  - dRbb_avg_Sort4
+  - HT_all
+  - met_met
+  - mwt_mwt
+  - H0_all
+  - H1_all
+  - H2_jets
+  - dRlj_MindR
+  - dRlepbb_MindR_70
+  - Centrality_all
+  - dEtabb_MaxdEta_70
 
 #===================#
 # Preparation Block #
 #===================#
 preparation:
-  feature_maker: True
+  feature_maker: False
   feature_type: '4-vectors'
   max_particles: 5
   n_leptons: 1
   append_four_vectors: False
-  use_four_vectors: True
+  use_four_vectors: False
 
 #================#
 # Training Block #
@@ -112,8 +69,8 @@ training:
   balance_classes: True
   criterion: 'BCELoss'
   use_cosine_burnin: True
-  lr_init: 1e-9
-  lr_max: 1e-5
+  lr_init: 1e-5
+  lr_max: 1e-2
   lr_final: 1e-7
   burn_in: 5
   ramp_up: 10
@@ -126,6 +83,6 @@ training:
 #==================#
 evaluation:
   use_saved_model: False
-  saved_model_path: /scratch4/levans/tth-network/models/outputs/model.pt
+  #saved_model_path: /scratch4/levans/tth-network/models/outputs/model.pt
 
 # --------------------------------------------------------------------------------------

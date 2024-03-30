@@ -10,6 +10,8 @@ Datasets/graphs
 Datasets/basic
 Datasets/full
 Datasets/test
+Datasets/dev_configs
+Datasets/dev
 
 # all state dict and model files
 models/outputs
@@ -20,9 +22,9 @@ __pycache__/
 models/__pycache__
 utils/__pycache__
 
-
 # enviroment
 MLenv/*
 
 # extra
 tips.txt
+Worklog.md

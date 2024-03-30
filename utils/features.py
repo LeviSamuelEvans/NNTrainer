@@ -1,15 +1,15 @@
-# Future script to perform feature engineering on the original data
 import numpy as np
 import pandas as pd
+import ast
+import logging
 
 """
 TODO:
-    - particle 4-vectors (jets,leptons) (legacy transformer)
     - Higgs decay angles (use bitwise operations of truth matching) (old CMS BDT for ttH)
         - boost to rest frame of Higgs
         - boost to rest frame of top (and take left-over)
     - Jet substructure variables
-    - Energy flow correlations (no clue: https://arxiv.org/pdf/1305.0007.pdf; 
+    - Energy flow correlations (no clue: https://arxiv.org/pdf/1305.0007.pdf;
       https://jduarte.physics.ucsd.edu/iaifi-summer-school/1.1_tabular_data_efps.html)
     - 2neutrino scanning method (https://indico.cern.ch/event/1032082/#2-dilepton-ttbar-reconstruction)
     - Extra Fox-Wolfram moments (https://arxiv.org/pdf/1212.4436.pdf)
@@ -20,6 +20,26 @@ matching_objects = ["H", "b_had_top", "b_lep_top", "W"]
 
 
 class FeatureFactory:
+    @staticmethod
+    def extract_features(config_dict, signal_data, background_data):
+        signal_fvectors = None
+        background_fvectors = None
+
+        if config_dict["preparation"]["feature_maker"]:
+            feature_config = config_dict["preparation"]
+            if feature_config["feature_type"] == "4-vectors":
+                logging.info("Proceeding to construct the four-vectors of the objects..")
+                feature_maker = FeatureFactory.make(
+                    max_particles=feature_config["max_particles"],
+                    n_leptons=feature_config["n_leptons"],
+                    extra_feats=feature_config.get("extra_feats"),
+                )
+                signal_fvectors = feature_maker.get_four_vectors(signal_data)
+                background_fvectors = feature_maker.get_four_vectors(background_data)
+                logging.info("Four-vectors successfully constructed!")
+
+        return signal_fvectors, background_fvectors
+
     @staticmethod
     def make(max_particles, n_leptons, extra_feats=None):
         return FeatureMaker(max_particles, n_leptons, extra_feats)
@@ -78,7 +98,13 @@ class FeatureMaker:
                 sample["mu_" + array_name],
             )
         ):
+            # convert the string representation of the arrays to actual arrays
+            el_data = ast.literal_eval(el_data)
+            mu_data = ast.literal_eval(mu_data)
+
+            # get the total number of leptons
             n_leptons = n_electrons + n_muons
+
             # make sure we have the right number of leptons
             assert n_leptons == self.n_leptons
             out[i, :n_electrons] = el_data[:n_electrons]
