@@ -1,5 +1,5 @@
 - Version 0.4 dev
-
+    - added sets based transformer
 
 - Version 0.3
     - update scheduler and annealing functions options

@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import logging
+import re
 import matplotlib.pyplot as plt
 import numpy as np
 import mplhep as hep
@@ -230,7 +231,7 @@ class Trainer:
         with torch.no_grad():
             for inputs, labels in self.val_loader:
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                if self.model.__class__.__name__ == "TransformerClassifier2":
+                if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
                     outputs = self.model(inputs, inputs)
                 else:
                     outputs = self.model(inputs)
@@ -333,7 +334,7 @@ class Trainer:
                 elif self.network_type in ["FFNN"]:
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
-                    if self.model.__class__.__name__ == "TransformerClassifier2":
+                    if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
                         outputs = self.model(inputs, inputs)
                     else:
                         outputs = self.model(inputs)
@@ -386,7 +387,7 @@ class Trainer:
                 else:
                     for inputs, labels in self.val_loader:
                         inputs, labels = inputs.to(self.device), labels.to(self.device)
-                        if self.model.__class__.__name__ == "TransformerClassifier2":
+                        if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
                             outputs = self.model(inputs, inputs)
                         else:
                             outputs = self.model(inputs)

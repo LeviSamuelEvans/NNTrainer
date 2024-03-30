@@ -27,10 +27,11 @@ def print_config_summary(config):
     logging.info("Model Configuration:")
     logging.info("- Model Name: {}".format(config["model"]["name"]))
     logging.info("- Input Dimension: {}".format(config["model"]["input_dim"]))
-    if re.match(r"^TransformerClassifier\d+$", config["model"]["name"]):
+    if re.search(r"transformer", config["model"]["name"], re.IGNORECASE):
         logging.info("- d_model: {}".format(config["model"]["d_model"]))
         logging.info("- nhead: {}".format(config["model"]["nhead"]))
         logging.info("- num_encoder_layers: {}".format(config["model"]["num_encoder_layers"]))
+        logging.info("- dropout: {}".format(config["model"]["dropout"]))
 
     # = Data Configuration =
     logging.info("Data Configuration:")
