@@ -127,7 +127,7 @@ class DataPlotter:
 
         # Compute the correlation matrix
         corr_matrix = data[self.features].corr()
-        print(corr_matrix, "Correlation matrix:")
+        #print(corr_matrix, "Correlation matrix:")
 
         # Plot the heatmap
         plt.figure(figsize=(10, 8))  # Adjust the size as needed

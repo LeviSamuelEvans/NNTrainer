@@ -3,12 +3,6 @@ import torch.nn as nn
 import math
 
 
-# hard-coded for now
-d_model = 128  # model dimensions
-nhead = 4  # the number of heads in the multiheadattention models
-num_layers = 4  # the number of sub-encoder-layers in the encoder
-
-
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1):
         super(PositionalEncoding, self).__init__()
@@ -88,17 +82,14 @@ class TransformerClassifier1(nn.Module):
             torch.Tensor: Output tensor of shape (batch_size, 1).
 
         """
-        x = x.unsqueeze(0)
-        x = self.input_embedding(x)
-        x = self.pos_encoder(x)
-        x = self.transformer_encoder(x)
 
-        # using global average pooling over the sequence dimension
+        x = self.input_embedding(x)  # notes: embed input features to d_model dimensions
+        x = self.pos_encoder(x)      # notes: apply positional encoding
+        x = self.transformer_encoder(x)  # notes: pass through transformer encoder
+
+        # global average pooling over the sequence dimension (i.e. using mean)
         x = x.mean(dim=1)
-        output = output.view(-1, 1)
-        output = self.classifier(x)
+        x = self.classifier(x)
 
-        # if not using global average pooling
-        # output = self.classifier(x.view(-1, d_model))
+        return x
 
-        return output

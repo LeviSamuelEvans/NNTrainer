@@ -3,6 +3,12 @@ import torch.nn as nn
 import math
 import numpy as np
 
+"""
+Notes: x_coords represents the coordinate features of the objects in the higher dimensional space,
+that preserves Lorentz invariance.
+
+"""
+
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, dropout=0.1):
@@ -56,24 +62,35 @@ class LorentzInvariantAttention(nn.Module):
 
     def innerprod(self, x1, x2):
         return torch.sum(
-            torch.mul(torch.matmul(x1, self.minkowski), x2), 2, keepdim=True
+            torch.mul(torch.matmul(x1, self.minkowski), x2), dim=-1, keepdim=True
         )
 
     def forward(self, x, x_coords):
+        # ensure metric is on same device as 4-vecs
+        self.minkowski = self.minkowski.to(x_coords.device)
+
+        innerprod_result = self.innerprod(x_coords, x_coords)
+        psi_innerprod_result = self.psi(innerprod_result)
+        diff_coords = x_coords[:, None, :] - x_coords[:, :, None]
+        innerprod_diff_coords = self.innerprod(diff_coords, diff_coords)
+
+        diag_innerprod_diff_coords = torch.diagonal(
+            innerprod_diff_coords, dim1=-2, dim2=-1
+        )
+        diag_innerprod_diff_coords = diag_innerprod_diff_coords.transpose(-1, -2)
+        psi_diag_innerprod_diff_coords = self.psi(diag_innerprod_diff_coords)
+
         x_lorentz = torch.cat(
             [
-                self.innerprod(x_coords, x_coords),
-                self.innerprod(x_coords, x_coords),
-                self.psi(self.innerprod(x_coords, x_coords)),
-                self.psi(
-                    self.innerprod(
-                        x_coords[:, None, :] - x_coords[:, :, None],
-                        x_coords[:, None, :] - x_coords[:, :, None],
-                    )
-                ),
+                innerprod_result,
+                innerprod_result,
+                psi_innerprod_result,
+                psi_diag_innerprod_diff_coords.transpose(-1, -2),
             ],
             dim=-1,
         )
+        # repeat x_lorentz to match the shape of x
+        x_lorentz = x_lorentz.repeat(1, 1, x.shape[-1] // x_lorentz.shape[-1])
         x = x + x_lorentz
         return self.self_attn(x, x, x)[0]
 
@@ -89,7 +106,7 @@ class TransformerClassifier2(nn.Module):
             dim_feedforward=2048,
             dropout=dropout,
             batch_first=True,
-            norm_first=True,
+            norm_first=False,
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers)
         self.attention = LorentzInvariantAttention(d_model, nhead, dropout)

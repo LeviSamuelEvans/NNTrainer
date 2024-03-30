@@ -15,7 +15,7 @@ import logging
 from utils.config_utils import print_config_summary, print_intro
 from utils.cli import handleCommandLineArgs
 from utils.logging import configure_logging
-from models.importer import load_networks_from_directory
+from models.importer import NetworkImporter
 from utils import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
 from utils.train import Trainer, plot_losses, plot_accuracy, plot_lr
 from utils.evaluation import ModelEvaluator
@@ -69,23 +69,17 @@ def main(config, config_path):
             global_features_background,
             labels_background,
         ) = loaded_data
-    print(loaded_data)
 
-    # fe_config = config_dict['feature_engineering']
+    # extract features using the FeatureFactory
+    signal_fvectors, background_fvectors = FeatureFactory.extract_features(config_dict, signal_data, background_data)
 
-    # feature_maker = FeatureFactory.make(max_particles=fe_config['max_particles'],
-    #                                     n_leptons=fe_config['n_leptons'],
-    #                                     extra_feats=fe_config.get('extra_feats'))
-
-    # signal_fvectors = feature_maker.get_four_vectors(signal_data)
-    # background_fvectors = feature_maker.get_four_vectors(background_data)
-
-    ### NOW need to link into data preparation...
-
+    # prepare the data using the PreparationFactory
     train_loader, val_loader = PreparationFactory.prep_data(
         network_type,
         loaded_data,
         config_dict,
+        signal_fvectors,
+        background_fvectors,
     )
 
     ################################################
@@ -105,40 +99,19 @@ def main(config, config_path):
     ################################################
     ################################################
 
-    # Load the models from the models directory
-    all_networks = load_networks_from_directory("models/networks")
-    input_dim = len(config["features"])  # Number of input features from the config file
-    model_name = config["model"]["name"]
-
-    if model_name in all_networks:
-        model_class = all_networks[model_name]
-        if model_name == "LorentzInteractionNetwork":
-            print(
-                f"About to instantiate class {model_class} defined in {model_class.__module__}"
-            )
-            model = model_class()
-        elif model_name == "TransformerClassifier1" or model_name == "TransformerClassifier2":
-            print(
-                f"About to instantiate class {model_class} defined in {model_class.__module__}"
-            )
-            model = model_class(input_dim, 128, 4, 4)
-        else:
-            model = model_class(input_dim)
-    else:
-        logging.error(
-            f"Model '{model_name}' not found. Available models are: {list(all_networks.keys())}"
-        )
-        return
+    # Load the models from the models directory and create the model using the NetworkImporter
+    network_importer = NetworkImporter("models")
+    model = network_importer.create_model(config)
 
     # Debug before training
     logging.info(f"Checking if train_loader is iterable.")
     try:
-        first_batch = next(iter(train_loader))
-        logging.info(f"First batch successfully retrieved: {first_batch}")
+        first_batch = next(iter(train_loader)) # if we want to add a debug print statement here we can use this
+        logging.info(f"First batch successfully retrieved:")
     except Exception as e:
         logging.error(f"Failed to iterate over train_loader: {e}")
 
-    logging.info(f"Model '{model_name}' loaded. Starting training.")
+    logging.info(f"Model '{config['model']['name']}' loaded. Starting training.")
 
     ################################################
     ################################################
@@ -174,7 +147,7 @@ def main(config, config_path):
     )
 
     logging.info(
-        f"Training model '{model_name}' for {config['training']['num_epochs']} epochs."
+        f"Training model '{config['model']['name']}' for {config['training']['num_epochs']} epochs."
     )
 
     trainer.train_model()
@@ -208,10 +181,18 @@ def main(config, config_path):
 
 
 if __name__ == "__main__":
+
     configure_logging()  # Set up logging
-    all_networks = load_networks_from_directory(
-        "models"
-    )  # Load the models from the models directory
-    logging.debug(all_networks)  # Print the dictionary of models
-    config, config_path = handleCommandLineArgs()  # Handle command line arguments
-    main(config, config_path)  # Call the main function
+
+    network_importer = NetworkImporter("models")
+
+    # load the models from the models directory
+    all_networks = network_importer.load_networks_from_directory()
+
+    # print the dictionary of models
+    logging.debug(all_networks)
+
+    config, config_path = handleCommandLineArgs()
+
+    # call main
+    main(config, config_path)

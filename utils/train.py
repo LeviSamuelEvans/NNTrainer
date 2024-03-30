@@ -89,12 +89,12 @@ class Trainer:
             "cuda:0" if torch.cuda.is_available() else "cpu"
         )  # Use GPU if available
 
-        print(f"Network Type: {network_type}")
+        #print(f"Network Type: {network_type}")
         # If using a GNN or the LEGNNs, we need to use the GeoDataLoader!
         if network_type in ["GNN", "LENN"]:
             self.train_loader = GeoDataLoader(train_loader, shuffle=True)
             self.val_loader = GeoDataLoader(val_loader, shuffle=False)
-            print(f"Initial train_loader type: {type(self.train_loader)}")  # DEBUG
+            #print(f"Initial train_loader type: {type(self.train_loader)}")  # DEBUG
         else:
             self.train_loader = train_loader
             self.val_loader = val_loader
@@ -132,7 +132,7 @@ class Trainer:
 
         if self.balance_classes == True:
             if self.network_type in ["GNN", "LENN"]:
-                print("Verifying Train DataLoader...")
+                #print("Verifying Train DataLoader...")
                 all_labels = gather_all_labels(train_loader, self.device)
                 pos_weight = compute_class_weights(all_labels)
                 pos_weight = pos_weight.to(self.device)
@@ -194,7 +194,7 @@ class Trainer:
         Returns:
         - class_weights (torch.Tensor): Computed class weights.
         """
-        print("Computing class weights...")
+        logging.info("Computing class weights...")
         y_np = y.numpy().squeeze()  # Convert tensor to numpy array
         classes_array = np.array([0, 1])  # Explicitly create a numpy array for classes
         class_weights = compute_class_weight("balanced", classes=classes_array, y=y_np)
@@ -230,7 +230,10 @@ class Trainer:
         with torch.no_grad():
             for inputs, labels in self.val_loader:
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                outputs = self.model(inputs)
+                if self.model.__class__.__name__ == "TransformerClassifier2":
+                    outputs = self.model(inputs, inputs)
+                else:
+                    outputs = self.model(inputs)
                 loss = self.criterion(outputs, labels)
                 val_epoch_loss += loss.item() * inputs.size(0)
         val_epoch_loss /= len(self.val_loader.dataset)
@@ -262,7 +265,6 @@ class Trainer:
         logging.info(f"Burn-in Cosine Scheduler: {self.cosine_scheduler}")
         logging.info(f"Initial learning-rate: {self.lr}")
         logging.info(f"Early Stopping: {self.early_stopping}")
-
         logging.info("Training model...")
         start_time = time.time()  # Start time of training
         logging.info(f"Training for {self.num_epochs} epochs...")
@@ -331,7 +333,10 @@ class Trainer:
                 elif self.network_type in ["FFNN"]:
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
-                    outputs = self.model(inputs)
+                    if self.model.__class__.__name__ == "TransformerClassifier2":
+                        outputs = self.model(inputs, inputs)
+                    else:
+                        outputs = self.model(inputs)
                     loss = self.criterion(outputs, labels)
                 else:
                     raise ValueError(f"Unsupported network type: {self.network_type}")
@@ -381,12 +386,15 @@ class Trainer:
                 else:
                     for inputs, labels in self.val_loader:
                         inputs, labels = inputs.to(self.device), labels.to(self.device)
-                        probabilities = torch.sigmoid(
-                            outputs
-                        )  # Convert logits to probabilities!
+                        if self.model.__class__.__name__ == "TransformerClassifier2":
+                            outputs = self.model(inputs, inputs)
+                        else:
+                            outputs = self.model(inputs)
+                        # squeeze the output to remove the extra singleton dimensions
+                        probabilities = torch.sigmoid(outputs).squeeze()  # Convert logits to probabilities!
                         predicted = torch.round(probabilities)
-                val_correct += (predicted == labels).sum().item()
-                val_total += labels.size(0)
+                        val_correct += (predicted == labels).sum().item()
+                        val_total += labels.size(0)
 
                 # Store the predicted scores and true labels
                 self.val_labels_list.extend(labels.cpu().numpy())
