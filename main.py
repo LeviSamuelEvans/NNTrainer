@@ -22,16 +22,18 @@ from utils.evaluation import ModelEvaluator
 
 
 def main(config, config_path):
-    """
-    This function loads the data, prepares the data loaders, defines the model,
-    trains the model, and optionally evaluates the model.
+    """Load the data, prepare the data loaders, define the model, train the model, and optionally evaluate the model.
 
-    Args:
-        config (namedtuple): A named tuple containing the configuration parameters for the program.
-        config_path (str): The path to the configuration file.
+    Parameters
+    ----------
+    config : dict
+        A dictionary containing the configuration parameters for the program.
+    config_path : str
+        The path to the configuration file.
 
-    Returns:
-        None
+    Returns
+    -------
+    None
     """
 
     # Print the program intro
