@@ -3,12 +3,35 @@ from torch.optim.lr_scheduler import _LRScheduler
 import math
 
 """
-Heavily inspired from implementation by Chris Scheulen found here: 
+Heavily inspired from implementation by Chris Scheulen found here:
 https://gitlab.cern.ch/utils_chscheul/naf_utils/neural-network-for-tthbb/-/blob/main/utils/lr_schedules.py?ref_type=heads
 """
 
 
 class CosineRampUpDownLR(_LRScheduler):
+    """Cosine learning rate scheduler with burn-in, ramp-up, plateau, and ramp-down phases.
+
+    Parameters
+    ----------
+    optimizer : torch.optim.Optimizer
+        The optimizer for which to schedule the learning rate.
+    lr_init : float, optional
+        The initial learning rate during the burn-in phase. Default is 1e-8.
+    lr_max : float, optional
+        The maximum learning rate during the plateau phase. Default is 1e-5.
+    lr_final : float, optional
+        The final learning rate at the end of the ramp-down phase. Default is 1e-7.
+    burn_in : int, optional
+        The number of epochs for the burn-in phase. Default is 10.
+    ramp_up : int, optional
+        The number of epochs for the ramp-up phase. Default is 10.
+    plateau : int, optional
+        The number of epochs for the plateau phase. Def
+    ramp_down : int, optional
+        The number of epochs for the ramp-down phase. Default is 100.
+    last_epoch : int, optional
+        The index of the last epoch. Default is -1.
+    """
     def __init__(
         self,
         optimizer,
@@ -34,6 +57,13 @@ class CosineRampUpDownLR(_LRScheduler):
         super(CosineRampUpDownLR, self).__init__(optimizer, last_epoch)
 
     def get_lr(self):
+        """Compute the learning rate based on the current epoch.
+
+        Returns
+        -------
+        list
+            A list of learning rates, one for each parameter group.
+        """
         if self.last_epoch < self.burn_in:
             return [self.lr_init for _ in self.base_lrs]
 

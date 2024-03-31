@@ -1,4 +1,4 @@
-# Future class to perform data augmentation on the original data
 class DataAugmentation:
+    """ future class for implementing data augmentation methods"""
     def __init__(self) -> None:
         pass

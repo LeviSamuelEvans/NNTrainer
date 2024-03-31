@@ -20,14 +20,18 @@ TODO:
 
 
 class ModelEvaluator:
-    def __init__(self, config, model, val_loader=None):
-        """
-        Initializes the ModelEvaluator with the given model and validation DataLoader.
+    """Class to evaluate a trained model on the validation set.
 
-        Args:
-            model: The trained PyTorch model to evaluate.
-            val_loader: DataLoader for the validation dataset.
-        """
+    Attributes:
+    -----------
+        config:
+            The configuration dictionary.
+        model:
+            The trained model.
+        val_loader:
+            DataLoader for the validation data.
+    """
+    def __init__(self, config, model, val_loader=None):
         self.config = config
         self.val_loader = val_loader
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -43,16 +47,16 @@ class ModelEvaluator:
             )
 
     def evaluate_model(self):
-        """
-        Evaluate the model on the validation set.
-
-        Args:
-            model: Trained model.
-            val_loader: DataLoader for validation data.
+        """Evaluate the model on the validation set.
 
         Returns:
-            accuracy: Accuracy of the model on the validation set.
-            roc_auc: Area under the ROC curve.
+        -----------
+            accuracy:
+                Accuracy of the model on the validation set.
+            roc_auc:
+                Area under the ROC curve.
+            average_precision:
+                Average precision score.
         """
         self.model.eval()
         correct = 0

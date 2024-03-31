@@ -3,16 +3,16 @@ import yaml
 from collections import namedtuple
 
 
-def handleCommandLineArgs():
-    # Create the ArgumentParser
+def handleCommandLineArgs()-> namedtuple:
+    """This function handles the command line arguments passed to the program."""
     parser = argparse.ArgumentParser(
         description="Nerual Network for ttH/tt Classification", add_help=True
     )
 
-    # Define the custom usage message
+    # the custom usage message
     parser.usage = "./main.py --config /path/to/config.yaml"
 
-    # Add an argument for the YAML configuration file
+    # path to the configuration file
     parser.add_argument(
         "-c", "--config", help="Path to the YAML configuration file.", required=True
     )

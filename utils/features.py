@@ -20,15 +20,56 @@ matching_objects = ["H", "b_had_top", "b_lep_top", "W"]
 
 
 class FeatureFactory:
+    """
+    A class that provides methods for extracting features from input samples.
+
+    Methods
+    -------
+    extract_features(config_dict, signal_data, background_data)
+        Extract features from signal and background data based on the configuration.
+    make(max_particles, n_leptons, extra_feats=None)
+        Create an instance of the FeatureMaker class.
+
+    Attributes
+    ----------
+    max_particles : int
+        The maximum number of particles.
+    n_leptons : int
+        The number of leptons.
+    extra_feats : list
+        A list of extra features to include.
+    """
     @staticmethod
     def extract_features(config_dict, signal_data, background_data):
+        """Extract features from signal and background data based on the configuration.
+
+        Parameters
+        ----------
+        config_dict : dict
+            The configuration dictionary containing feature extraction settings.
+        signal_data : numpy.ndarray
+            The signal data.
+        background_data : numpy.ndarray
+            The background data.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the extracted signal and background four-vectors.
+                signal_fvectors : numpy.ndarray
+                    The extracted signal four-vectors.
+                background_fvectors : numpy.ndarray
+                    The extracted background four-vectors.
+        """
         signal_fvectors = None
         background_fvectors = None
 
         if config_dict["preparation"]["feature_maker"]:
             feature_config = config_dict["preparation"]
             if feature_config["feature_type"] == "4-vectors":
-                logging.info("Proceeding to construct the four-vectors of the objects..")
+                logging.info(
+                    "Proceeding to construct the four-vectors of the objects.."
+                )
                 feature_maker = FeatureFactory.make(
                     max_particles=feature_config["max_particles"],
                     n_leptons=feature_config["n_leptons"],
@@ -42,6 +83,22 @@ class FeatureFactory:
 
     @staticmethod
     def make(max_particles, n_leptons, extra_feats=None):
+        """Create an instance of the FeatureMaker class.
+
+        Parameters
+        ----------
+        max_particles : int
+            The maximum number of particles.
+        n_leptons : int
+            The number of leptons.
+        extra_feats : list, optional
+            A list of extra features to include. Defaults to None.
+
+        Returns
+        -------
+        FeatureMaker
+            An instance of the FeatureMaker class.
+        """
         return FeatureMaker(max_particles, n_leptons, extra_feats)
 
 
@@ -49,18 +106,14 @@ class FeatureMaker:
     """
     A class that provides methods for computing features from input samples.
 
-    Args:
-        max_particles (int): The maximum number of particles.
-        n_leptons (int): The number of leptons.
-        extra_feats (list, optional): A list of extra features to include. Defaults to None.
-
-    Methods:
-        compute_lepton_arrays(sample, array_name):
-            Computes the lepton arrays from the input sample.
-
-        get_four_vectors(sample):
-            Computes the four vectors and extra features from the input sample.
-
+    Attributes
+    ----------
+    max_particles : int
+        The maximum number of particles.
+    n_leptons : int
+        The number of leptons.
+    extra_feats : list, optional
+        A list of extra features to include. Defaults to None.
     """
 
     def __init__(self, max_particles, n_leptons, extra_feats=None):
@@ -69,23 +122,41 @@ class FeatureMaker:
         self.extra_feats = extra_feats if extra_feats else []
 
     def get_jet_features(self, sample, feature_name, max_jets):
-        # get all the jet features from our input files
-        ## FUTURE -> move to mutli-dim h5 file as will be easier and neater
+        """Get jet features from the input sample.
+
+        Parameters
+        ----------
+        sample : numpy.ndarray
+            The input sample.
+        feature_name : str
+            The name of the jet feature.
+        max_jets : int
+            The maximum number of jets.
+
+        Returns
+        -------
+        numpy.ndarray
+            The jet features.
+        """
+        # TODO: move to multi-dim arrays
         feature_columns = [f"{feature_name}_{i+1}" for i in range(max_jets)]
         jet_features = sample[feature_columns].values
         return jet_features
 
     def compute_lepton_arrays(self, sample, array_name):
-        """
-        Computes the lepton arrays from the input sample.
+        """Compute lepton arrays from the input sample.
 
-        Args:
-            sample (numpy.ndarray): The input sample.
-            array_name (str): The name of the array to compute.
+        Parameters
+        ----------
+        sample : numpy.ndarray
+            The input sample.
+        array_name : str
+            The name of the array to compute.
 
-        Returns:
-            numpy.ndarray: The computed lepton arrays.
-
+        Returns
+        -------
+        numpy.ndarray
+            The computed lepton arrays.
         """
         # create an empty array of shape (n_samples, n_leptons)
         out = np.full((len(sample), self.n_leptons), np.nan)
@@ -112,15 +183,17 @@ class FeatureMaker:
         return out
 
     def get_four_vectors(self, sample):
-        """
-        Computes the four vectors and extra features from the input sample.
+        """Compute four-vectors and extra features from the input sample.
 
-        Args:
-            sample (numpy.ndarray): The input sample.
+        Parameters
+        ----------
+        sample : numpy.ndarray
+            The input sample.
 
-        Returns:
-            numpy.ndarray: The computed four vectors and extra features.
-
+        Returns
+        -------
+        numpy.ndarray
+            The computed four-vectors and extra features.
         """
         # lepton info
         lep_pt = self.compute_lepton_arrays(sample, "pt")
@@ -162,4 +235,4 @@ class FeatureMaker:
         return four_vectors
 
     def get_matched_objetcs():
-        return None  # TODO -> implement this method for the Higgs decay angles
+        return None  # TODO: implement method (for the Higgs decay angles and other matching tasks)

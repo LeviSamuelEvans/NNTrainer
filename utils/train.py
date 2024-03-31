@@ -23,6 +23,20 @@ logging.basicConfig(level=logging.INFO)
 
 
 def gather_all_labels(loader, device):
+    """Gathers all labels from the given data loader and concatenates them into a single tensor.
+
+    Parameters:
+    -----------
+        loader : torch.utils.data.DataLoader
+            The data loader containing the labeled data.
+        device : torch.device
+            The device to move the labels to.
+
+    Returns:
+    --------
+        torch.Tensor
+            A tensor containing all the labels concatenated along the specified dimension.
+    """
     all_labels = []
     for data in loader:
         labels = data.y.to(device)
@@ -31,8 +45,18 @@ def gather_all_labels(loader, device):
 
 
 def compute_class_weights(all_labels):
-    """for graphs"""
-    # for binary class initially
+    """Compute class weights for binary classification.
+
+    Parameters:
+    -----------
+        all_labels : torch.Tensor
+            Tensor containing all the labels.
+
+    Returns:
+    --------
+        torch.Tensor
+            Tensor containing the class weights.
+    """
     positive_examples = float((all_labels == 1).sum())
     negative_examples = float((all_labels == 0).sum())
     pos_weight = negative_examples / positive_examples
@@ -40,22 +64,58 @@ def compute_class_weights(all_labels):
 
 
 class Trainer:
-    """
-    A class used to train a PyTorch model(s).
+    """A class used to train a PyTorch model(s).
 
-    Args:
-        model (torch.nn.Module): The PyTorch model to be trained.
-        train_loader (torch.utils.data.DataLoader): The data loader for the training set.
-        val_loader (torch.utils.data.DataLoader): The data loader for the validation set.
-        num_epochs (int): The number of epochs to train the model for.
-        lr (float): The learning rate for the optimizer.
-        weight_decay (float): The weight decay for the optimizer.
-        patience (int): The number of epochs to wait before reducing the learning rate.
-        early_stopping (bool, optional): Whether to use early stopping. Defaults to False.
-        use_scheduler (bool, optional): Whether to use a learning rate scheduler. Defaults to False.
-        factor (float, optional): The factor by which to reduce the learning rate. Defaults to None.
-        initialise_weights (bool, optional): Whether to initialise the weights of the model. Defaults to False.
-        class_weights (torch.Tensor, optional): The class weights to use for the loss function. Defaults to None.
+    Attributes
+    ----------
+    model : torch.nn.Module
+        The PyTorch model to be trained.
+    train_loader : torch.utils.data.DataLoader
+        The data loader for the training set.
+    val_loader : torch.utils.data.DataLoader
+        The data loader for the validation set.
+    num_epochs : int
+        The number of epochs to train the model for.
+    lr : float
+        The learning rate for the optimizer.
+    weight_decay : float
+        The weight decay for the optimizer.
+    patience : int
+        The number of epochs to wait before reducing the learning rate.
+    criterion : torch.nn.Module
+        The loss function to be used for training.
+    early_stopping : bool, optional
+        Whether to use early stopping. Defaults to False.
+    use_scheduler : bool, optional
+        Whether to use a learning rate scheduler. Defaults to False.
+    scheduler : torch.optim.lr_scheduler._LRScheduler, optional
+        The learning rate scheduler to be used. Defaults to None.
+    factor : float, optional
+        The factor by which to reduce the learning rate. Defaults to None.
+    initialise_weights : bool, optional
+        Whether to initialise the weights of the model. Defaults to False.
+    class_weights : torch.Tensor, optional
+        The class weights to use for the loss function. Defaults to None.
+    balance_classes : bool, optional
+        Whether to balance the classes during training. Defaults to False.
+    network_type : str, optional
+        The type of neural network being trained. Defaults to None.
+    use_cosine_burnin : bool, optional
+        Whether to use cosine annealing with burn-in for learning rate scheduling. Defaults to False.
+    lr_init : float, optional
+        The initial learning rate for cosine annealing. Defaults to 1e-8.
+    lr_max : float, optional
+        The maximum learning rate for cosine annealing. Defaults to 1e-3.
+    lr_final : float, optional
+        The final learning rate for cosine annealing. Defaults to 1e-5.
+    burn_in : int, optional
+        The number of burn-in epochs for cosine annealing. Defaults to 5.
+    ramp_up : int, optional
+        The number of ramp-up epochs for cosine annealing. Defaults to 10.
+    plateau : int, optional
+        The number of plateau epochs for cosine annealing. Defaults to 15.
+    ramp_down : int, optional
+        The number of ramp-down epochs for cosine annealing. Defaults to 20.
     """
 
     def __init__(
@@ -89,8 +149,7 @@ class Trainer:
         self.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         )  # Use GPU if available
-
-        #print(f"Network Type: {network_type}")
+        logging.info(f"Device: {self.device}")
         # If using a GNN or the LEGNNs, we need to use the GeoDataLoader!
         if network_type in ["GNN", "LENN"]:
             self.train_loader = GeoDataLoader(train_loader, shuffle=True)
@@ -186,15 +245,19 @@ class Trainer:
             self.cosine_scheduler = None
 
     def get_class_weights(self, y) -> torch.Tensor:
-        """
-        Compute class weights based on the given labels.
+        """Compute class weights based on the given labels.
 
-        Args:
-        - y (torch.Tensor): Labels tensor.
+        Parameters
+        ----------
+        y : torch.Tensor
+            Labels tensor.
 
-        Returns:
-        - class_weights (torch.Tensor): Computed class weights.
+        Returns
+        -------
+        torch.Tensor
+            Computed class weights.
         """
+
         logging.info("Computing class weights...")
         y_np = y.numpy().squeeze()  # Convert tensor to numpy array
         classes_array = np.array([0, 1])  # Explicitly create a numpy array for classes
@@ -203,15 +266,12 @@ class Trainer:
 
     @staticmethod
     def initialise_weights(model) -> None:
-        """
-        Initialises the weights of the given model using He initialisation for linear layers
-        and sets bias to 0.
+        """Initialise the weights of the given model using He initialisation for linear layers and sets bias to 0.
 
-        Args:
-        - model: PyTorch model whose weights need to be initialized
-
-        Returns:
-        - None
+        Parameters
+        ----------
+        model : torch.nn.Module
+            PyTorch model whose weights need to be initialized.
         """
         for m in model.modules():
             if isinstance(m, nn.Linear):
@@ -220,11 +280,12 @@ class Trainer:
                     init.constant_(m.bias, 0)
 
     def validate(self) -> float:
-        """
-        Perform validation on the model.
+        """Perform validation on the model.
 
-        Returns:
-            float: The validation loss.
+        Returns
+        -------
+        float
+            The validation loss.
         """
         self.model.eval()
         val_epoch_loss = 0.0
@@ -242,13 +303,10 @@ class Trainer:
         return val_epoch_loss
 
     def train_model(self) -> None:
-        """
-        Trains the model using the specified criterion, optimizer, and data loaders for a given number of epochs.
+        """Train the model using the specified criterion, optimizer, and data loaders for a given number of epochs.
+
         Logs training and validation loss and accuracy, and stops early if validation loss doesn't improve for a given
         number of epochs.
-
-        Returns:
-            None
         """
         # A loada of logging stuff
         logging.info(log_with_separator("Training Configuration"))
@@ -267,7 +325,7 @@ class Trainer:
         logging.info(f"Initial learning-rate: {self.lr}")
         logging.info(f"Early Stopping: {self.early_stopping}")
         logging.info("Training model...")
-        start_time = time.time()  # Start time of training
+        start_time = time.time()
         logging.info(f"Training for {self.num_epochs} epochs...")
         logging.info(
             "Training on {} samples, validating on {} samples".format(
