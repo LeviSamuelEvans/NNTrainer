@@ -10,24 +10,55 @@ import os
 
 
 class DataPreparationFactory:
+    """Factory class for the type of data preparation to use.
+
+    Attributes
+    ----------
+        network_type : str
+            The type of network.
+        loaded_data : tuple
+            A tuple containing the loaded data.
+        config : dict
+            The configuration settings.
+        signal_fvectors: list (optional)
+            The signal four-vectors. Defaults to None.
+        background_fvectors : list (optional)
+            The background four-vectors. Defaults to None.
+
+    Returns
+    -------
+        tuple
+            A tuple containing the train loader and validation loader.
+
+    Raises
+    ------
+        ValueError
+            If an invalid network type is provided.
+            If four-vectors are required but not provided.
+            If the path to save graph data is not found in the configuration.
+    """
+
     @staticmethod
-    def prep_data(network_type,
-                  loaded_data,
-                  config,
-                  signal_fvectors=None,
-                  background_fvectors=None,
-                  ):
+    def prep_data(
+        network_type,
+        loaded_data,
+        config,
+        signal_fvectors=None,
+        background_fvectors=None,
+    ):
 
         batch_size = config["training"]["batch_size"]
-        #features = config["features"]
         train_ratio = config["data"]["train_ratio"]
         value_threshold = float(config["data"]["value_threshold"])
+
         # Pytorch's usual DataLoader used for the standard FFNNs
         if network_type == "FFNN":
             df_sig, df_bkg = loaded_data
             if config.get("preparation", {}).get("use_four_vectors", False):
                 if signal_fvectors is None or background_fvectors is None:
-                    raise ValueError("Four-vectors are required when use_four_vectors is true!")
+                    raise ValueError(
+                        "Four-vectors are required when use_four_vectors is true!"
+                    )
 
                 preparer = FFDataPreparation(
                     signal_fvectors,
@@ -35,7 +66,7 @@ class DataPreparationFactory:
                     batch_size,
                     train_ratio,
                     value_threshold,
-                    features_or_fvectors=signal_fvectors
+                    features_or_fvectors=signal_fvectors,
                 )
 
             else:
@@ -107,9 +138,32 @@ class DataPreparationFactory:
 
 
 class BaseDataPreparation:
+    """The base class for data preparation.
+
+    Attributes
+    ----------
+    df_sig : pandas.DataFrame
+        The signal dataset.
+    df_bkg : pandas.DataFrame
+        The background dataset.
+    batch_size : int
+        The batch size for training.
+    train_ratio : float
+        The ratio of training data to total data.
+    value_threshold : float
+        The threshold for removing small values in the input data.
+    features_or_fvectors : list or numpy.ndarray
+        A list of feature names or four-vectors.
+    """
 
     def __init__(
-        self, df_sig, df_bkg, batch_size, train_ratio, value_threshold, features_or_fvectors
+        self,
+        df_sig,
+        df_bkg,
+        batch_size,
+        train_ratio,
+        value_threshold,
+        features_or_fvectors,
     ):
         self.df_sig = df_sig
         self.df_bkg = df_bkg
@@ -119,15 +173,24 @@ class BaseDataPreparation:
         self.value_threshold = value_threshold
 
     def mask_small_values(self, X, value_threshold):
-        """
-        Thresholds small values in the input array.
+        """Set small values below threshold in the input array to 0.
 
-        Args:
-            X (ndarray): The input array.
-            threshold (float, optional): The threshold value. Default is 1e-6.
+        Parameters
+        ----------
+        X : ndarray
+            The input array.
+        value_threshold : float, optional
+            The threshold value. Default is 1e-6.
 
-        Returns:
-            ndarray: The input array with small values set to 0.
+        Returns
+        -------
+        ndarray
+            The input array with small values set to 0.
+
+        Raises
+        ------
+        ValueError
+            If the threshold is not a scalar value.
         """
         # raise error if threshold is not a scalar value
         if not isinstance(self.value_threshold, (float, int)):
@@ -136,26 +199,31 @@ class BaseDataPreparation:
         return X
 
     def convert_to_tensors(self):
-        """
-        Converts the input dataframes into PyTorch tensors and creates corresponding target tensors.
+        """Converts the input dataframes into PyTorch tensors and creates corresponding target tensors.
 
-        Returns:
-        - X: PyTorch tensor containing concatenated signal and background data
-        - y: PyTorch tensor containing concatenated target values (1 for signal, 0 for background)
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - X: PyTorch tensor containing concatenated signal and background data
+            - y: PyTorch tensor containing concatenated target values
         """
         logging.info("Converting to Tensors...")
 
         if isinstance(self.features_or_fvectors, list):
             logging.info("Using the pre-defined features...")
-            # use the pre-defined features
-            X_sig = torch.tensor(self.df_sig[self.features_or_fvectors].values, dtype=torch.float32)
-            X_bkg = torch.tensor(self.df_bkg[self.features_or_fvectors].values, dtype=torch.float32)
+            # Use the pre-defined features
+            X_sig = torch.tensor(
+                self.df_sig[self.features_or_fvectors].values, dtype=torch.float32
+            )
+            X_bkg = torch.tensor(
+                self.df_bkg[self.features_or_fvectors].values, dtype=torch.float32
+            )
         else:
             logging.info("Using the constructed four-vectors...")
             # Use the constructed four-vectors
             X_sig = torch.tensor(self.df_sig, dtype=torch.float32)
             X_bkg = torch.tensor(self.df_bkg, dtype=torch.float32)
-
 
         logging.info(
             f"Removing small values at {self.value_threshold} threshold value..."
@@ -171,18 +239,24 @@ class BaseDataPreparation:
         return X, y
 
     def split_data(self, X, y):
-        """
-        Splits the input data into training and validation datasets based on the given train_ratio.
+        """Splits the input data into training and validation datasets based on the given train_ratio.
+
         Also implements shuffling of the data, in order to avoid any potential bias in the training
         and validation sets.
 
-        Args:
-        - X (torch.Tensor): Input data tensor.
-        - y (torch.Tensor): Target data tensor.
+        Parameters
+        ----------
+        X : torch.Tensor
+            Input data tensor.
+        y : torch.Tensor
+            Target data tensor.
 
-        Returns:
-        - train_dataset (torch.utils.data.dataset.TensorDataset): Training dataset.
-        - val_dataset (torch.utils.data.dataset.TensorDataset): Validation dataset.
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - train_dataset (torch.utils.data.dataset.TensorDataset): Training dataset.
+            - val_dataset (torch.utils.data.dataset.TensorDataset): Validation dataset.
         """
         logging.info("Creating the training and validation datasets...")
 
@@ -198,17 +272,21 @@ class BaseDataPreparation:
         return train_dataset, val_dataset
 
     def normalize_data(self, train_dataset, val_dataset):
-        """
-        Normalizes the data in the train and validation datasets using mean and standard deviation.
+        """Normalises the data in the train and validation datasets using mean and standard deviation.
 
-        Args:
-        train_dataset (list): A list of tuples containing the training data and labels.
-        val_dataset (list): A list of tuples containing the validation data and labels.
+        Parameters
+        ----------
+        train_dataset : list
+            A list of tuples containing the training data and labels.
+        val_dataset : list
+            A list of tuples containing the validation data and labels.
 
-        Returns:
-        tuple: A tuple containing the normalized training and validation datasets.
+        Returns
+        -------
+        tuple
+            A tuple containing the normalised training and validation datasets.
         """
-        logging.info(" Normalizing the input data...")
+        logging.info(" Normalising the input data...")
         X_train = [x[0] for x in train_dataset]
         mean = torch.stack(X_train).mean(dim=0, keepdim=True)
         std = torch.stack(X_train).std(dim=0, keepdim=True)
@@ -222,12 +300,14 @@ class BaseDataPreparation:
         return train_dataset, val_dataset
 
     def prepare_data(self) -> tuple:  # returns actual datasets (better for GNNs)
-        """
-        Prepares the data for training a neural network.
+        """Prepares the data for training a neural network.
 
-        Returns:
-        - train_dataset (Dataset): A PyTorch Dataset object for the training data.
-        - val_dataset (Dataset): A PyTorch Dataset object for the validation data.
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - train_dataset (Dataset): A PyTorch Dataset object for the training data.
+            - val_dataset (Dataset): A PyTorch Dataset object for the validation data.
         """
         np.random.seed(42)
         torch.manual_seed(42)
@@ -255,36 +335,59 @@ class BaseDataPreparation:
 
 
 class FFDataPreparation(BaseDataPreparation):
-    """
-    A class for preparing data for feed-forward neural networks.
+    """A class for preparing data for feed-forward neural networks.
 
-    Args:
-        df_sig (pandas.DataFrame): The signal dataset.
-        df_bkg (pandas.DataFrame): The background dataset.
-        batch_size (int): The batch size for training.
-        train_ratio (float, optional): The ratio of training data to total data.
-        value_threshold (float, optional): The threshold for removing small values in the input data.
-        features_or_fvectors (list or numpy.ndarray): A list of feature names or four-vectors.
+    Attributes
+    ----------
+    df_sig : pandas.DataFrame
+        The signal dataset.
+    df_bkg : pandas.DataFrame
+        The background dataset.
+    batch_size : int
+        The batch size for training.
+    train_ratio : float, optional
+        The ratio of training data to total data.
+    value_threshold : float, optional
+        The threshold for removing small values in the input data.
+    features_or_fvectors : list or numpy.ndarray
+        A list of feature names or four-vectors.
     """
 
     def __init__(
-        self, df_sig, df_bkg, batch_size, train_ratio, value_threshold, features_or_fvectors
+        self,
+        df_sig,
+        df_bkg,
+        batch_size,
+        train_ratio,
+        value_threshold,
+        features_or_fvectors,
     ):
         super().__init__(
-            df_sig, df_bkg, batch_size, train_ratio, value_threshold, features_or_fvectors
+            df_sig,
+            df_bkg,
+            batch_size,
+            train_ratio,
+            value_threshold,
+            features_or_fvectors,
         )
 
 
 class GraphDataPreparation(BaseDataPreparation):
-    """
-    A class for preparing data in graph format for GNN training.
+    """A class for preparing data in graph format for GNN training.
 
-    Args:
-        df_sig (pandas.DataFrame): A pandas dataframe containing the signal data.
-        df_bkg (pandas.DataFrame): A pandas dataframe containing the background data.
-        batch_size (int): The batch size for training.
-        features (dict): A dictionary containing the node, edge, and global features.
-        train_ratio (float): The ratio of data to use for training.
+    Attributes
+    ----------
+    df_sig : pandas.DataFrame
+        A pandas dataframe containing the signal data.
+    df_bkg : pandas.DataFrame
+        A pandas dataframe containing the background data.
+    batch_size : int
+        The batch size for training.
+    features : dict
+        A dictionary containing the notrain_ratio : float
+        The ratio of data to use for training.
+    value_threshold : float
+        The threshold for removing small values in the input data.
     """
 
     def __init__(
@@ -295,15 +398,19 @@ class GraphDataPreparation(BaseDataPreparation):
         )
 
     def _construct_edge_index(self, event, num_nodes):
-        """
-        Constructs edge indices for a fully connected graph of jets in each event.
+        """Constructs edge indices for a fully connected graph in each event.
 
-        Args:
-            event (pandas.Series): A pandas Series containing the jet data for a single event.
-            num_nodes (int): The number of nodes in the graph.
+        Parameters
+        ----------
+        event : pandas.Series
+            A pandas Series containing the jet data for a single event.
+        num_nodes : int
+            The number of nodes in the graph.
 
-        Returns:
-            edge_index (torch.Tensor): A tensor containing the edge indices.
+        Returns
+        -------
+        torch.Tensor
+            A tensor containing the edge indices.
         """
 
         edge_indices = []
@@ -319,16 +426,21 @@ class GraphDataPreparation(BaseDataPreparation):
     def prepare_graph_components(
         self, node_features, edge_features=None, global_features=None
     ):
-        """
-        Prepares the components necessary to construct a PyTorch Geometric Data object for each graph.
+        """Prepares the components necessary to construct a PyTorch Geometric Data object for each graph.
 
-        Args:
-            node_features (numpy.ndarray): Node features for the current graph.
-            edge_features (numpy.ndarray, optional): Edge features for the current graph.
-            global_features (numpy.ndarray, optional): Global features for the current graph.
+        Parameters
+        ----------
+        node_features : numpy.ndarray
+            Node features for the current graph.
+        edge_features : numpy.ndarray, optional
+            Edge features for the current graph.
+        global_features : numpy.ndarray, optional
+            Global features for the current graph.
 
-        Returns:
-            Data: A PyTorch Geometric Data object representing the graph.
+        Returns
+        -------
+        Data
+            A PyTorch Geometric Data object representing the graph.
         """
         num_nodes = node_features.shape[0]
 
@@ -354,6 +466,13 @@ class GraphDataPreparation(BaseDataPreparation):
         return data
 
     def convert_to_graphs(self):
+        """Converts the input dataframes into graph format.
+
+        Returns
+        -------
+        list
+            A list of PyTorch Geometric Data objects representing the graphs.
+        """
         logging.info("Proceeding to convert inputs to graphs...")
 
         data_list = []
@@ -450,15 +569,19 @@ class GraphDataPreparation(BaseDataPreparation):
         return data_list
 
     def split_data(self, data_list):
-        """
-        Splits the list of Data objects into training and validation datasets.
+        """Splits the list of Data objects into training and validation datasets.
 
-        Args:
-            data_list (list): A list of torch_geometric.data.Data objects.
+        Parameters
+        ----------
+        data_list : list
+            A list of torch_geometric.data.Data objects.
 
-        Returns:
-            train_dataset (list): A list of Data objects for training.
-            val_dataset (list): A list of Data objects for validation.
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - train_dataset : (list) A list of Data objects for training.
+            - val_dataset (list): A list of Data objects for validation.
         """
         logging.info("Splitting the data into training and validation datasets...")
 
@@ -473,14 +596,17 @@ class GraphDataPreparation(BaseDataPreparation):
         return train_dataset, val_dataset
 
     def normalize_data(self, data_list):
-        """
-        Normalizes the node features (`x`) in each graph in the dataset.
+        """Normalises the node features (`x`) in each graph in the dataset.
 
-        Args:
-            data_list (list of torch_geometric.data.Data): The dataset containing graph data.
+        Parameters
+        ----------
+        data_list : list of torch_geometric.data.Data
+            The dataset containing graph data.
 
-        Returns:
-            data_list (list of torch_geometric.data.Data): The dataset with normalized node features.
+        Returns
+        -------
+        list of torch_geometric.data.Data
+            The dataset with normalised node features.
         """
         logging.info("Now normalising the input features...")
 
@@ -489,22 +615,43 @@ class GraphDataPreparation(BaseDataPreparation):
         mean = all_x.mean(dim=0, keepdim=True)
         std = all_x.std(dim=0, keepdim=True)
 
-        # Normalize node features in each Data object
+        # Normalise node features in each Data object
         for data in data_list:
             data.x = (data.x - mean) / (std + 1e-7)
 
         return data_list
 
     def prepare_GNN_data(self, config, preloaded_data=None):
+        """Prepares the data for training a GNN model.
+
+        Parameters
+        ----------
+        config : dict
+            The configuration settings.
+        preloaded_data : list, optional
+            Pre-loaded graph data. If provided, skips the graph construction step.
+
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - train_dataset (list): A list of Data objects for training.
+            - val_dataset (list): A list of Data objects for validation.
+
+        Raises
+        ------
+        ValueError
+            If the path to save graph data is not found in the configuration.
+        """
         if preloaded_data is not None:
             graph_data_list = preloaded_data
         else:
             graph_data_list = self.convert_to_graphs()
 
-        # Normalise the data first, before splitting, to ensure consistent normalization across datasets
+        # Normalise the data first, before splitting, to ensure consistent normalisation across datasets
         normalised_data_list = self.normalize_data(graph_data_list)
 
-        # Split the normalized graph data into training and validation datasets
+        # Split the normalised graph data into training and validation datasets
         train_dataset, val_dataset = self.split_data(normalised_data_list)
 
         # Create DataLoaders for training and validation datasets
@@ -529,23 +676,26 @@ class GraphDataPreparation(BaseDataPreparation):
         return train_dataset, val_dataset
 
 
-def verify_data(self, data_list):
-    """
-    Verify if the edge indices in each graph in the data list are within bounds.
+    def verify_data(self, data_list):
+        """Verify if the edge indices in each graph in the data list are within bounds.
 
-    Args:
-        data_list (list): A list of graphs.
+        Parameters
+        ----------
+        data_list : list
+            A list of graphs.
 
-    Returns:
-        bool: True if all graphs have valid edge indices, False otherwise.
-    """
-    for i, data in enumerate(data_list):
-        max_edge_index = data.edge_index.max().item()
-        num_nodes = data.x.size(0)
-        if max_edge_index >= num_nodes:
-            print(
-                f"Graph {i} has out-of-bounds edge indices: Max edge index {max_edge_index}, Number of nodes {num_nodes}"
-            )
-            return False
-    print("All graphs have valid edge indices.")
-    return True
+        Returns
+        -------
+        bool
+            True if all graphs have valid edge indices, False otherwise.
+        """
+        for i, data in enumerate(data_list):
+            max_edge_index = data.edge_index.max().item()
+            num_nodes = data.x.size(0)
+            if max_edge_index >= num_nodes:
+                print(
+                    f"Graph {i} has out-of-bounds edge indices: Max edge index {max_edge_index}, Number of nodes {num_nodes}"
+                )
+                return False
+        print("All graphs have valid edge indices.")
+        return True

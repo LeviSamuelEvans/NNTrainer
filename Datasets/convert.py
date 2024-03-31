@@ -5,31 +5,14 @@
 == ROOT to HDF5 Converter ==
 ============================
 
-This python module provides functionality to convert datasets from ROOT files into
-Pandas dataframes, which are then saved using the HDF5 storage format.
+Description:
+------------
+    This python module provides functionality to convert datasets from ROOT files into
+    Pandas dataframes, which are then saved using the HDF5 storage format.
 
-How to use:
-python3 convert.py -d <directory> -s <storeName> -v <variables> -n <num-events> -O <overwrite>
-Mounting:
-sshfs -r levans@linappserv0.pp.rhul.ac.uk:/juicefs/data/levans/L2_ttHbb_Production_212238_v3/MLSamples/Datasets/1l/ ~/Desktop/PhD/MountPoint/
-Dismounting:
-sudo diskutil umount force /Users/levievans/Desktop/PhD/MountPoint/
-
-Version 1.0:
-           - Initial version.
-           - Converts all ROOT files in a directory into a single HDF5 store.
-           - The store contains a single dataframe with all the events.
-           - Variables to be read from the ROOT tree are specified in a YAML file.
-           - overwriteIsEnabled flag to overwrite existing store, or prevent overwriting.
-           - handle jagged arrays
-
-TODO:
-        - Add support for multiple dataframes in the store.
-        - Add support for reading multiple directories.
-        - Add support for reading multiple YAML files (perhaps for different samples).
-        - Add support for reading multiple variables from the YAML file.
-        - Add support for reading variables from different branches.
-        - Add support for reading variables from different trees.
+Usage:
+------
+    Run python3 convert.py -h to see the help message.
 
 """
 
@@ -48,19 +31,22 @@ import numpy as np
 
 class DataImporter(object):
     """
-    Class to handle the import of data from ROOT files and save them as Pandas
-    dataframes in HDF5 format.
+    Class to handle the import of data from ROOT files and save them as Pandas dataframes in HDF5 format.
     """
 
     def __init__(self, storeName, directory, variables, overwriteIsEnabled):
-        """
-        Constructor for the DataImporter class.
+        """Constructor for the DataImporter class.
 
         Parameters:
-        - storeName (str): Path for the HDF5 store to be created.
-        - directory (str): Directory containing the ROOT files.
-        - variables (list): Variables to be read from the ROOT tree.
-        - overwriteIsEnabled (bool): Flag to overwrite existing store.
+        -----------
+        storeName : str
+            Path for the HDF5 store to be created.
+        directory : str
+            Directory containing the ROOT files.
+        variables : list
+            Variables to be read from the ROOT tree.
+        overwriteIsEnabled : bool
+            Flag to overwrite existing store.
         """
         self.storeName = storeName
         self.directory = directory
@@ -81,11 +67,12 @@ class DataImporter(object):
         self.store.close()
 
     def getRootFilepaths(self):
-        """
-        Retrieve all the filepaths of ROOT files in the specified directory.
+        """Retrieve all the filepaths of ROOT files in the specified directory.
 
         Returns:
-        - list: Sorted list of ROOT file paths.
+        --------
+        list
+            Sorted list of ROOT file paths.
         """
         absDirectory = os.path.realpath(os.path.expanduser(self.directory))
         listOfFiles = sorted(glob.glob(absDirectory + "/*.root"))
@@ -94,6 +81,7 @@ class DataImporter(object):
     @staticmethod
     def flatten_jagged_array(array, var_name, fixed_length, pad_value=0):
         """Flatten a jagged array to a fixed length and return a DataFrame."""
+
         # Ensure the array is truncated or padded to the fixed length
         truncated_array = [
             item[:fixed_length] if len(item) > fixed_length else item for item in array
@@ -120,17 +108,22 @@ class DataImporter(object):
     def getDataFrameFromRootfile(
         self, filepath, fixed_jet_length, max_events=None, max_jets=12
     ):
-        """
-        Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
+        """Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
+
         The final h5 file will have two keys:
-        - 'df': A single dataframe with all the events.
-        - 'IndividualFiles/<filename>': A dataframe for each ROOT file.
+            'df': A single dataframe with all the events.
+            'IndividualFiles/<filename>': A dataframe for each ROOT file.
 
         Parameters:
-        - filepath (str): Path to the ROOT file.
-        - fixed_jet_length (int): The fixed length to which jagged arrays will be truncated or padded.
-        - max_events (int): Maximum number of events to process per file.
-        - max_jets (int): Maximum number of jets to process per event.
+        -----------
+        filepath : str
+            Path to the ROOT file.
+        fixed_jet_length : int
+            The fixed length to which jagged arrays will be truncated or padded.
+        max_events : int
+            Maximum number of events to process per file.
+        max_jets : int
+            Maximum number of jets to process per event.
         """
         filename = os.path.basename(filepath)
         storeKey = f"IndividualFiles/{filename.replace('.', '_')}"
@@ -176,14 +169,6 @@ class DataImporter(object):
                 "jet_e",
                 "jet_eta",
                 "jet_phi",
-                # "el_pt",
-                # "el_e",
-                # "el_eta",
-                # "el_phi",
-                # "mu_pt",
-                # "mu_e",
-                # "mu_eta",
-                # "mu_phi",
                 "jet_tagWeightBin_DL1r_Continuous",
                 "jet_eta_softmu_corr",
                 "jet_pt_softmu_corr",
@@ -266,7 +251,9 @@ def handleCommandLineArgs():
     Parse and handle command-line arguments.
 
     Returns:
-    - Namespace: Parsed command-line arguments.
+    --------
+    Namespace:
+        Parsed command-line arguments.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(

@@ -13,6 +13,7 @@ model:
   d_model: 128
   nhead: 4
   num_encoder_layers: 4
+  dropout: 0.1
 
 #============#
 # Data Block #

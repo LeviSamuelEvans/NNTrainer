@@ -3,6 +3,7 @@ from termcolor import colored
 
 
 class ColouredFormatter(logging.Formatter):
+    """A custom formatter that colourises log messages."""
     COLOURS = {
         "WARNING": "yellow",
         "ERROR": "red",
@@ -17,13 +18,13 @@ class ColouredFormatter(logging.Formatter):
 
 
 def configure_logging():
+    """Configure the logging system."""
     logging.basicConfig(level=logging.INFO)
 
     # Set up colourised formatter
     formatter = ColouredFormatter("%(asctime)s - %(levelname)s - %(message)s")
 
     # Apply the formatter to the root logger
-
     root_logger = logging.getLogger()
     for handler in root_logger.handlers:
         handler.setFormatter(formatter)

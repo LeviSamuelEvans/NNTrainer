@@ -2,8 +2,7 @@ import logging
 import re
 
 def print_intro():
-    """
-    Prints the introduction message for the ttH Neural Network Trainer Framework.
+    """Prints the introduction message for the ttH Neural Network Trainer Framework.
     """
     logging.info("=" * 36)
     logging.info("NN Trainer Framework")
@@ -12,14 +11,12 @@ def print_intro():
     logging.info("")
 
 def print_config_summary(config):
-    """
-    Prints a summary of the configuration settings.
+    """Prints a summary of the configuration settings.
 
-    Args:
-        config (dict): A dictionary containing the configuration settings.
-
-    Returns:
-        None
+    Parameters:
+    -----------
+    config : dict
+        A dictionary containing the configuration settings.
     """
     log_with_separator("Configuration Summary")
 
@@ -61,27 +58,28 @@ def print_config_summary(config):
     logging.info("=" * 30)
 
 def log_with_separator(message):
-    """
-    Logs a message with a separator of equal signs.
+    """Logs a message with a separator of equal signs.
 
-    Args:
-        message (str): The message to log.
-
-    Returns:
-        None
+    Parameters:
+    -----------
+    message : str
+        The message to log.
     """
     logging.info(message)
     logging.info("=" * len(message))
 
 def get_version_from_file(filename="version.txt"):
-    """
-    Reads the version number from a file.
+    """Reads the version number from a file.
 
-    Args:
-        filename (str): The name of the file containing the version number.
+    Parameters:
+    -----------
+    filename : str
+        The name of the file containing the version number.
 
     Returns:
-        str: The version number.
+    -----------
+    str
+        The version number.
     """
     try:
         with open(filename, "r") as file:
