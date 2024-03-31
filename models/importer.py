@@ -8,16 +8,29 @@ import re
 
 
 class NetworkImporter:
+    "A class for importing networks."
     def __init__(self, directory):
         self.directory = directory
         self.networks = {}
 
     def load_networks_from_directory(self):
+        """Load all networks from the specified directory.
+
+        Returns
+        -------
+
+        dict
+            A dictionary of all networks in the directory, with the class name as the
+            key and the class as the value.
+
+        """
         for root, dirs, files in os.walk(self.directory):
             for filename in files:
                 if filename.endswith(".py") and not filename.startswith("__"):
-                    module_name = filename[:-3]  # Remove .py extension
-                    module_path = root.replace("/", ".")  # Replace / with . in directory path
+                    # Remove .py extension
+                    module_name = filename[:-3]
+                    module_path = root.replace("/", ".")
+                    # Replace / with . in directory path
                     module = importlib.import_module(f"{module_path}.{module_name}")
                     for attr_name in dir(module):
                         attr_value = getattr(module, attr_name)
@@ -29,6 +42,14 @@ class NetworkImporter:
         return self.networks
 
     def create_model(self, config):
+        """ Create a model based on the configuration.
+
+        Parameters
+        ----------
+
+        config : dict
+            The configuration dictionary.
+        """
         self.load_networks_from_directory()
         all_networks = self.networks
         input_dim = 4 if config.get("preparation", {}).get("use_four_vectors", False) else len(config["features"])
@@ -37,19 +58,13 @@ class NetworkImporter:
             d_model = config["model"]["d_model"]
             nhead = config["model"]["nhead"]
             num_layers = config["model"]["num_encoder_layers"]
-            dropout = config["model"]["dropout"] # should maybe be in training params
+            dropout = config["model"]["dropout"]
 
         if model_name in all_networks:
             model_class = all_networks[model_name]
             if model_name == "LorentzInteractionNetwork":
-                #print(
-                #    f"About to instantiate class {model_class} defined in {model_class.__module__}"
-                #)
                 model = model_class()
             elif re.search(r"transformer", config["model"]["name"], re.IGNORECASE):
-                #print(
-                #    f"About to instantiate class {model_class} defined in {model_class.__module__}"
-                #)
                 model = model_class(input_dim, d_model, nhead, num_layers, dropout)
             else:
                 model = model_class(input_dim)
