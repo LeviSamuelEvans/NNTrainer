@@ -17,7 +17,7 @@ from utils.cli import handleCommandLineArgs
 from utils.logging import configure_logging
 from models.importer import NetworkImporter
 from utils import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
-from utils.train import Trainer, plot_losses, plot_accuracy, plot_lr
+from utils.train import Trainer
 from utils.evaluation import ModelEvaluator
 
 
@@ -89,10 +89,10 @@ def main(config, config_path):
 
     # Plotting inputs
     if config_dict["data"]["plot_inputs"] == True:
-        plot_inputs = DataPlotter(config_dict)
-        plot_inputs.plot_all_features()
-        plot_inputs.plot_correlation_matrix("background")
-        plot_inputs.plot_correlation_matrix("signal")
+        plotter = DataPlotter(config_dict)
+        plotter.plot_all_features()
+        plotter.plot_correlation_matrix("background")
+        plotter.plot_correlation_matrix("signal")
     else:
         logging.info("Skipping plotting of inputs")
 
@@ -154,10 +154,6 @@ def main(config, config_path):
 
     trainer.train_model()
 
-    plot_losses(trainer)
-    plot_accuracy(trainer)
-    plot_lr(trainer)
-
     ################################################
     ################################################
 
@@ -174,6 +170,15 @@ def main(config, config_path):
     )
 
     accuracy, roc_auc, average_precision = evaluator.evaluate_model()
+
+    # pass the trainer, evaluator to the DataPlotter
+    plotter = DataPlotter(config_dict, trainer, evaluator)
+    plotter.plot_losses()
+    plotter.plot_accuracy()
+    plotter.plot_lr()
+    plotter.plot_roc_curve()
+    plotter.plot_confusion_matrix()
+    plotter.plot_pr_curve()
 
     # print the final accuracy and AUC score
     logging.info(f"Final Accuracy: {accuracy:.2f}%")
