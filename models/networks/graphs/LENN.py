@@ -11,8 +11,8 @@ import numpy as np
 hidden = 14
 outputs = 2
 
-
 class LorentzEdgeBlock(torch.nn.Module):
+    """Edge block for the Lorentz Interaction Network."""
     def __init__(self):
         super(LorentzEdgeBlock, self).__init__()
         self.edge_mlp = Seq(Lin(4, hidden), ReLU(), Lin(hidden, hidden))
@@ -50,6 +50,7 @@ class LorentzEdgeBlock(torch.nn.Module):
 
 
 class LorentzNodeBlock(torch.nn.Module):
+    """Node block for the Lorentz Interaction Network."""
     def __init__(self):
         super(LorentzNodeBlock, self).__init__()
         self.node_mlp_1 = Seq(Lin(1 + hidden, hidden), ReLU(), Lin(hidden, hidden))
@@ -81,6 +82,7 @@ class LorentzNodeBlock(torch.nn.Module):
 
 
 class GlobalBlock(torch.nn.Module):
+    """Global block for the Lorentz Interaction Network."""
     def __init__(self):
         super(GlobalBlock, self).__init__()
         self.global_mlp = Seq(Lin(hidden, hidden), ReLU(), Lin(hidden, outputs))
@@ -94,6 +96,24 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 class LorentzInteractionNetwork(torch.nn.Module):
+    """Lorentz Interaction Network model.
+
+    Builds the Lorentz Interaction Network model, using
+    the EdgeBlock, NodeBlock, and GlobalBlocks.
+
+    Parameters
+    ----------
+        hidden : int
+            The number of hidden units.
+        outputs : int
+            The number of output units.
+
+    Methods
+    -------
+        forward(x, edge_index, batch)
+            The forward pass of the Lorentz Interaction Network.
+
+    """
     def __init__(self):
         super(LorentzInteractionNetwork, self).__init__()
         self.lorentzinteractionnetwork = MetaLayer(

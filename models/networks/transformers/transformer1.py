@@ -4,13 +4,34 @@ import math
 
 
 class PositionalEncoding(nn.Module):
+    """Positional encoding module for Transformer models.
+
+    Parameters
+    ----------
+        d_model : int
+            The dimension of the input feature.
+        dropout : float, optional
+            The dropout probability. Default: 0.1.
+
+    Inputs
+    ------
+        x : torch.Tensor
+            The input tensor of shape (batch_size, seq_len, d_model).
+
+    Outputs
+    ------
+        torch.Tensor
+            The output tensor of shape (batch_size, seq_len, d_model).
+    """
     def __init__(self, d_model, dropout=0.1):
+        """Initialises the PositionalEncoding module."""
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
         self.layer_norm = nn.LayerNorm(d_model)
         self.d_model = d_model
 
     def forward(self, x):
+        """Forward pass of the PositionalEncoding module."""
         batch_size, seq_len = x.size(0), x.size(1)
         position = (
             torch.arange(0, seq_len, dtype=torch.float, device=x.device)
@@ -35,21 +56,31 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerClassifier1(nn.Module):
-    """
-    Transformer-based classifier model 1.
+    """Transformer-based classifier model 1.
 
-    Args:
-        input_dim (int): The dimension of the input features.
-        d_model (int): The dimension of the transformer model.
-        nhead (int): The number of attention heads in the transformer model.
-        num_layers (int): The number of transformer layers.
-        dropout (float, optional): The dropout probability. Default is 0.1.
+    Parameters
+    ----------
+        input_dim (int):
+            The dimension of the input features.
+        d_model (int):
+            The dimension of the transformer model.
+        nhead (int):
+            The number of attention heads in the transformer model.
+        num_layers (int):
+            The number of transformer layers.
+        dropout (float, optional):
+            The dropout probability. Default is 0.1.
 
     Attributes:
-        input_embedding (nn.Linear): Linear layer for input feature embedding.
-        pos_encoder (PositionalEncoding): Positional encoding layer.
-        transformer_encoder (nn.TransformerEncoder): Transformer encoder layer.
-        classifier (nn.Sequential): Sequential layers for classification.
+    ----------
+        input_embedding : nn.Linear
+            Linear layer for input feature embedding.
+        pos_encoder : PositionalEncoding
+            Positional encoding layer.
+        transformer_encoder : nn.TransformerEncoder
+            Transformer encoder layer.
+        classifier : nn.Sequential
+            Sequential layers for classification.
 
     """
 
@@ -72,19 +103,11 @@ class TransformerClassifier1(nn.Module):
         )
 
     def forward(self, x):
-        """
-        Forward pass of the TransformerClassifier1.
-
-        Args:
-            x (torch.Tensor): Input tensor of shape (batch_size, sequence_length, input_dim).
-
-        Returns:
-            torch.Tensor: Output tensor of shape (batch_size, 1).
-
+        """Forward pass of the TransformerClassifier1 model.
         """
 
-        x = self.input_embedding(x)  # notes: embed input features to d_model dimensions
-        x = self.pos_encoder(x)      # notes: apply positional encoding
+        x = self.input_embedding(x)      # notes: embed input features to d_model dimensions
+        x = self.pos_encoder(x)          # notes: apply positional encoding
         x = self.transformer_encoder(x)  # notes: pass through transformer encoder
 
         # global average pooling over the sequence dimension (i.e. using mean)

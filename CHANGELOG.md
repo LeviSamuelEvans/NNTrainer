@@ -1,4 +1,5 @@
 - Version 0.4 dev
+    - move all plotting to `DataPlotter` class
     - added sets based transformer
 
 - Version 0.3
@@ -30,7 +31,7 @@
     - ability to easily select input features through config file
 
 
-FUTURE (notes):
+- FUTURE (notes):
     - add conversion to onnx
     - add logging verbosity
     - upgrade to multidimensional arrays

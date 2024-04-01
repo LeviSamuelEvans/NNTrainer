@@ -5,9 +5,7 @@ from models.networks.attention.multiheaded_attention import MultiHeadSelfAttenti
 
 
 def iqr_pooling(tensor, dim):
-    """
-    Playing around with alt. aggregation functions :D
-    """
+    """Computes the interquartile range (IQR) of a tensor along a given dimension."""
     q75 = torch.quantile(tensor, 0.75, dim=dim, keepdim=False)
     q25 = torch.quantile(tensor, 0.25, dim=dim, keepdim=False)
     iqr = q75 - q25
@@ -15,16 +13,20 @@ def iqr_pooling(tensor, dim):
 
 
 class ResidualComplexNNwith_MH_attention(nn.Module):
-    """
-    Residual Complex Neural Network with Multi-Head Attention.
+    """ Residual Complex Neural Network with Multi-Head Attention.
 
-    Args:
-        input_dim (int): The dimensionality of the input.
-        dropout_prob (float, optional): The dropout probability. Defaults to 0.5.
-        num_heads (int, optional): The number of attention heads. Defaults to 8.
+    Parameters
+    ----------
+        input_dim : int
+            The dimensionality of the input.
+        dropout_prob : float, optional
+            The dropout probability. Defaults to 0.5.
+        num_heads : int, optional
+            The number of attention heads. Defaults to 8.
     """
 
     def __init__(self, input_dim, dropout_prob=0.5, num_heads=8):
+        "Initialises the neural network."
         super(ResidualComplexNNwith_MH_attention, self).__init__()
 
         self.fc1 = nn.Linear(input_dim, 512)
@@ -66,26 +68,22 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
+        """Performs a forward pass through the neural network."""
         identity = F.leaky_relu(self.bn1(self.fc1(x)))
         out = self.dropout1(identity)
 
         out = F.leaky_relu(self.bn2(self.fc2(out)) + identity)  # a residual connection
         out = self.dropout2(out)
-        # print(out.shape)
 
         # Apply self-attention
         attention_out = self.attention(out)
         out = self.ln1(
             attention_out + out
         )  # Apply residual connection and layer norm together
-        # print(out.shape)
+
         # Feed-forward network
         out = self.ffn(out)
         out = self.ln2(out)
-        # print(out.shape)
-
-        # Global average pooling over the sequence dimension using mean (could use max, or others)
-        # out = out.mean(dim=1)
 
         # try to apply multiple pooling strategies together
         mean_pooled = torch.mean(out, dim=1)
@@ -112,12 +110,13 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
 
 
 """
-Notes:
-
-- concatenating layers here will increases the model's capacity by allowing it to process the original and attended features separately in the subsequent layers.
-  more computationally expensive though
-- some layer norms after each significant operation (post-attention, post-FFN, and after each residual connection) to stabilise the training
-- feed-forward network (FFN) within the attention block to allow for more complex interactions between the original and attended features
+Some notes
+----------
+- concatenating layers here will increases the model's capacity by allowing it to process the original
+  and attended features separately in the subsequent layers (more computationally expensive though).
+- some layer norms after each significant operation (post-attention, post-FFN, and after each residual connection)
+  to stabilise the training
+- feed-forward network (FFN) within the attention block to allow for more complex interactions between the original
+  and attended features
 - global average pooling over the sequence dimension using mean (and playing around with other pooling strategies)
-
 """

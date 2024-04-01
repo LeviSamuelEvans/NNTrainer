@@ -4,7 +4,19 @@ import torch.nn.functional as F
 
 
 class MultiHeadSelfAttention(nn.Module):
+    """A multi-headed self-attention module that computes attention weights and applies them to the input tensor.
+
+    The input tensor is split into `num_heads` heads for Q, K, and V, and the attention scores are calculated.
+
+    Parameters
+    ----------
+        input_dim : int
+            The dimension of the input tensor.
+        num_heads : int
+            The number of attention heads.
+    """
     def __init__(self, input_dim, num_heads):
+        """Initialises the multi-headed self-attention module."""
         super(MultiHeadSelfAttention, self).__init__()
         assert (
             input_dim % num_heads == 0
@@ -21,6 +33,10 @@ class MultiHeadSelfAttention(nn.Module):
         self.fc_out = nn.Linear(input_dim, input_dim)
 
     def forward(self, x):
+        """The forward pass of the multi-headed self-attention module.
+
+        The input tensor is multiplied by the query, key, and value matrices
+        """
         batch_size = x.size(0)
 
         # Split the embedding into `num_heads` heads for Q, K, and V

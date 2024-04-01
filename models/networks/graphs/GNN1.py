@@ -10,37 +10,21 @@ output_dim = 1
 
 
 class ResidualGNN1(nn.Module):
+    """A graph neural network with residual connections.
+
+    The convolutional layers are implemented using the Graph
+    Convolutional Network (GCN) layer.
+
+    Parameters:
+    -----------
+        input_dim : int
+            The dimensionality of the input features.
+        dropout_prob : float
+            The probability of an element to be zeroed in dropout layers.
+
     """
-    A graph neural network with residual connections.
-
-    Args:
-        input_dim (int): The dimensionality of the input features.
-        dropout_prob (float): The probability of an element to be zeroed in dropout layers.
-
-    Attributes:
-        conv1 (GCNConv): The first graph convolutional layer.
-        bn1 (BatchNorm1d): The first batch normalization layer.
-        dropout1 (Dropout): The first dropout layer.
-        conv2 (GCNConv): The second graph convolutional layer.
-        bn2 (BatchNorm1d): The second batch normalization layer.
-        dropout2 (Dropout): The second dropout layer.
-        conv3 (GCNConv): The third graph convolutional layer.
-        bn3 (BatchNorm1d): The third batch normalization layer.
-        dropout3 (Dropout): The third dropout layer.
-        conv4 (GCNConv): The fourth graph convolutional layer.
-        bn4 (BatchNorm1d): The fourth batch normalization layer.
-        dropout4 (Dropout): The fourth dropout layer.
-        conv5 (GCNConv): The fifth graph convolutional layer.
-        bn5 (BatchNorm1d): The fifth batch normalization layer.
-        dropout5 (Dropout): The fifth dropout layer.
-        conv6 (GCNConv): The sixth graph convolutional layer.
-        bn6 (BatchNorm1d): The sixth batch normalization layer.
-        dropout6 (Dropout): The sixth dropout layer.
-        fc (Linear): The fully connected layer.
-        sigmoid (Sigmoid): The sigmoid activation function.
-    """
-
     def __init__(self, input_dim, dropout_prob=0.5):
+        """Initialises the graph neural network."""
         super(ResidualGNN1, self).__init__()
 
         self.conv1 = GCNConv(input_dim, 512)
@@ -80,7 +64,7 @@ class ResidualGNN1(nn.Module):
         self.fc = nn.Linear(combined_dim, 1)
 
     def forward(self, x, edge_index, global_features):
-
+        """Performs a forward pass through the neural network."""
         max_edge_index = edge_index.max().item()
         num_nodes = x.size(0)
         if max_edge_index >= num_nodes:

@@ -4,43 +4,22 @@ from models.networks.attention.self_attention import SelfAttention
 
 
 class ResidualComplexNNwithattention(nn.Module):
-    """
-    A deep neural network with residual connections.
+    """A deep neural network with residual connections.
+
     Employs the use of skip connections to improve training performance.
+    Uses a self-attention mechanism in the middle of the network.
 
-    Args:
-        input_dim (int): The dimension of the input tensor.
-        dropout_prob (float): The probability of dropout.
+    Parameters
+    ----------
+        input_dim : int
+            The dimension of the input tensor.
+        dropout : float
+            The probability of dropout.
 
-    Attributes:
-        fc1 (nn.Linear): The first fully connected layer.
-        bn1 (nn.BatchNorm1d): The first batch normalization layer.
-        dropout1 (nn.Dropout): The first dropout layer.
-        fc2 (nn.Linear): The second fully connected layer.
-        bn2 (nn.BatchNorm1d): The second batch normalization layer.
-        dropout2 (nn.Dropout): The second dropout layer.
-        fc3 (nn.Linear): The third fully connected layer.
-        bn3 (nn.BatchNorm1d): The third batch normalization layer.
-        dropout3 (nn.Dropout): The third dropout layer.
-        fc4 (nn.Linear): The fourth fully connected layer.
-        bn4 (nn.BatchNorm1d): The fourth batch normalization layer.
-        dropout4 (nn.Dropout): The fourth dropout layer.
-        fc5 (nn.Linear): The fifth fully connected layer.
-        bn5 (nn.BatchNorm1d): The fifth batch normalization layer.
-        dropout5 (nn.Dropout): The fifth dropout layer.
-        fc6 (nn.Linear): The sixth fully connected layer.
-        bn6 (nn.BatchNorm1d): The sixth batch normalization layer.
-        dropout6 (nn.Dropout): The sixth dropout layer.
-        fc7 (nn.Linear): The seventh fully connected layer.
-        sigmoid (nn.Sigmoid): The sigmoid activation function.
-
-    Methods:
-        forward(x): Performs a forward pass through the neural network.
-        initialize_weights(model): Initializes the weights of the given model
-        using He initialization for linear layers and sets bias to 0.
     """
 
     def __init__(self, input_dim, dropout_prob=0.5):
+        "Initialises the neural network."
         super(ResidualComplexNNwithattention, self).__init__()
 
         self.fc1 = nn.Linear(input_dim, 512)
@@ -73,7 +52,7 @@ class ResidualComplexNNwithattention(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-
+        """Performs a forward pass through the neural network."""
         identity = F.leaky_relu(self.bn1(self.fc1(x)))
         out = self.dropout1(identity)
 
