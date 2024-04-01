@@ -11,13 +11,34 @@ that preserves Lorentz invariance.
 
 
 class PositionalEncoding(nn.Module):
+    """Positional encoding module for Transformer models.
+
+    Parameters
+    ----------
+        d_model : int
+            The dimension of the input feature.
+        dropout : float, optional
+            The dropout probability. Default: 0.1.
+
+    Inputs
+    ------
+        x : torch.Tensor
+            The input tensor of shape (batch_size, seq_len, d_model).
+
+    Outputs
+    ------
+        torch.Tensor
+            The output tensor of shape (batch_size, seq_len, d_model).
+    """
     def __init__(self, d_model, dropout=0.1):
+        """Initialises the PositionalEncoding module."""
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
         self.layer_norm = nn.LayerNorm(d_model)
         self.d_model = d_model
 
     def forward(self, x):
+        """Forward pass of the PositionalEncoding module."""
         batch_size, seq_len = x.size(0), x.size(1)
         position = (
             torch.arange(0, seq_len, dtype=torch.float, device=x.device)
@@ -42,6 +63,18 @@ class PositionalEncoding(nn.Module):
 
 
 class LorentzInvariantAttention(nn.Module):
+    """Lorentz invariant attention module for Transformer models.
+
+    Parameters
+    ----------
+        d_model : int
+            The dimension of the input feature.
+        nhead : int
+            The number of attention heads.
+        dropout : float, optional
+            The dropout probability. Default: 0.1.
+
+    """
     def __init__(self, d_model, nhead, dropout=0.1):
         super(LorentzInvariantAttention, self).__init__()
         self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
@@ -96,6 +129,7 @@ class LorentzInvariantAttention(nn.Module):
 
 
 class TransformerClassifier2(nn.Module):
+    """Transformer classifier 2 module."""
     def __init__(self, input_dim, d_model, nhead, num_layers, dropout=0.1):
         super(TransformerClassifier2, self).__init__()
         self.input_embedding = nn.Linear(input_dim, d_model)

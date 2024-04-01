@@ -3,17 +3,21 @@ import torch.nn as nn
 
 
 class SimpleNN(nn.Module):
-    """
-    A simple neural network with 4 fully connected layers and sigmoid activation function.
+    """A simple neural network with 4 fully connected layers and sigmoid activation function.
 
-    Args:
-    input_dim (int): The number of input features.
+    Parameters
+    ----------
+    input_dim : int
+        The number of input features.
 
-    Returns:
-    torch.Tensor: The output tensor of the neural network.
+    Returns
+    -------
+    torch.Tensor
+            The output tensor of the neural network.
     """
 
     def __init__(self, input_dim):
+        "Initialises the neural network."
         super(SimpleNN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 128)
         self.fc2 = nn.Linear(128, 64)
@@ -22,6 +26,7 @@ class SimpleNN(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
+        "Performs a forward pass through the neural network."
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         x = torch.relu(self.fc3(x))
