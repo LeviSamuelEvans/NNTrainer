@@ -4,50 +4,101 @@ import matplotlib.pyplot as plt
 import mplhep as hep
 import logging
 import seaborn as sns
+from sklearn.metrics import (
+    confusion_matrix,
+    average_precision_score,
+    precision_recall_curve,
+)
+from sklearn.metrics import roc_curve, auc
 
 
 class DataPlotter:
-    """
-    A class for plotting signal and background distributions for a given set of features.
+    """A class for plotting data distributions and model performance.
 
-    Attributes:
-    signal_path (str): The path to the signal data file.
-    background_path (str): The path to the background data file.
-    features (list): A list of feature names to plot.
+    Attributes
+    ----------
+    config_dict : dict
+        A dictionary containing the configuration parameters for the DataPlotter object.
+    signal_path : str
+        The path to the signal data.
+    background_path : str
+        The path to the background data.
+    features : list
+        A list of features to plot.
+    df_sig : pd.DataFrame
+        The signal DataFrame.
+    df_bkg : pd.DataFrame
+        The background DataFrame.
 
-    Methods:
-    __init__(self, config_dict): Initializes the DataPlotter object with the given configuration dictionary.
-    plot_feature(self, feature): Plots the signal and background distributions for a given feature.
-    plot_all_features(self): Plots the signal and background distributions for all features in the features list.
-    plot_correlation_matrix(self, data_type): Plots the linear correlation matrix for the input features.
-    """
-
-    def __init__(self, config_dict):
-        """
-        Initializes the DataPlotter object with the given configuration dictionary.
-
-        Parameters:
-        config_dict (dict): A dictionary containing the configuration parameters for the DataPlotter object.
-
-        Returns:
-        None
-        """
-        plt.style.use(hep.style.ROOT)
-        self.signal_path = config_dict["data"]["signal_path"]
-        self.background_path = config_dict["data"]["background_path"]
-        self.features = config_dict["features"]
-        self.df_sig = pd.read_hdf(self.signal_path, key="df")
-        self.df_bkg = pd.read_hdf(self.background_path, key="df")
-
-    def plot_feature(self, feature):
-        """
+    Methods
+    -------
+    plot_feature(feature)
         Plots the signal and background distributions for a given feature.
+    plot_all_features()
+        Plots the signal and background distributions for all features in the features list.
+    plot_correlation_matrix(data_type)
+        Plots the linear correlation matrix for the input features.
+    plot_losses()
+        Plots the training and validation losses for a given trainer object.
+    plot_accuracy()
+        Plots the training and validation accuracy over the number of epochs.
+    plot_lr()
+        Plots the learning rate over the number of epochs.
+    plot_roc_curve()
+        Plots the Receiver Operating Characteristic (ROC) curve for binary classification models.
+    plot_confusion_matrix()
+        Plots the confusion matrix for binary classification models.
+    plot_pr_curve()
+        Plots the Precision-Recall curve for binary classification models.
+    """
 
-        Parameters:
-        feature (str): The name of the feature to plot.
+    def __init__(self, config_dict, trainer=None, evaluator=None):
+        """Initialises the DataPlotter object with the given configuration dictionary.
 
-        Returns:
+        Parameters
+        ----------
+        config_dict : dict
+            A dictionary containing the configuration parameters for the DataPlotter object.
+        trainer : Trainer
+            An instance of the Trainer class containing the training and validation losses.
+        evaluator : ModelEvaluator
+            An instance of the ModelEvaluator class containing the evaluation metrics.
+
+        Returns
+        -------
         None
+        """
+        self.config_dict = config_dict
+        self.trainer = trainer
+        self.evaluator = evaluator
+        self.setup_data_plotter()
+
+    def setup_data_plotter(self):
+        plt.style.use(hep.style.ROOT)
+
+        if self.trainer:
+            self.train_losses = self.trainer.train_losses
+            self.val_losses = self.trainer.val_losses
+            self.train_accuracies = self.trainer.train_accuracies
+            self.val_accuracies = self.trainer.val_accuracies
+            self.learning_rates = self.trainer.learning_rates
+            self.num_epochs = len(self.train_losses)
+
+        if "data" in self.config_dict:
+            self.signal_path = self.config_dict["data"]["signal_path"]
+            self.background_path = self.config_dict["data"]["background_path"]
+            self.features = self.config_dict["features"]
+            self.df_sig = pd.read_hdf(self.signal_path, key="df")
+            self.df_bkg = pd.read_hdf(self.background_path, key="df")
+
+    # =========================================================================
+    def plot_feature(self, feature):
+        """Plots the signal and background distributions for a given feature.
+
+        Parameters
+        ----------
+        feature : str
+            The name of the feature to plot.
         """
         plt.figure()
         logging.debug(
@@ -94,24 +145,18 @@ class DataPlotter:
         plt.close()
 
     def plot_all_features(self):
-        """
-        Plots the signal and background distributions for all features in the features list.
-
-        Parameters:
-        None
-
-        Returns:
-        None
-        """
+        """Plots the signal and background distributions for all features in the features list."""
         for feature in self.features:
             self.plot_feature(feature)
 
+    # =========================================================================
     def plot_correlation_matrix(self, data_type):
-        """
-        Plots the linear correlation matrix for the input features.
+        """Plots the linear correlation matrix for the input features.
 
-        Parameters:
-        data_type (str): Specifies which data to use. Options are 'signal' or 'background'.
+        Parameters
+        ----------
+        data_type : str
+            Specifies which data to use. Options are 'signal' or 'background'.
         """
         plt.style.use(hep.style.ATLAS)
         if data_type == "signal":
@@ -127,7 +172,7 @@ class DataPlotter:
 
         # Compute the correlation matrix
         corr_matrix = data[self.features].corr()
-        #print(corr_matrix, "Correlation matrix:")
+        # print(corr_matrix, "Correlation matrix:")
 
         # Plot the heatmap
         plt.figure(figsize=(10, 8))  # Adjust the size as needed
@@ -148,3 +193,200 @@ class DataPlotter:
         plt.savefig(save_path)
         logging.info(f"Correlation matrix for {data_type} saved to {save_path}")
         plt.close()
+
+    # =========================================================================
+    def plot_losses(self):
+        """Plots the training and validation losses stored in this object.
+
+        The losses are expected to be stored in the `train_losses` and `val_losses`
+        attributes of this object.
+        """
+        # Determine the number of epochs based on the length of train_losses (e.g if Early Stopping is used, this will be less than num_epochs)
+        actual_epochs = len(self.train_losses)
+        self.num_epochs = actual_epochs
+
+        plt.style.use(hep.style.ATLAS)
+        plt.plot(np.arange(self.num_epochs), self.train_losses, label="Training loss")
+        plt.plot(np.arange(self.num_epochs), self.val_losses, label="Validation loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.legend()
+        hep.atlas.label(
+            loc=0,
+            label="Internal",
+        )
+        plt.tight_layout()
+        plt.savefig("/scratch4/levans/tth-network/plots/Validation/loss.png")
+        logging.info(
+            "Loss plot saved to /scratch4/levans/tth-network/plots/Validation/loss.png"
+        )
+
+    # =========================================================================
+    def plot_accuracy(self):
+        """Plots the training and validation accuracy over the number of epochs.
+
+        The accuracies are expected to be stored in the `train_accuracies` and `val_accuracies`
+        attributes of this object.
+        """
+        plt.clf()  # Clear previous plot
+        plt.style.use(hep.style.ATLAS)
+        plt.plot(
+            np.arange(self.num_epochs),
+            self.train_accuracies,
+            label="Training accuracy",
+        )
+        plt.plot(
+            np.arange(self.num_epochs),
+            self.val_accuracies,
+            label="Validation accuracy",
+        )
+        plt.xlabel("Epoch")
+        plt.ylabel("Accuracy")
+        plt.legend()
+        hep.atlas.label(
+            loc=0,
+            label="Internal",
+        )
+        plt.tight_layout()
+        plt.savefig("/scratch4/levans/tth-network/plots/Validation/accuracy.png")
+        logging.info(
+            "Accuracy plot saved to /scratch4/levans/tth-network/plots/Validation/accuracy.png"
+        )
+
+    # =========================================================================
+    def plot_lr(self):
+        """Plots the learning rate over the number of epochs.
+
+        The learning rates are expected to be stored in the `learning_rates` attribute of this object.
+        """
+        plt.clf()  # Clear previous plot
+        plt.style.use(hep.style.ATLAS)
+        plt.plot(
+            np.arange(self.num_epochs),
+            self.learning_rates,
+            label="Learning Rate",
+        )
+        plt.xlabel("Epoch")
+        plt.ylabel("Learning Rate")
+        plt.legend()
+        hep.atlas.label(
+            loc=0,
+            label="Internal",
+        )
+        plt.tight_layout()
+        plt.savefig("/scratch4/levans/tth-network/plots/Validation/learning_rate.png")
+        logging.info(
+            "Learning rate plot saved to /scratch4/levans/tth-network/plots/Validation/learning_rate.png"
+        )
+
+    # =========================================================================
+    def plot_roc_curve(self):
+        """Plots the Receiver Operating Characteristic (ROC) curve for binary classification models.
+
+        The ROC curve is a graphical representation of the true positive rate (sensitivity)
+        against the false positive rate (1 - specificity) for different thresholds.
+        """
+
+        if self.evaluator is None or self.evaluator.roc_auc is None:
+            logging.warning("Evaluator or ROC AUC data not available. Cannot plot ROC curve.")
+            return
+
+        fpr = self.evaluator.fpr
+        tpr = self.evaluator.tpr
+        roc_auc = self.evaluator.roc_auc
+
+        plt.style.use(hep.style.ROOT)
+        plt.figure()
+        plt.plot(
+            fpr,
+            tpr,
+            color="darkorange",
+            lw=2,
+            label="ROC curve (area = %0.2f)" % roc_auc,
+        )
+        plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.legend(loc="lower right")
+        hep.atlas.label(loc=0, label="Internal", fontsize=12)
+        plt.tight_layout()
+        plt.savefig("/scratch4/levans/tth-network/plots/Evaluation/roc_curve.png")
+        logging.info(
+            "ROC curve plot produced and saved to '/scratch4/levans/tth-network/plots/Evaluation/roc_curve.png'"
+        )
+
+    # =========================================================================
+    def plot_confusion_matrix(self):
+        """Plots the confusion matrix for binary classification models."""
+
+        if self.evaluator is None or self.evaluator.y_true is None or self.evaluator.y_pred is None:
+            logging.warning("Evaluator or confusion matrix data not available. Cannot plot confusion matrix.")
+            return
+
+        y_true = self.evaluator.y_true
+        y_pred = self.evaluator.y_pred
+
+        predicted_labels = (y_pred > 0.5).astype(int)
+        cm = confusion_matrix(y_true, predicted_labels)
+
+        cm_percentage = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
+        cm_percentage = cm_percentage * 100
+
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(
+            cm_percentage,
+            annot=True,
+            fmt=".2f",
+            cmap="Blues",
+            cbar=False,
+            annot_kws={"size": 12},
+        )
+        plt.xlabel("Predicted labels")
+        plt.ylabel("True labels")
+        hep.atlas.label(loc=0, label="Internal", fontsize=12)
+        plt.tight_layout()
+        plt.savefig(
+            "/scratch4/levans/tth-network/plots/Evaluation/confusion_matrix.png"
+        )
+        logging.info(
+            "Confusion matrix plot produced and saved as '/scratch4/levans/tth-network/plots/Evaluation/confusion_matrix.png'"
+        )
+
+    # =========================================================================
+    def plot_pr_curve(self):
+        """Plots the Precision-Recall curve for binary classification models."""
+
+        if self.evaluator is None or self.evaluator.precision is None or self.evaluator.recall is None:
+            logging.warning("Evaluator or PR curve data not available. Cannot plot PR curve.")
+            return
+
+        precision = self.evaluator.precision
+        recall = self.evaluator.recall
+        average_precision = self.evaluator.average_precision
+
+        plt.style.use(hep.style.ROOT)
+        plt.figure()
+        step = max(1, len(precision) // 1000)
+        plt.plot(
+            recall[::step],
+            precision[::step],
+            color="darkorange",
+            lw=2,
+            label=f"PR curve (area = {average_precision:.2f})",
+        )
+        plt.fill_between(
+            recall[::step], precision[::step], alpha=0.2, color="darkorange"
+        )
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel("Recall")
+        plt.ylabel("Precision")
+        plt.legend(loc="lower left")
+        hep.atlas.label(loc=0, label="Internal", fontsize=12)
+        plt.tight_layout()
+        plt.savefig("plots/Evaluation/pr_curve.png")
+        logging.info(
+            "Precision-Recall curve plot produced and saved to '/scratch4/levans/tth-network/plots/Evaluation/pr_curve.png"
+        )
