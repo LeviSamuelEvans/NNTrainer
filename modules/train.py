@@ -154,7 +154,7 @@ class Trainer:
         if network_type in ["GNN", "LENN"]:
             self.train_loader = GeoDataLoader(train_loader, shuffle=True)
             self.val_loader = GeoDataLoader(val_loader, shuffle=False)
-            #print(f"Initial train_loader type: {type(self.train_loader)}")  # DEBUG
+            # print(f"Initial train_loader type: {type(self.train_loader)}")  # DEBUG
         else:
             self.train_loader = train_loader
             self.val_loader = val_loader
@@ -192,7 +192,6 @@ class Trainer:
 
         if self.balance_classes == True:
             if self.network_type in ["GNN", "LENN"]:
-                #print("Verifying Train DataLoader...")
                 all_labels = gather_all_labels(train_loader, self.device)
                 pos_weight = compute_class_weights(all_labels)
                 pos_weight = pos_weight.to(self.device)
@@ -259,10 +258,16 @@ class Trainer:
         """
 
         logging.info("Computing class weights...")
-        y_np = y.numpy().squeeze()  # Convert tensor to numpy array
-        classes_array = np.array([0, 1])  # Explicitly create a numpy array for classes
-        class_weights = compute_class_weight("balanced", classes=classes_array, y=y_np)
-        return torch.tensor(class_weights, dtype=torch.float32).to(y.device)
+        # Convert tensor to numpy array
+        y_np = y.numpy().squeeze()
+        # Compute class weights using sklearns compute_class_weight
+        classes = np.unique(y_np)
+        class_weights = compute_class_weight("balanced", classes=classes, y=y_np)
+
+        # Convert class weights to a tensor and move to the same device as y
+        class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(y.device)
+
+        return class_weights_tensor
 
     @staticmethod
     def initialise_weights(model) -> None:
@@ -292,7 +297,10 @@ class Trainer:
         with torch.no_grad():
             for inputs, labels in self.val_loader:
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
-                if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
+                if (
+                    self.model.__class__.__name__ == "TransformerClassifier2"
+                    or self.model.__class__.__name__ == "SetsTransformerClassifier"
+                ):
                     outputs = self.model(inputs, inputs)
                 else:
                     outputs = self.model(inputs)
@@ -392,7 +400,10 @@ class Trainer:
                 elif self.network_type in ["FFNN"]:
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
-                    if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
+                    if (
+                        self.model.__class__.__name__ == "TransformerClassifier2"
+                        or self.model.__class__.__name__ == "SetsTransformerClassifier"
+                    ):
                         outputs = self.model(inputs, inputs)
                     else:
                         outputs = self.model(inputs)
@@ -445,12 +456,18 @@ class Trainer:
                 else:
                     for inputs, labels in self.val_loader:
                         inputs, labels = inputs.to(self.device), labels.to(self.device)
-                        if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
+                        if (
+                            self.model.__class__.__name__ == "TransformerClassifier2"
+                            or self.model.__class__.__name__
+                            == "SetsTransformerClassifier"
+                        ):
                             outputs = self.model(inputs, inputs)
                         else:
                             outputs = self.model(inputs)
                         # squeeze the output to remove the extra singleton dimensions
-                        probabilities = torch.sigmoid(outputs).squeeze()  # Convert logits to probabilities!
+                        probabilities = torch.sigmoid(
+                            outputs
+                        ).squeeze()  # Convert logits to probabilities!
                         predicted = torch.round(probabilities)
                         val_correct += (predicted == labels).sum().item()
                         val_total += labels.size(0)
@@ -504,4 +521,6 @@ class Trainer:
         # Save our model for further use
         # saving just the state dictionary with torch.save(model.state_dict(), 'path_to_model_state_dict.pt') [MOVE TO THIS]
         torch.save(self.model, "/scratch4/levans/tth-network/models/outputs/model.pt")
-        logging.info("Model saved to /scratch4/levans/tth-network/models/outputs/model.pt")
+        logging.info(
+            "Model saved to /scratch4/levans/tth-network/models/outputs/model.pt"
+        )
