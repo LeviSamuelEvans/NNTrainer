@@ -92,6 +92,26 @@ class DataPlotter:
             self.df_bkg = pd.read_hdf(self.background_path, key="df")
 
     # =========================================================================
+
+    def plot_all(self):
+        """Calls all plot methods.
+
+        These methods include:
+        - plot_losses: The training and validation losses.
+        - plot_accuracy: The training and validation accuracy.
+        - plot_lr: The learning rate over the number of epochs.
+        - plot_roc_curve: The Receiver Operating Characteristic (ROC) curve.
+        - plot_confusion_matrix: The confusion matrix.
+        - plot_pr_curve: The Precision-Recall curve.
+        """
+        self.plot_losses()
+        self.plot_accuracy()
+        self.plot_lr()
+        self.plot_roc_curve()
+        self.plot_confusion_matrix()
+        self.plot_pr_curve()
+
+    # =========================================================================
     def plot_feature(self, feature):
         """Plots the signal and background distributions for a given feature.
 
