@@ -10,8 +10,8 @@ import mplhep as hep
 import torch.nn.init as init
 from torch_geometric.loader import DataLoader as GeoDataLoader
 from sklearn.utils.class_weight import compute_class_weight
-from utils.config_utils import log_with_separator
-from utils.scheduler import CosineRampUpDownLR
+from modules.config_utils import log_with_separator
+from modules.scheduler import CosineRampUpDownLR
 
 """
 TODO:

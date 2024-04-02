@@ -12,13 +12,13 @@ trains the model, and evaluates the model.
 # -*- coding: utf-8 -*-
 
 import logging
-from utils.config_utils import print_config_summary, print_intro
-from utils.cli import handleCommandLineArgs
-from utils.logging import configure_logging
+from modules.config_utils import print_config_summary, print_intro
+from modules.cli import handleCommandLineArgs
+from modules.logging import configure_logging
 from models.importer import NetworkImporter
-from utils import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
-from utils.train import Trainer
-from utils.evaluation import ModelEvaluator
+from modules import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
+from modules.train import Trainer
+from modules.evaluation import ModelEvaluator
 
 
 def main(config, config_path):
