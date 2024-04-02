@@ -18,6 +18,7 @@ from modules.logging import configure_logging
 from utils import TrainerArgs
 from models.importer import NetworkImporter
 from modules import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
+from modules import Augmenter
 from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
 
@@ -48,8 +49,8 @@ def main(config, config_path):
 
     # mode = config_dict.get('mode', 'training') //next
 
-    ################################################
-    ################################################
+    #================================================================================================
+    # DATA LOADING
 
     # Get the network type from the config file
     network_type = config_dict["Network_type"][0]  # 'FFNN' or 'GNN' currently
@@ -73,10 +74,43 @@ def main(config, config_path):
             labels_background,
         ) = loaded_data
 
+    #================================================================================================
+    # FEATURE EXTRACTION
+
     # extract features using the FeatureFactory
     signal_fvectors, background_fvectors = FeatureFactory.extract_features(
         config_dict, signal_data, background_data
     )
+    use_four_vectors = config["preparation"].get("use_four_vectors", False)
+
+
+    #================================================================================================
+    # DATA AUGMENTATION
+
+    try:
+        if config["preparation"].get("augment_data", False) and use_four_vectors:
+            logging.info("Proceeding to augment the input data...")
+            augmenter = Augmenter.standard_augmentation(use_four_vectors)
+
+            if "augmentation_methods" not in config["preparation"]:
+                augmenter.perform_all_augmentations(signal_fvectors, background_fvectors)
+            else:
+                if config["preparation"]["augmentation_methods"].get("phi-rotation", False):
+                    augmenter.rotate_phi(signal_fvectors, background_fvectors)
+                if config["preparation"]["augmentation_methods"].get("eta-reflection", False):
+                    augmenter.reflect_eta(signal_fvectors, background_fvectors)
+                if config["preparation"]["augmentation_methods"].get("translate_eta_phi", False):
+                    augmenter.translate_eta_phi(signal_fvectors, background_fvectors)
+                if config["preparation"]["augmentation_methods"].get("energy-variation", False):
+                    augmenter.scale_energy_momentum(signal_fvectors, background_fvectors)
+            logging.info("Data augmentation complete.")
+        else:
+            logging.info("Skipping data augmentation.")
+    except Exception as e:
+        logging.error(f"Failed to augment the input data: {e}")
+
+    #================================================================================================
+    # DATA PREPARATION
 
     # prepare the data using the PreparationFactory
     train_loader, val_loader = PreparationFactory.prep_data(
@@ -87,8 +121,8 @@ def main(config, config_path):
         background_fvectors,
     )
 
-    ################################################
-    ################################################
+    #================================================================================================
+    # INPUT PLOTTING
 
     # Plotting inputs
     if config_dict["data"]["plot_inputs"] == True:
@@ -99,10 +133,11 @@ def main(config, config_path):
     else:
         logging.info("Skipping plotting of inputs")
 
-    logging.info("Starting the training process...")
 
-    ################################################
-    ################################################
+    #================================================================================================
+    # MODEL TRAINING
+
+    logging.info("Starting the training process...")
 
     # Load the models from the models directory and create the model using the NetworkImporter
     network_importer = NetworkImporter("models")
@@ -120,8 +155,6 @@ def main(config, config_path):
 
     logging.info(f"Model '{config['model']['name']}' loaded. Starting training.")
 
-    ################################################
-    ################################################
 
     # prepare the arguments to pass to the Trainer class
     trainer_args = TrainerArgs(config, model, train_loader, val_loader)
@@ -135,10 +168,8 @@ def main(config, config_path):
 
     trainer.train_model()
 
-    ################################################
-    ################################################
-
-    # Now, evaluate the model..
+    #================================================================================================
+    # MODEL EVALUATION
 
     evaluator = ModelEvaluator(
         config=config,
@@ -163,6 +194,7 @@ def main(config, config_path):
     logging.info(f"Final AUC: {roc_auc:.4f}")
     logging.info(f"Average Precision: {average_precision:.4f}")
     logging.info("Program finished successfully.")
+    #================================================================================================
 
 
 if __name__ == "__main__":

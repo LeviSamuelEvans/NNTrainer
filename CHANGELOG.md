@@ -1,4 +1,5 @@
 - Version 0.4 dev
+    - add augmentation module
     - move all plotting to `DataPlotter` class
     - added sets based transformer
 

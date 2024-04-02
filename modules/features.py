@@ -39,6 +39,7 @@ class FeatureFactory:
     extra_feats : list
         A list of extra features to include.
     """
+
     @staticmethod
     def extract_features(config_dict, signal_data, background_data):
         """Extract features from signal and background data based on the configuration.
@@ -170,6 +171,7 @@ class FeatureMaker:
             )
         ):
             # convert the string representation of the arrays to actual arrays
+            # TODO: move away from using eval here...
             el_data = ast.literal_eval(el_data)
             mu_data = ast.literal_eval(mu_data)
 
