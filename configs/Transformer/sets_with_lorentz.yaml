@@ -13,14 +13,14 @@ model:
   d_model: 256
   nhead: 4
   num_encoder_layers: 4
-  dropout: 0.1
+  dropout: 0.2
 
 #============#
 # Data Block #
 #============#
 data:
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/30_03_24/ttH_4vec_dev_250k_10j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/30_03_24/ttbb_4vec_dev_250k_10j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/02_04_24/ttH_4vec_dev_400k_10j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/02_04_24/ttbb_4vec_dev_400k_10j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -96,6 +96,12 @@ preparation:
   n_leptons: 1
   append_four_vectors: False
   use_four_vectors: True
+  augment_data: True
+  augmentation_methods:
+    phi-rotation: True
+    eta-reflection: True
+    translate_eta_phi: True
+    energy-variation: True
 
 #================#
 # Training Block #
@@ -104,7 +110,7 @@ training:
   num_epochs: 10
   learning_rate: 0.00001
   weight_decay: 0.001
-  batch_size: 128
+  batch_size: 248
   patience: 7
   early_stopping: True
   use_scheduler: False
@@ -114,11 +120,11 @@ training:
   criterion: 'BCELoss'
   use_cosine_burnin: True
   lr_init: 1e-9
-  lr_max: 1e-5
+  lr_max: 3e-5
   lr_final: 1e-7
-  burn_in: 3
-  ramp_up: 5
-  plateau: 7
+  burn_in: 2
+  ramp_up: 3
+  plateau: 8
   ramp_down: 9
 
 
@@ -127,6 +133,6 @@ training:
 #==================#
 evaluation:
   use_saved_model: False
-  saved_model_path: /scratch4/levans/tth-network/models/outputs/sets_30_03_24.pt
+  saved_model_path: /scratch4/levans/tth-network/models/outputs/sets_02_04_24.pt
 
 # --------------------------------------------------------------------------------------
