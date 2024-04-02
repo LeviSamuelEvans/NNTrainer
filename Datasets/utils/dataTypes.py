@@ -58,5 +58,7 @@ DATA_TYPES = [
     ("truth_jet_eta", "float32"),
     ("truth_jet_phi", "float32"),
     ("truth_jet_m", "float32"),
+    ("nElectrons", "int32"),
+    ("nMuons", "int32"),
     # You can add other variables here too!
 ]  # ('','float32')

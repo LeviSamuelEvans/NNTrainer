@@ -10,6 +10,7 @@ from sklearn.metrics import (
     precision_recall_curve,
 )
 from sklearn.metrics import roc_curve, auc
+import re
 
 
 class DataPlotter:
@@ -73,6 +74,99 @@ class DataPlotter:
         self.evaluator = evaluator
         self.setup_data_plotter()
 
+    # =========================================================================
+    # HELPER FUNCTIONS
+
+    def _convert_to_gev(self, feature):
+        """Helper function to convert features to GeV for plotting."""
+        self.df_sig[feature] *= 0.001
+        self.df_bkg[feature] *= 0.001
+
+    def _remove_outliers(self, feature):
+        """Removes outliers from the signal and background DataFrames for a given feature.
+
+        Parameters
+        ----------
+        feature : str
+            The name of the feature to remove outliers from.
+        """
+        # calculate z-scores for signal and background
+        z_scores_sig = np.abs((self.df_sig[feature] - self.df_sig[feature].mean()) / self.df_sig[feature].std())
+        z_scores_bkg = np.abs((self.df_bkg[feature] - self.df_bkg[feature].mean()) / self.df_bkg[feature].std())
+
+        # now remove the outliers for plotting
+        self.df_sig = self.df_sig[(z_scores_sig < 3)]
+        self.df_bkg = self.df_bkg[(z_scores_bkg < 3)]
+
+    def _remove_zeroes(self, feature):
+        """Removes zeroes from the signal and background DataFrames for a given feature.
+
+        Parameters
+        ----------
+        feature : str
+            The name of the feature to remove zeroes from.
+        """
+        self.df_sig = self.df_sig[(self.df_sig[feature] != 0)]
+        self.df_bkg = self.df_bkg[(self.df_bkg[feature] != 0)]
+
+    def _fancy_titles(self, feature):
+        """Helper function to convert feature names to fancy titles for inputs."""
+        prefix_pt = ["jet_pt", "el_pt", "mu_pt"]
+        prefix_phi = ["jet_phi", "el_phi", "mu_phi"]
+        prefix_eta = ["jet_eta", "el_eta", "mu_eta"]
+        prefix_e = ["jet_e", "el_e", "mu_e"]
+
+        if feature == "nJets":
+            return "Jet Multiplicity"
+        elif feature == "HT_all":
+            return r"$\it{H_{T}^{\text{all}}}$" + " [GeV]"
+        elif any(re.match(prefix + ".*", feature) for prefix in prefix_pt):
+            if "jet" in feature:
+                return r"Jet $p_{T}$" + " " + feature.split("_")[2].capitalize() + " [GeV]"
+            if "el" in feature:
+                return r"Electron $p_{T}$" + " " + " [GeV]"
+            if "mu" in feature:
+                return r"Muon $p_{T}$" + " " + " [GeV]"
+        elif any(re.match(prefix + ".*", feature) for prefix in prefix_phi):
+            if "jet" in feature:
+                return r"Jet $\phi$" + " " + feature.split("_")[2].capitalize()
+            if "el" in feature:
+                return r"Electron $\phi$" + " " + feature.split("_")[2].capitalize()
+            if "mu" in feature:
+                return r"Muon $\phi$" + " " + feature.split("_")[2].capitalize()
+        elif any(re.match(prefix + ".*", feature) for prefix in prefix_eta):
+            if "jet" in feature:
+                return r"Jet $\eta$" + " " + feature.split("_")[2].capitalize()
+            if "el" in feature:
+                return r"Electron $\eta$" + " " + feature.split("_")[2].capitalize()
+            if "mu" in feature:
+                return r"Muon $\eta$" + " " + feature.split("_")[2].capitalize()
+        elif any(re.match(prefix + ".*", feature) for prefix in prefix_e):
+            if "jet" in feature:
+                return r"Jet Energy" + " " + feature.split("_")[2].capitalize() + " [GeV]"
+            if "el" in feature:
+                return r"Electron Energy" + " " + " [GeV]"
+            if "mu" in feature:
+                return r"Muon Energy" + " " + " [GeV]"
+        elif feature == "dRbb_avg_Sort4":
+            return r"$\it{\Delta R_{bb}^{avg}}$"
+        elif feature == "dRlepbb_MindR_70":
+            return r"$\it{\Delta R_{lep,bb}^{min}}$"
+        elif feature == "dEtabb_MaxdEta_70":
+            return r"$\it{\Delta\eta_{max}^{70}}$"
+        elif feature == "H0_all":
+            return r"$\it{H_{0}^{all}}$"
+        elif feature == "H1_all":
+            return r"$\it{H_{1}^{all}}$"
+        elif feature == "H2_jets":
+            return r"$\it{H_{2}^{jets}}$"
+        elif feature == "Centrality_all":
+            return r"$\it{Centrality^{all}}$"
+        elif feature == "met_met":
+            return r"$\it{E_{T}^{]text{miss}}}$"
+        else:
+            return feature
+
     def setup_data_plotter(self):
         plt.style.use(hep.style.ROOT)
 
@@ -92,6 +186,7 @@ class DataPlotter:
             self.df_bkg = pd.read_hdf(self.background_path, key="df")
 
     # =========================================================================
+    # PLOT ALL VALIDATION AND EVALUATION METRICS
 
     def plot_all(self):
         """Calls all plot methods.
@@ -112,6 +207,8 @@ class DataPlotter:
         self.plot_pr_curve()
 
     # =========================================================================
+    # PLOT DATA DISTRIBUTIONS
+
     def plot_feature(self, feature):
         """Plots the signal and background distributions for a given feature.
 
@@ -131,8 +228,15 @@ class DataPlotter:
         num_bins = 50
 
         if feature == "HT_all":
-            self.df_sig[feature] *= 0.001  # Convert to GeV
-            self.df_bkg[feature] *= 0.001  # Convert to GeV
+            self._convert_to_gev(feature)
+
+        import re
+
+        prefixes = ["jet_pt", "el_pt", "mu_pt", "jet_e", "el_e", "mu_e"]
+        if any(re.match(prefix + "_*", feature) for prefix in prefixes):
+            self._convert_to_gev(feature)
+            self._remove_outliers(feature)
+            self._remove_zeroes(feature)
 
         sig = self.df_sig[feature]
         bkg = self.df_bkg[feature]
@@ -154,8 +258,11 @@ class DataPlotter:
         plt.hist(sig, bins=bin_edges, alpha=0.5, label="Signal", density=True)
         plt.hist(bkg, bins=bin_edges, alpha=0.5, label="Background", density=True)
 
+        # apply some fancy xlabels
+        feature_xlabel = self._fancy_titles(feature)
+
         # Plot the distributions
-        plt.xlabel(feature)
+        plt.xlabel(feature_xlabel)
         plt.ylabel("Probability Density")
         plt.legend(loc="upper right")
         hep.atlas.label(loc=0, label="Internal", lumi="140.0", com="13")
@@ -170,6 +277,8 @@ class DataPlotter:
             self.plot_feature(feature)
 
     # =========================================================================
+    # PLOT CORRELATION MATRIX
+
     def plot_correlation_matrix(self, data_type):
         """Plots the linear correlation matrix for the input features.
 
@@ -215,6 +324,8 @@ class DataPlotter:
         plt.close()
 
     # =========================================================================
+    # PLOT LOSS CURVE
+
     def plot_losses(self):
         """Plots the training and validation losses stored in this object.
 
@@ -242,6 +353,8 @@ class DataPlotter:
         )
 
     # =========================================================================
+    # PLOT ACCURACY
+
     def plot_accuracy(self):
         """Plots the training and validation accuracy over the number of epochs.
 
@@ -274,6 +387,8 @@ class DataPlotter:
         )
 
     # =========================================================================
+    # PLOT LEARNING-RATE CURVE
+
     def plot_lr(self):
         """Plots the learning rate over the number of epochs.
 
@@ -300,6 +415,8 @@ class DataPlotter:
         )
 
     # =========================================================================
+    # PLOT ROC CURVE
+
     def plot_roc_curve(self):
         """Plots the Receiver Operating Characteristic (ROC) curve for binary classification models.
 
@@ -338,6 +455,8 @@ class DataPlotter:
         )
 
     # =========================================================================
+    # PLOT CONFUSION MATRIX
+
     def plot_confusion_matrix(self):
         """Plots the confusion matrix for binary classification models."""
 
@@ -375,6 +494,8 @@ class DataPlotter:
         )
 
     # =========================================================================
+    # PLOT PRECISION_RECALL CURVE
+
     def plot_pr_curve(self):
         """Plots the Precision-Recall curve for binary classification models."""
 
