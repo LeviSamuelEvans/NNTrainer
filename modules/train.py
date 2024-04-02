@@ -419,6 +419,16 @@ class Trainer:
                 # Compute accuracy for this batch
                 probabilities = torch.sigmoid(outputs).squeeze()
                 predicted = torch.round(probabilities)
+
+                labels = labels.squeeze()
+                # DEBUG
+                logging.debug("Predicted shape:", predicted.shape)
+                logging.debug("Labels shape:", labels.shape)
+                # the first 10 predicted values
+                logging.debug("Predicted values:", predicted[:10])
+                # the first 10 true label values
+                logging.debug("Label values:", labels[:10])
+
                 correct += (predicted == labels).sum().item()
                 total += labels.size(0)
 
@@ -468,6 +478,17 @@ class Trainer:
                             outputs
                         ).squeeze()  # Convert logits to probabilities!
                         predicted = torch.round(probabilities)
+
+                        labels = labels.squeeze()
+
+                        # DEBUG
+                        logging.debug("Predicted shape:", predicted.shape)
+                        logging.debug("Labels shape:", labels.shape)
+                        # the first 10 predicted values
+                        logging.debug("Predicted values:", predicted[:10])
+                        # the first 10 true label values
+                        logging.debug("Label values:", labels[:10])
+
                         val_correct += (predicted == labels).sum().item()
                         val_total += labels.size(0)
 
