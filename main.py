@@ -22,7 +22,6 @@ from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
 
 
-
 def main(config, config_path):
     """Load the data, prepare the data loaders, define the model, train the model, and optionally evaluate the model.
 
@@ -75,7 +74,9 @@ def main(config, config_path):
         ) = loaded_data
 
     # extract features using the FeatureFactory
-    signal_fvectors, background_fvectors = FeatureFactory.extract_features(config_dict, signal_data, background_data)
+    signal_fvectors, background_fvectors = FeatureFactory.extract_features(
+        config_dict, signal_data, background_data
+    )
 
     # prepare the data using the PreparationFactory
     train_loader, val_loader = PreparationFactory.prep_data(
@@ -110,7 +111,9 @@ def main(config, config_path):
     # Debug before training
     logging.info(f"Checking if train_loader is iterable.")
     try:
-        first_batch = next(iter(train_loader)) # if we want to add a debug print statement here we can use this
+        first_batch = next(
+            iter(train_loader)
+        )  # if we want to add a debug print statement here we can use this
         logging.info(f"First batch successfully retrieved:")
     except Exception as e:
         logging.error(f"Failed to iterate over train_loader: {e}")
