@@ -417,8 +417,7 @@ class Trainer:
                 running_loss += loss.item() * inputs.size(0)
 
                 # Compute accuracy for this batch
-                # predicted = torch.round(outputs) # no need for sigmoid here as in the final layer of the models we have sigmoid (need to add safeguard for this!)
-                probabilities = torch.sigmoid(outputs)
+                probabilities = torch.sigmoid(outputs).squeeze()
                 predicted = torch.round(probabilities)
                 correct += (predicted == labels).sum().item()
                 total += labels.size(0)
