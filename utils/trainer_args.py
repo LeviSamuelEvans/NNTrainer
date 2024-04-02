@@ -1,7 +1,9 @@
 import torch
 
+
 class TrainerArgs:
     """Class to prepare arguments for the Trainer class."""
+
     def __init__(self, config, model, train_loader, val_loader):
         """Initialises the TrainerArgs class.
 
@@ -72,10 +74,14 @@ class TrainerArgs:
             "ramp_up": self.config["training"]["ramp_up"],
             "plateau": self.config["training"]["plateau"],
             "ramp_down": self.config["training"]["ramp_down"],
-            "network_type": self.config["Network_type"][0] if isinstance(self.config["Network_type"], list) else self.config["Network_type"],
+            "network_type": (
+                self.config["Network_type"][0]
+                if isinstance(self.config["Network_type"], list)
+                else self.config["Network_type"]
+            ),
         }
 
-        if self.config["training"]["criterion"] == 'BCELoss':
+        if self.config["training"]["criterion"] == "BCELoss":
             trainer_args["criterion"] = torch.nn.BCELoss()
 
         return trainer_args
