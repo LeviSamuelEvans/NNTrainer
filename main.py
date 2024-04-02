@@ -15,10 +15,12 @@ import logging
 from modules.config_utils import print_config_summary, print_intro
 from modules.cli import handleCommandLineArgs
 from modules.logging import configure_logging
+from utils import TrainerArgs
 from models.importer import NetworkImporter
 from modules import LoadingFactory, PreparationFactory, FeatureFactory, DataPlotter
 from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
+
 
 
 def main(config, config_path):
@@ -118,35 +120,11 @@ def main(config, config_path):
     ################################################
     ################################################
 
-    # Train the model..
-    trainer = Trainer(
-        model=model,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        num_epochs=config["training"]["num_epochs"],
-        lr=config["training"]["learning_rate"],
-        weight_decay=config["training"]["weight_decay"],
-        patience=config["training"]["patience"],
-        early_stopping=config["training"]["early_stopping"],
-        use_scheduler=config["training"]["use_scheduler"],
-        factor=config["training"]["factor"],
-        criterion=config["training"]["criterion"],
-        initialise_weights=config["training"]["initialise_weights"],
-        balance_classes=config["training"]["balance_classes"],
-        use_cosine_burnin=config["training"]["use_cosine_burnin"],
-        lr_init=float(config["training"]["lr_init"]),
-        lr_max=float(config["training"]["lr_max"]),
-        lr_final=float(config["training"]["lr_final"]),
-        burn_in=config["training"]["burn_in"],
-        ramp_up=config["training"]["ramp_up"],
-        plateau=config["training"]["plateau"],
-        ramp_down=config["training"]["ramp_down"],
-        network_type=(
-            config_dict["Network_type"][0]
-            if isinstance(config_dict["Network_type"], list)
-            else config_dict["Network_type"]
-        ),
-    )
+    # prepare the arguments to pass to the Trainer class
+    trainer_args = TrainerArgs(config, model, train_loader, val_loader)
+
+    # create the Trainer class and proceed to train the model
+    trainer = Trainer(**trainer_args.prepare_trainer_args())
 
     logging.info(
         f"Training model '{config['model']['name']}' for {config['training']['num_epochs']} epochs."
@@ -173,12 +151,9 @@ def main(config, config_path):
 
     # pass the trainer, evaluator to the DataPlotter
     plotter = DataPlotter(config_dict, trainer, evaluator)
-    plotter.plot_losses()
-    plotter.plot_accuracy()
-    plotter.plot_lr()
-    plotter.plot_roc_curve()
-    plotter.plot_confusion_matrix()
-    plotter.plot_pr_curve()
+
+    # plot all val and eval metrics
+    plotter.plot_all()
 
     # print the final accuracy and AUC score
     logging.info(f"Final Accuracy: {accuracy:.2f}%")
