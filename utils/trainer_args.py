@@ -51,6 +51,8 @@ class TrainerArgs:
         - ramp_down
         - network_type
         - criterion
+        - gradient_clipping
+        - max_norm
 
         """
         trainer_args = {
@@ -74,6 +76,8 @@ class TrainerArgs:
             "ramp_up": self.config["training"]["ramp_up"],
             "plateau": self.config["training"]["plateau"],
             "ramp_down": self.config["training"]["ramp_down"],
+            "gradient_clipping": self.config["training"]["gradient_clipping"],
+            "max_norm": self.config["training"]["max_norm"],
             "network_type": (
                 self.config["Network_type"][0]
                 if isinstance(self.config["Network_type"], list)

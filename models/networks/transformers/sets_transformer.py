@@ -52,7 +52,7 @@ class SetsTransformerClassifier(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(128, 1),
-            nn.Sigmoid(),
+            #nn.Sigmoid(),
         )
 
     def forward(self, x, x_coords):

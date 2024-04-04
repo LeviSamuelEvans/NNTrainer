@@ -65,8 +65,8 @@ def log_with_separator(message):
     message : str
         The message to log.
     """
-    logging.info(message)
-    logging.info("=" * len(message))
+    separator = '=' * len(message)
+    return f"\n{separator}\n{message}\n{separator}"
 
 def get_version_from_file(filename="version.txt"):
     """Reads the version number from a file.

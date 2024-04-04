@@ -49,7 +49,7 @@ class ResidualComplexNNwithattention(nn.Module):
         self.dropout6 = nn.Dropout(dropout_prob)
 
         self.fc7 = nn.Linear(32, 1)
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         """Performs a forward pass through the neural network."""
@@ -77,8 +77,7 @@ class ResidualComplexNNwithattention(nn.Module):
         out = F.leaky_relu(self.bn6(self.fc6(out)))
         out = self.dropout6(out)
 
-        out = self.sigmoid(
-            self.fc7(out)
-        )  # use softmax for multi-class classification when appropriate
-        # out = self.fc7(out) # if using BCEWithLogitsLoss, don't use sigmoid here
+        #out = self.sigmoid(
+        # use softmax for multi-class classification when appropriate
+        out = self.fc7(out) # if using BCEWithLogitsLoss, don't use sigmoid here
         return out

@@ -22,7 +22,7 @@ def configure_logging():
     logging.basicConfig(level=logging.INFO)
 
     # Set up colourised formatter
-    formatter = ColouredFormatter("%(asctime)s - %(levelname)s - %(message)s")
+    formatter = ColouredFormatter("{levelname:<8s} {message}", style="{")
 
     # Apply the formatter to the root logger
     root_logger = logging.getLogger()

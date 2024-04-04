@@ -23,12 +23,12 @@ class SimpleNN(nn.Module):
         self.fc2 = nn.Linear(128, 64)
         self.fc3 = nn.Linear(64, 32)
         self.fc4 = nn.Linear(32, 1)
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         "Performs a forward pass through the neural network."
         x = torch.relu(self.fc1(x))
         x = torch.relu(self.fc2(x))
         x = torch.relu(self.fc3(x))
-        x = self.sigmoid(self.fc4(x))
+        x = self.fc4(x)
         return x

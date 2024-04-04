@@ -1,6 +1,6 @@
-# ========================== #
-# Testing Configuration File #
-# ========================== #
+# ====================================== #
+# Lorentz Transformer Configuration File #
+# ====================================== #
 
 # --------------------------------------------------------------------------------------
 
@@ -9,7 +9,7 @@
 #=============#
 model:
   name: 'TransformerClassifier2'
-  input_dim: 5
+  input_dim: 4
   d_model: 256
   nhead: 4
   num_encoder_layers: 4
@@ -102,28 +102,28 @@ features:
 preparation:
   feature_maker: True
   feature_type: '4-vectors'
-  max_particles: 11
-  n_leptons: 1
   use_representations: True
   use_extra_feats: True
   extra_feats: btag
+  max_particles: 11
+  n_leptons: 1
   append_four_vectors: False
   use_four_vectors: True
   augment_data: True
   augmentation_methods:
     phi-rotation: True
     eta-reflection: True
-    translate_eta_phi: True
+    translate_eta_phi: False
     energy-variation: True
 
 #================#
 # Training Block #
 #================#
 training:
-  num_epochs: 1
+  num_epochs: 10
   learning_rate: 0.00001
   weight_decay: 0.001
-  batch_size: 500
+  batch_size: 400
   patience: 7
   early_stopping: True
   use_scheduler: False
@@ -132,13 +132,13 @@ training:
   balance_classes: True
   criterion: 'BCELoss'
   use_cosine_burnin: True
-  lr_init: 1e-3
-  lr_max: 5e-1
-  lr_final: 1e-5
+  lr_init: 1e-9
+  lr_max: 3e-5
+  lr_final: 1e-7
   burn_in: 2
   ramp_up: 3
-  plateau: 5
-  ramp_down: 8
+  plateau: 8
+  ramp_down: 9
 
 
 #==================#
@@ -146,6 +146,6 @@ training:
 #==================#
 evaluation:
   use_saved_model: False
-  saved_model_path: /scratch4/levans/tth-network/models/outputs/model.pt
+  saved_model_path: /scratch4/levans/tth-network/models/outputs/LT_04_04_24.pt
 
 # --------------------------------------------------------------------------------------

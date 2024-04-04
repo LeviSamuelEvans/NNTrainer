@@ -82,13 +82,19 @@ class DataPreparationFactory:
                 )
 
             train_dataset, val_dataset = preparer.prepare_data()
+
             train_loader = DataLoader(
                 train_dataset,
                 batch_size=batch_size,
                 shuffle=True,
             )
 
-            val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=batch_size,
+                shuffle=False,
+            )
+
             return train_loader, val_loader
 
         # We use the GeoDataLoader for the GNNs
