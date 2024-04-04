@@ -65,7 +65,7 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
         self.dropout6 = nn.Dropout(dropout_prob)
 
         self.fc7 = nn.Linear(32, 1)
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         """Performs a forward pass through the neural network."""
@@ -105,7 +105,7 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
         out = F.leaky_relu(self.ln6(self.fc6(out)))
         out = self.dropout6(out)
 
-        out = self.sigmoid(self.fc7(out))
+        out = self.fc7(out)
         return out
 
 

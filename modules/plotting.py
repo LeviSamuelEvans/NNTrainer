@@ -469,7 +469,6 @@ class DataPlotter:
 
         predicted_labels = (y_pred > 0.5).astype(int)
         cm = confusion_matrix(y_true, predicted_labels)
-
         cm_percentage = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
         cm_percentage = cm_percentage * 100
 
@@ -481,6 +480,8 @@ class DataPlotter:
             cmap="Blues",
             cbar=False,
             annot_kws={"size": 12},
+            xticklabels=[0, 1],
+            yticklabels=[0, 1]
         )
         plt.xlabel("Predicted labels")
         plt.ylabel("True labels")
@@ -492,6 +493,7 @@ class DataPlotter:
         logging.info(
             "Confusion matrix plot produced and saved as '/scratch4/levans/tth-network/plots/Evaluation/confusion_matrix.png'"
         )
+
 
     # =========================================================================
     # PLOT PRECISION_RECALL CURVE

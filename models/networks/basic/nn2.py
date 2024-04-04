@@ -32,7 +32,7 @@ class ModifiedNN(nn.Module):
         self.dropout3 = nn.Dropout(dropout)
 
         self.fc4 = nn.Linear(32, 1)
-        self.sigmoid = nn.Sigmoid()
+        #self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         """Defines the forward pass of the neural network.
@@ -57,5 +57,5 @@ class ModifiedNN(nn.Module):
         x = F.leaky_relu(self.fc3(x))
         x = self.dropout3(x)
 
-        x = self.sigmoid(self.fc4(x))
+        x = self.fc4(x)
         return x

@@ -9,7 +9,7 @@
 #=============#
 model:
   name: 'SetsTransformerClassifier'
-  input_dim: 5
+  input_dim: 4
   d_model: 256
   nhead: 4
   num_encoder_layers: 4
@@ -19,8 +19,8 @@ model:
 # Data Block #
 #============#
 data:
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/02_04_24/ttH_4vec_dev_400k_10j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/02_04_24/ttbb_4vec_dev_400k_10j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttH_4vec_dev_btag_100k_10j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttbb_4vec_dev_btag_100k_10j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -75,6 +75,16 @@ features:
   - jet_e_8
   - jet_e_9
   - jet_e_10
+  - jet_tagWeightBin_DL1r_Continuous_1
+  - jet_tagWeightBin_DL1r_Continuous_2
+  - jet_tagWeightBin_DL1r_Continuous_3
+  - jet_tagWeightBin_DL1r_Continuous_4
+  - jet_tagWeightBin_DL1r_Continuous_5
+  - jet_tagWeightBin_DL1r_Continuous_6
+  - jet_tagWeightBin_DL1r_Continuous_7
+  - jet_tagWeightBin_DL1r_Continuous_8
+  - jet_tagWeightBin_DL1r_Continuous_9
+  - jet_tagWeightBin_DL1r_Continuous_10
   - mu_pt
   - mu_eta
   - mu_phi
@@ -92,7 +102,10 @@ features:
 preparation:
   feature_maker: True
   feature_type: '4-vectors'
-  max_particles: 5
+  use_representations: True
+  use_extra_feats: True
+  extra_feats: btag
+  max_particles: 11
   n_leptons: 1
   append_four_vectors: False
   use_four_vectors: True
@@ -100,7 +113,7 @@ preparation:
   augmentation_methods:
     phi-rotation: True
     eta-reflection: True
-    translate_eta_phi: True
+    translate_eta_phi: False
     energy-variation: True
 
 #================#
@@ -110,7 +123,7 @@ training:
   num_epochs: 10
   learning_rate: 0.00001
   weight_decay: 0.001
-  batch_size: 248
+  batch_size: 400
   patience: 7
   early_stopping: True
   use_scheduler: False

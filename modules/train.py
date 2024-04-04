@@ -4,13 +4,11 @@ import torch.nn as nn
 import torch.optim as optim
 import logging
 import re
-import matplotlib.pyplot as plt
 import numpy as np
-import mplhep as hep
 import torch.nn.init as init
 from torch_geometric.loader import DataLoader as GeoDataLoader
 from sklearn.utils.class_weight import compute_class_weight
-from modules.config_utils import log_with_separator
+from utils.log_model_summary import _print_model_summary, _print_cosine_scheduler_params
 from modules.scheduler import CosineRampUpDownLR
 
 """
@@ -116,6 +114,10 @@ class Trainer:
         The number of plateau epochs for cosine annealing. Defaults to 15.
     ramp_down : int, optional
         The number of ramp-down epochs for cosine annealing. Defaults to 20.
+    gradient_clipping : bool, optional
+        Whether to use gradient clipping. Defaults to False.
+    max_norm : float, optional
+        The maximum norm for gradient clipping. Defaults to None.
     """
 
     def __init__(
@@ -144,6 +146,8 @@ class Trainer:
         ramp_up=10,
         plateau=15,
         ramp_down=20,
+        gradient_clipping=False,
+        max_norm=None,
     ):
 
         self.device = torch.device(
@@ -188,6 +192,8 @@ class Trainer:
         self.factor = factor
         self.initialise_weights = initialise_weights
         self.balance_classes = balance_classes
+        self.gradient_clipping = gradient_clipping
+        self.max_norm = max_norm
         self.network_type = network_type
 
         if self.balance_classes == True:
@@ -220,11 +226,11 @@ class Trainer:
                 patience=patience,
                 verbose=True,
             )
+            logging.info("Initialised ReduceLROnPlateau scheduler.")
         else:
             self.scheduler = None
 
         if self.use_cosine_burnin == True:
-            logging.info("Initialising Cosine Scheduler...")
             cosine_scheduler = CosineRampUpDownLR(
                 self.optimizer,
                 lr_init,
@@ -237,9 +243,7 @@ class Trainer:
                 last_epoch=-1,
             )
             self.cosine_scheduler = cosine_scheduler
-            logging.info(
-                f"Initialised Cosine Scheduler with params: {self.cosine_scheduler.__dict__}"
-            )
+            _print_cosine_scheduler_params(cosine_scheduler)
         else:
             self.cosine_scheduler = None
 
@@ -271,18 +275,31 @@ class Trainer:
 
     @staticmethod
     def initialise_weights(model) -> None:
-        """Initialise the weights of the given model using He initialisation for linear layers and sets bias to 0.
+        """Initialise the weights of the given model using Xavier Uniform initialization for linear layers.
 
         Parameters
         ----------
         model : torch.nn.Module
             PyTorch model whose weights need to be initialized.
+
+        Notes:
+             - https://arxiv.org/abs/1706.03762 uses Xavier Uniform initialisation for linear layers.
+             - another method is applying a normal distribution with mean 0 and std 0.02
         """
-        for m in model.modules():
-            if isinstance(m, nn.Linear):
-                init.kaiming_normal_(m.weight, nonlinearity="leaky_relu")
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
+        if isinstance(model, nn.TransformerEncoder) or isinstance(model, nn.TransformerDecoder):
+            # initialise weights for transformer encoder
+            for name, param in model.named_parameters():
+                if 'weight' in name:
+                    nn.init.xavier_uniform_(param)
+                elif 'bias' in name:
+                    nn.init.constant_(param, 0.0)
+        else:
+            # initialise weights for other layers
+            for m in model.modules():
+                if isinstance(m, nn.Linear):
+                    nn.init.xavier_uniform_(m.weight)
+                    if m.bias is not None:
+                        nn.init.constant_(m.bias, 0)
 
     def validate(self) -> float:
         """Perform validation on the model.
@@ -316,33 +333,41 @@ class Trainer:
         Logs training and validation loss and accuracy, and stops early if validation loss doesn't improve for a given
         number of epochs.
         """
-        # A loada of logging stuff
-        logging.info(log_with_separator("Training Configuration"))
-        logging.info(f"Model: {self.model}")
-        logging.info(f"Loss function: {self.criterion}")
-        logging.info(f"Number of epochs: {self.num_epochs}")
-        logging.info(f"scheduler: {self.scheduler}")
-        logging.info(f"patience: {self.patience}")
-        logging.info(f"factor: {self.factor}")
-        logging.info(f"weight_decay: {self.weight_decay}")
-        logging.info(f"initialise_weights: {self.initialise_weights}")
-        logging.info(f"criterion: {self.criterion}")
-        logging.info(f"optimizer: {self.optimizer}")
-        logging.info(f"balance_classes: {self.balance_classes}")
-        logging.info(f"Burn-in Cosine Scheduler: {self.cosine_scheduler}")
-        logging.info(f"Initial learning-rate: {self.lr}")
-        logging.info(f"Early Stopping: {self.early_stopping}")
-        logging.info("Training model...")
+        # A loada logging stuff (move outside of training during the separate refactor)
+        _print_model_summary(self.model)
+        header = "{:<20} {:<15}".format("Parameter",  "Value")
+        logging.info(header)
+        logging.info('-' * len(header))
+        optimizer_params = self.optimizer.state_dict()['param_groups'][0]
+        for param, value in optimizer_params.items():
+            # skip non-scalar values like the 'betas'
+            if isinstance(value, (float, int, bool)):
+                logging.info(f"{param:<20}   {value:<15}")
+
+        if 'betas' in optimizer_params:
+            betas = optimizer_params['betas']
+            logging.info(f"{'betas[0]':<20}   {betas[0]:<15.5f}")
+            logging.info(f"{'betas[1]':<20}   {betas[1]:<15.5f}")
         start_time = time.time()
-        logging.info(f"Training for {self.num_epochs} epochs...")
-        logging.info(
-            "Training on {} samples, validating on {} samples".format(
-                len(self.train_loader.dataset), len(self.val_loader.dataset)
-            )
+        logging.info(f"Loss function:         {self.criterion}")
+        logging.info(f"Number of epochs:      {self.num_epochs}")
+        logging.info(f"Scheduler:             {self.scheduler}")
+        logging.info(f"Patience:              {self.patience}")
+        logging.info(f"Factor:                {self.factor}")
+        logging.info(f"Weight decay:          {self.weight_decay}")
+        logging.info(f"Initialise weights:    {self.initialise_weights}")
+        logging.info(f"Criterion:             {self.criterion}")
+        logging.info(f"Balance classes:       {self.balance_classes}")
+        logging.info(f"Cosine Scheduler:      {self.cosine_scheduler}")
+        logging.info(f"Initial learning rate: {self.lr}")
+        logging.info(f"Early Stopping:        {self.early_stopping}")
+        logging.info(f"Number of Epochs:      {self.num_epochs}")
+        logging.info(f"Training samples:      {len(self.train_loader.dataset)}")
+        logging.info(f"Validating samples:    {len(self.val_loader.dataset)}")
+        logging.info("Start time:            {}".format(time.strftime("%H:%M:%S", time.localtime()))
         )
-        logging.info(
-            "Start time: {}".format(time.strftime("%H:%M:%S", time.localtime()))
-        )
+        logging.info("=" * 50)
+        logging.info("=" * 50)
         # Onwards with the training...
         best_val_loss = float("inf")
         patience_counter = 0
@@ -377,9 +402,14 @@ class Trainer:
                 logging.info(
                     f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {current_lr:.9f}"
                 )
-            self.learning_rates.append(
-                current_lr
-            )  # movce to after optimiser for >PyT v1.2
+                self.learning_rates.append(current_lr)  # Store learning rate for this epoch
+            else:
+                current_lr = self.lr  # Set current_lr to self.lr when cosine scheduler is not used
+                self.optimizer.param_groups[0]["lr"] = self.lr  # Set learning rate
+                logging.info(f"Epoch {epoch+1}: Learning rate set to {self.lr:.6f}")
+                self.learning_rates.append(current_lr)
+
+            # movce to after optimiser for >PyT v1.2
             running_loss = 0.0
             correct = 0  # Counter for correct predictions
             total = 0  # Counter for total predictions
@@ -403,6 +433,7 @@ class Trainer:
                     if (
                         self.model.__class__.__name__ == "TransformerClassifier2"
                         or self.model.__class__.__name__ == "SetsTransformerClassifier"
+                        #or self.model.__class__.__name__ == "TransformerClassifier3"
                     ):
                         outputs = self.model(inputs, inputs)
                     else:
@@ -412,11 +443,18 @@ class Trainer:
                     raise ValueError(f"Unsupported network type: {self.network_type}")
 
                 self.optimizer.zero_grad()
+                if self.gradient_clipping:
+                    nn.utils.clip_grad_norm_(
+                        self.model.parameters(), max_norm=self.max_norm
+                    )
                 loss.backward()
                 self.optimizer.step()
                 running_loss += loss.item() * inputs.size(0)
 
                 # Compute accuracy for this batch
+                # since all training is done with BCEWithLogitsLoss, we
+                # need to apply the sigmoid function to the output to get the probabilities!
+                # NOTE: all sigmoid functions should be removed from the model!
                 probabilities = torch.sigmoid(outputs).squeeze()
                 predicted = torch.round(probabilities)
 
@@ -473,10 +511,12 @@ class Trainer:
                             outputs = self.model(inputs, inputs)
                         else:
                             outputs = self.model(inputs)
+
                         # squeeze the output to remove the extra singleton dimensions
-                        probabilities = torch.sigmoid(
-                            outputs
-                        ).squeeze()  # Convert logits to probabilities!
+                        # since all training is done with BCEWithLogitsLoss, we
+                        # need to apply the sigmoid function to the output to get the probabilities!
+                        # NOTE: all sigmoid functions should be removed from the model!
+                        probabilities = torch.sigmoid(outputs).squeeze()
                         predicted = torch.round(probabilities)
 
                         labels = labels.squeeze()

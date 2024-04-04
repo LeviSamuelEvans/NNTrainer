@@ -23,7 +23,7 @@ class PositionalEncoding(nn.Module):
         torch.Tensor
             The output tensor of shape (batch_size, seq_len, d_model).
     """
-    def __init__(self, d_model, dropout=0.1):
+    def __init__(self, d_model, dropout):
         """Initialises the PositionalEncoding module."""
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
@@ -84,7 +84,7 @@ class TransformerClassifier1(nn.Module):
 
     """
 
-    def __init__(self, input_dim, d_model, nhead, num_layers, dropout=0.1):
+    def __init__(self, input_dim, d_model, nhead, num_layers, dropout):
         super(TransformerClassifier1, self).__init__()
         self.input_embedding = nn.Linear(input_dim, d_model)
         self.pos_encoder = PositionalEncoding(d_model, dropout)
@@ -98,8 +98,8 @@ class TransformerClassifier1(nn.Module):
             nn.LayerNorm(128),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(d_model, 1),
-            # nn.Sigmoid() # REMOVE AS USING BCEwithLogitsLoss when balancing classes
+            nn.Linear(128, 1),
+            #nn.Sigmoid() # REMOVE AS USING BCEwithLogitsLoss when balancing classes
         )
 
     def forward(self, x):

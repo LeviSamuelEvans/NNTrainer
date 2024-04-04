@@ -12,7 +12,7 @@ trains the model, and evaluates the model.
 # -*- coding: utf-8 -*-
 
 import logging
-from modules.config_utils import print_config_summary, print_intro
+from utils.config_utils import print_config_summary, print_intro
 from modules.cli import handleCommandLineArgs
 from modules.logging import configure_logging
 from utils import TrainerArgs
@@ -47,7 +47,6 @@ def main(config, config_path):
     # Print configuration summary
     print_config_summary(config_dict)
 
-    # mode = config_dict.get('mode', 'training') //next
 
     #================================================================================================
     # DATA LOADING

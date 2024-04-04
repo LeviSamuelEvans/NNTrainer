@@ -1,6 +1,6 @@
-# ========================== #
-# Testing Configuration File #
-# ========================== #
+# =============================================== #
+# Residual Complex NN (nn4) Testing Configuration #
+# =============================================== #
 
 # --------------------------------------------------------------------------------------
 
@@ -41,6 +41,8 @@ features:
   - dRlepbb_MindR_70
   - Centrality_all
   - dEtabb_MaxdEta_70
+  - L2_Reco_higgs_pt
+  - L2_Class_ttH_discriminant # some fun :p
 
 #===================#
 # Preparation Block #
@@ -58,22 +60,22 @@ preparation:
 #================#
 training:
   num_epochs: 25
-  learning_rate: 0.00001
+  learning_rate: 0.01
   weight_decay: 0.001
   batch_size: 128
-  patience: 7
+  patience: 5
   early_stopping: True
-  use_scheduler: False
+  use_scheduler: True
   factor: 0.5
   initialise_weights: True
   balance_classes: True
   criterion: 'BCELoss'
-  use_cosine_burnin: True
+  use_cosine_burnin: False
   lr_init: 1e-5
-  lr_max: 1e-2
-  lr_final: 1e-7
-  burn_in: 5
-  ramp_up: 10
+  lr_max: 1e-1
+  lr_final: 1e-5
+  burn_in: 3
+  ramp_up: 5
   plateau: 15
   ramp_down: 17
 
