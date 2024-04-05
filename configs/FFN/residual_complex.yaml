@@ -10,6 +10,7 @@
 model:
   name: 'ResidualComplexNN'
   input_dim: 11
+
 #============#
 # Data Block #
 #============#

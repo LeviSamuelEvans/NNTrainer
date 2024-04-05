@@ -1,5 +1,5 @@
 # ==================================================== #
-# Transformer Classifier 1 Testing Configuration File  #
+# Transformer Classifier 3 Testing Configuration File  #
 # =====================================================#
 
 # --------------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ training:
   criterion: 'BCELoss'
   use_cosine_burnin: True
   lr_init: 1e-11
-  lr_max: 5e-5
+  lr_max: 9e-5
   lr_final: 1e-9
   burn_in: 8
   ramp_up: 15
