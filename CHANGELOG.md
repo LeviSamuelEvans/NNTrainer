@@ -1,4 +1,9 @@
 - Version 0.4 dev
+    - add configurable paths to model ouputs and all plots
+    - add different encodings for transformers
+    - add models using cross-attention
+    - add score distribution
+    - initial look at att. maps
     - add augmentation module
     - move all plotting to `DataPlotter` class
     - added sets based transformer

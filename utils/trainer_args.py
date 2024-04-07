@@ -53,6 +53,7 @@ class TrainerArgs:
         - criterion
         - gradient_clipping
         - max_norm
+        - model_save_path
 
         """
         trainer_args = {
@@ -76,14 +77,17 @@ class TrainerArgs:
             "ramp_up": self.config["training"]["ramp_up"],
             "plateau": self.config["training"]["plateau"],
             "ramp_down": self.config["training"]["ramp_down"],
-            "gradient_clipping": self.config["training"]["gradient_clipping"],
-            "max_norm": self.config["training"]["max_norm"],
+            "model_save_path": self.config["training"]["model_save_path"],
             "network_type": (
                 self.config["Network_type"][0]
                 if isinstance(self.config["Network_type"], list)
                 else self.config["Network_type"]
             ),
         }
+
+        if "gradient_clipping" in self.config["training"]:
+            trainer_args["gradient_clipping"] = self.config["training"]["gradient_clipping"]
+            trainer_args["max_norm"] = self.config["training"]["max_norm"]
 
         if self.config["training"]["criterion"] == "BCELoss":
             trainer_args["criterion"] = torch.nn.BCELoss()

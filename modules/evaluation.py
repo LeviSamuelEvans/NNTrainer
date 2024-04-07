@@ -49,7 +49,7 @@ class ModelEvaluator:
         average_precision:
             Average precision score.
     """
-    def __init__(self, config, model, val_loader=None):
+    def __init__(self, config, model, val_loader=None, criterion=None):
         self.config = config
         self.val_loader = val_loader
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -61,6 +61,11 @@ class ModelEvaluator:
         self.precision = None
         self.recall = None
         self.average_precision = None
+        self.model = None
+        self.criterion = criterion
+        self.inputs = None
+        self.labels = None
+        self.score = None
 
         if config.get("evaluation", {}).get("use_saved_model", False):
             saved_model_path = config["evaluation"]["saved_model_path"]
@@ -97,7 +102,13 @@ class ModelEvaluator:
         with torch.no_grad():
             for inputs, labels in self.val_loader:
                 inputs, labels = inputs.to(device), labels.to(device)
-                if self.model.__class__.__name__ == "TransformerClassifier2" or self.model.__class__.__name__ == "SetsTransformerClassifier":
+                self.inputs = inputs
+                self.labels = labels
+                if (
+                    self.model.__class__.__name__ == "TransformerClassifier2"
+                    or self.model.__class__.__name__ == "SetsTransformerClassifier"
+                    or self.model.__class__.__name__ == "TransformerClassifier5"
+                ):
                     outputs = self.model(inputs, inputs)  # pass inputs twice for x and x_coords
                 else:
                     outputs = self.model(inputs)
@@ -112,6 +123,7 @@ class ModelEvaluator:
 
         y_pred = np.array(y_pred).squeeze()
         y_true = np.array(y_true).squeeze()
+        self.y_scores = np.array(y_scores).squeeze()
 
         precision, recall, _ = precision_recall_curve(y_true, y_scores)
         average_precision = average_precision_score(y_true, y_scores)
@@ -129,7 +141,7 @@ class ModelEvaluator:
         self.precision, self.recall, _ = precision_recall_curve(y_true, y_scores)
         self.average_precision = average_precision_score(y_true, y_scores)
 
-        return accuracy, self.roc_auc, self.average_precision
+        return accuracy, self.roc_auc, self.average_precision, self.model, self.criterion, self.inputs, self.labels
 
     def calculate_accuracy(self, y_true, y_scores, threshold=0.5):
         y_pred = [1 if score > threshold else 0 for score in y_scores]
@@ -148,3 +160,9 @@ class ModelEvaluator:
     def get_pr_curve_data(self):
         """Get the data for the Precision-Recall curve."""
         return self.precision, self.recall, self.average_precision
+
+    def get_loss_landscape_data(self):
+        return self.model, self.criterion, self.inputs, self.labels
+
+    def get_score_distribution_data(self):
+        return self.y_pred, self.y_true

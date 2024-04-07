@@ -1,6 +1,10 @@
 # ==================================================== #
-# Transformer Classifier 1 Testing Configuration File  #
+# Transformer Classifier 5 Testing Configuration File  #
 # =====================================================#
+
+# Information
+# -----------
+# * applies cross-attention
 
 # --------------------------------------------------------------------------------------
 
@@ -8,19 +12,21 @@
 # Model Block #
 #=============#
 model:
-  name: 'TransformerClassifier1'
-  input_dim: 5
-  d_model: 256
-  nhead: 8
-  num_encoder_layers: 8
-  dropout: 0.2
+  name: 'TransformerClassifier5'
+  input_dim: 8
+  d_model: 128
+  nhead: 2
+  num_encoder_layers: 2
+  dropout: 0.3
 
 #============#
 # Data Block #
 #============#
 data:
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttH_4vec_dev_btag_100k_10j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttbb_4vec_dev_btag_100k_10j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttH_4vec_btag_500k_12j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttbb_4vec_btag_500k_12j.h5
+  #signal_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttH_4vec_dev_btag_100k_10j.h5
+  #background_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttbb_4vec_dev_btag_100k_10j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -46,6 +52,8 @@ features:
   - jet_pt_8
   - jet_pt_9
   - jet_pt_10
+  - jet_pt_11
+  - jet_pt_12
   - jet_eta_1
   - jet_eta_2
   - jet_eta_3
@@ -56,6 +64,8 @@ features:
   - jet_eta_8
   - jet_eta_9
   - jet_eta_10
+  - jet_eta_11
+  - jet_eta_12
   - jet_phi_1
   - jet_phi_2
   - jet_phi_3
@@ -66,6 +76,8 @@ features:
   - jet_phi_8
   - jet_phi_9
   - jet_phi_10
+  - jet_phi_11
+  - jet_phi_12
   - jet_e_1
   - jet_e_2
   - jet_e_3
@@ -76,6 +88,8 @@ features:
   - jet_e_8
   - jet_e_9
   - jet_e_10
+  - jet_e_11
+  - jet_e_12
   - jet_tagWeightBin_DL1r_Continuous_1
   - jet_tagWeightBin_DL1r_Continuous_2
   - jet_tagWeightBin_DL1r_Continuous_3
@@ -86,6 +100,8 @@ features:
   - jet_tagWeightBin_DL1r_Continuous_8
   - jet_tagWeightBin_DL1r_Continuous_9
   - jet_tagWeightBin_DL1r_Continuous_10
+  - jet_tagWeightBin_DL1r_Continuous_11
+  - jet_tagWeightBin_DL1r_Continuous_12
   - mu_pt
   - mu_eta
   - mu_phi
@@ -97,20 +113,6 @@ features:
   - nElectrons
   - nMuons
 
-  # - dRbb_avg_Sort4
-  # - HT_all
-  # - met_met
-  # - mwt_mwt
-  # - H0_all
-  # - H1_all
-  # - H2_jets
-  # - dRlj_MindR
-  # - dRlepbb_MindR_70
-  # - Centrality_all
-  # - dEtabb_MaxdEta_70
-  # - L2_Reco_higgs_pt
-  #- L2_Class_ttH_discriminant
-
 #===================#
 # Preparation Block #
 #===================#
@@ -120,7 +122,7 @@ preparation:
   use_representations: True
   use_extra_feats: True
   extra_feats: btag
-  max_particles: 11
+  max_particles: 13
   n_leptons: 1
   append_four_vectors: False
   use_four_vectors: True
@@ -135,10 +137,10 @@ preparation:
 # Training Block #
 #================#
 training:
-  num_epochs: 50
+  num_epochs: 15
   learning_rate: 0.00001
   weight_decay: 0.0001
-  batch_size: 400
+  batch_size: 1024
   patience: 7
   early_stopping: True
   use_scheduler: False
@@ -150,12 +152,12 @@ training:
   lr_init: 1e-11
   lr_max: 5e-5
   lr_final: 1e-9
-  burn_in: 8
-  ramp_up: 15
-  plateau: 20
-  ramp_down: 25
+  burn_in: 4
+  ramp_up: 8
+  plateau: 10
+  ramp_down: 12
   gradient_clipping: True
-  max_norm: 5.0
+  max_norm: 1.0
   model_save_path: /scratch4/levans/tth-network/models/outputs/
 
 #==================#
@@ -163,7 +165,6 @@ training:
 #==================#
 evaluation:
   use_saved_model: False
-  saved_model_path: /scratch4/levans/tth-network/models/outputs/model.pt
-  plot_loss_landscape: False
+  saved_model_path: /scratch4/levans/tth-network/models/outputs/transfo4model.pt
 
 # --------------------------------------------------------------------------------------

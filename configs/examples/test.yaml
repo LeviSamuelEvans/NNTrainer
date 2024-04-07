@@ -24,6 +24,7 @@ data:
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
+  plot_save_path: /scratch4/levans/tth-network/plots/
 
 #===============#
 # Network Block #
@@ -139,6 +140,8 @@ training:
   ramp_up: 3
   plateau: 5
   ramp_down: 8
+  gradient_clipping: True
+  max_norm: 1.0
 
 
 #==================#

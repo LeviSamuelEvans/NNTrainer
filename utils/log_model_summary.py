@@ -29,7 +29,8 @@ def _print_model_summary(model):
             total_trainable_params += trainable_params
 
     table.add_row(['Total', '-', '-', total_params, total_trainable_params])
-    logging.info(log_with_separator("Model Summary"))
+    logging.info("Model Summary")
+    logging.info("==============")
     logging.info(f"\n{table}")
 
 
