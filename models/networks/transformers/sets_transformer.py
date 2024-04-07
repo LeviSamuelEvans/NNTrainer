@@ -1,18 +1,27 @@
-from . import LorentzAtt
+from . import LorentzInvariantAttention
 import torch.nn as nn
 
-"""
-Investigating:
-- allowing the attention to derive the relationships between the sets, without
-ordering the inputs.
-- apply attention to pooling mechanism
-
-"""
-
-LorentzInvariantAttention = LorentzAtt
 
 class SetsTransformerEncoder(nn.Module):
     def __init__(self, d_model, nhead, num_layers, dropout):
+        """Initialise  SetsTransformerEncoder.
+
+        Parameters
+        ----------
+        d_model : int
+            Dimension of the model.
+        nhead : int
+            Number of attention heads.
+        num_layers : int
+            Number of encoder layers.
+        dropout : float
+            Dropout probability.
+
+        Refs
+        -------
+        https://pytorch.org/docs/stable/generated/torch.nn.ModuleList.html
+        
+        """
         super(SetsTransformerEncoder, self).__init__()
         self.layers = nn.ModuleList([
             SetsTransformerEncoderLayer(d_model, nhead, dropout)

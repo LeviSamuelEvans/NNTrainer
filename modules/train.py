@@ -1,3 +1,4 @@
+import os
 import time
 import torch
 import torch.nn as nn
@@ -118,6 +119,8 @@ class Trainer:
         Whether to use gradient clipping. Defaults to False.
     max_norm : float, optional
         The maximum norm for gradient clipping. Defaults to None.
+    model_save_path : str, optional
+        The path to save the model. Defaults to None.
     """
 
     def __init__(
@@ -148,6 +151,7 @@ class Trainer:
         ramp_down=20,
         gradient_clipping=False,
         max_norm=None,
+        model_save_path=None,
     ):
 
         self.device = torch.device(
@@ -194,6 +198,7 @@ class Trainer:
         self.balance_classes = balance_classes
         self.gradient_clipping = gradient_clipping
         self.max_norm = max_norm
+        self.model_save_path = model_save_path
         self.network_type = network_type
 
         if self.balance_classes == True:
@@ -317,6 +322,7 @@ class Trainer:
                 if (
                     self.model.__class__.__name__ == "TransformerClassifier2"
                     or self.model.__class__.__name__ == "SetsTransformerClassifier"
+                    or self.model.__class__.__name__ == "TransformerClassifier5"
                 ):
                     outputs = self.model(inputs, inputs)
                 else:
@@ -326,6 +332,26 @@ class Trainer:
         val_epoch_loss /= len(self.val_loader.dataset)
         logging.info(f"Validation Loss: {val_epoch_loss:.4f}")
         return val_epoch_loss
+
+    def save_model(self, model):
+        """Save the model to the specified path.
+
+        Parameters
+        ----------
+        model : torch.nn.Module
+            The PyTorch model to be saved.
+
+        Notes
+        -----
+        The model is saved as a .pt file using torch.save().
+
+        """
+        model_save_path = self.model_save_path
+
+        # make the direcotry if it doesn't exist
+        os.makedirs(model_save_path, exist_ok=True)
+        torch.save(model, f"{model_save_path}model.pt")
+        logging.info(f"Model saved to {model_save_path}model.pt")
 
     def train_model(self) -> None:
         """Train the model using the specified criterion, optimizer, and data loaders for a given number of epochs.
@@ -400,7 +426,7 @@ class Trainer:
                 self.cosine_scheduler.step()
                 current_lr = self.optimizer.param_groups[0]["lr"]
                 logging.info(
-                    f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {current_lr:.9f}"
+                    f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {current_lr:.12f}"
                 )
                 self.learning_rates.append(current_lr)  # Store learning rate for this epoch
             else:
@@ -433,7 +459,7 @@ class Trainer:
                     if (
                         self.model.__class__.__name__ == "TransformerClassifier2"
                         or self.model.__class__.__name__ == "SetsTransformerClassifier"
-                        #or self.model.__class__.__name__ == "TransformerClassifier3"
+                        or self.model.__class__.__name__ == "TransformerClassifier5"
                     ):
                         outputs = self.model(inputs, inputs)
                     else:
@@ -505,8 +531,8 @@ class Trainer:
                         inputs, labels = inputs.to(self.device), labels.to(self.device)
                         if (
                             self.model.__class__.__name__ == "TransformerClassifier2"
-                            or self.model.__class__.__name__
-                            == "SetsTransformerClassifier"
+                            or self.model.__class__.__name__ == "SetsTransformerClassifier"
+                            or self.model.__class__.__name__ == "TransformerClassifier5"
                         ):
                             outputs = self.model(inputs, inputs)
                         else:
@@ -575,12 +601,10 @@ class Trainer:
             logging.info(
                 f"GPU Usage: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB"
             )
+            logging.info(f"GPU Usage (cached): {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
         else:
             logging.info("GPU not available. Using CPU.")
 
         # Save our model for further use
         # saving just the state dictionary with torch.save(model.state_dict(), 'path_to_model_state_dict.pt') [MOVE TO THIS]
-        torch.save(self.model, "/scratch4/levans/tth-network/models/outputs/model.pt")
-        logging.info(
-            "Model saved to /scratch4/levans/tth-network/models/outputs/model.pt"
-        )
+        self.save_model(self.model)

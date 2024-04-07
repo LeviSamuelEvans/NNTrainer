@@ -1,3 +1,5 @@
+import os
+import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +13,8 @@ from sklearn.metrics import (
 )
 from sklearn.metrics import roc_curve, auc
 import re
+import torch
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class DataPlotter:
@@ -168,6 +172,9 @@ class DataPlotter:
             return feature
 
     def setup_data_plotter(self):
+
+        self.plot_save_path = self.config_dict.get("data", {}).get("plot_save_path", "plots/")
+
         plt.style.use(hep.style.ROOT)
 
         if self.trainer:
@@ -185,6 +192,40 @@ class DataPlotter:
             self.df_sig = pd.read_hdf(self.signal_path, key="df")
             self.df_bkg = pd.read_hdf(self.background_path, key="df")
 
+    @staticmethod
+    def interpolate_models(state_dict, direction, alpha):
+        """Interpolates between the model state and a direction in the parameter space."""
+        interpolated_state_dict = {}
+        for name, param in state_dict.items():
+            if name in direction:
+                interpolated_state_dict[name] = param + alpha * direction[name]
+            else:
+                interpolated_state_dict[name] = param
+        return interpolated_state_dict
+
+    @staticmethod
+    def random_direction(model):
+        """Generates a random direction in the parameter space of the model."""
+        direction = {}
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                direction[name] = torch.randn_like(param)
+        return direction
+
+    def compute_loss_landscape(self, model, criterion, data, target, alpha_range, num_points):
+        """Computes the loss landscape along a random direction."""
+        losses = []
+        direction = self.random_direction(model)
+        for alpha in np.linspace(alpha_range[0], alpha_range[1], num_points):
+            interpolated_state_dict = self.interpolate_models(model.state_dict(), direction, alpha)
+            model.load_state_dict(interpolated_state_dict)
+            model.eval()
+            with torch.no_grad():
+                output = model(data)
+                loss = criterion(output, target)
+                losses.append(loss.item())
+        return losses
+
     # =========================================================================
     # PLOT ALL VALIDATION AND EVALUATION METRICS
 
@@ -198,6 +239,7 @@ class DataPlotter:
         - plot_roc_curve: The Receiver Operating Characteristic (ROC) curve.
         - plot_confusion_matrix: The confusion matrix.
         - plot_pr_curve: The Precision-Recall curve.
+        - plot_score_distribution: The distribution of the model's decision scores.
         """
         self.plot_losses()
         self.plot_accuracy()
@@ -205,6 +247,7 @@ class DataPlotter:
         self.plot_roc_curve()
         self.plot_confusion_matrix()
         self.plot_pr_curve()
+        self.plot_score_distribution()
 
     # =========================================================================
     # PLOT DATA DISTRIBUTIONS
@@ -217,6 +260,9 @@ class DataPlotter:
         feature : str
             The name of the feature to plot.
         """
+        # make the directory if it does not exist
+        os.makedirs(f"{self.plot_save_path}Inputs/", exist_ok=True)
+
         plt.figure()
         logging.debug(
             self.df_sig.head()
@@ -229,8 +275,6 @@ class DataPlotter:
 
         if feature == "HT_all":
             self._convert_to_gev(feature)
-
-        import re
 
         prefixes = ["jet_pt", "el_pt", "mu_pt", "jet_e", "el_e", "mu_e"]
         if any(re.match(prefix + "_*", feature) for prefix in prefixes):
@@ -266,8 +310,8 @@ class DataPlotter:
         plt.ylabel("Probability Density")
         plt.legend(loc="upper right")
         hep.atlas.label(loc=0, label="Internal", lumi="140.0", com="13")
-        plt.savefig(f"/scratch4/levans/tth-network/plots/Inputs/{feature}.png")
-        logging.info(f"Plot of {feature} saved to plots/Inputs/{feature}.png")
+        plt.savefig(f"{self.plot_save_path}Inputs/{feature}.png")
+        logging.info(f"Plot of {feature} saved to {self.plot_save_path}Inputs/{feature}.png")
         # Close the plot to free up memory
         plt.close()
 
@@ -287,15 +331,14 @@ class DataPlotter:
         data_type : str
             Specifies which data to use. Options are 'signal' or 'background'.
         """
+
         plt.style.use(hep.style.ATLAS)
         if data_type == "signal":
             data = self.df_sig
-            save_path = (
-                "/scratch4/levans/tth-network/plots/Inputs/Signal_CorrelationMatrix.png"
-            )
+            save_path = f"{self.plot_save_path}Inputs/Signal_CorrelationMatrix.png"
         elif data_type == "background":
             data = self.df_bkg
-            save_path = "/scratch4/levans/tth-network/plots/Inputs/Background_CorrelationMatrix.png"
+            save_path = f"{self.plot_save_path}Inputs/Background_CorrelationMatrix.png"
         else:
             raise ValueError("data_type must be either 'signal' or 'background'.")
 
@@ -332,6 +375,10 @@ class DataPlotter:
         The losses are expected to be stored in the `train_losses` and `val_losses`
         attributes of this object.
         """
+
+        # make the directory if it does not exist
+        os.makedirs(f"{self.plot_save_path}Validation/", exist_ok=True)
+
         # Determine the number of epochs based on the length of train_losses (e.g if Early Stopping is used, this will be less than num_epochs)
         actual_epochs = len(self.train_losses)
         self.num_epochs = actual_epochs
@@ -347,10 +394,8 @@ class DataPlotter:
             label="Internal",
         )
         plt.tight_layout()
-        plt.savefig("/scratch4/levans/tth-network/plots/Validation/loss.png")
-        logging.info(
-            "Loss plot saved to /scratch4/levans/tth-network/plots/Validation/loss.png"
-        )
+        plt.savefig(f"{self.plot_save_path}Validation/loss.png")
+        logging.info(f"Loss plot saved to {self.plot_save_path}Validation/loss.png")
 
     # =========================================================================
     # PLOT ACCURACY
@@ -381,10 +426,8 @@ class DataPlotter:
             label="Internal",
         )
         plt.tight_layout()
-        plt.savefig("/scratch4/levans/tth-network/plots/Validation/accuracy.png")
-        logging.info(
-            "Accuracy plot saved to /scratch4/levans/tth-network/plots/Validation/accuracy.png"
-        )
+        plt.savefig(f"{self.plot_save_path}Validation/accuracy.png")
+        logging.info(f"Accuracy plot saved to {self.plot_save_path}Validation/accuracy.png")
 
     # =========================================================================
     # PLOT LEARNING-RATE CURVE
@@ -409,10 +452,8 @@ class DataPlotter:
             label="Internal",
         )
         plt.tight_layout()
-        plt.savefig("/scratch4/levans/tth-network/plots/Validation/learning_rate.png")
-        logging.info(
-            "Learning rate plot saved to /scratch4/levans/tth-network/plots/Validation/learning_rate.png"
-        )
+        plt.savefig(f"{self.plot_save_path}Validation/learning_rate.png")
+        logging.info(f"Learning rate plot saved to {self.plot_save_path}Validation/learning_rate.png")
 
     # =========================================================================
     # PLOT ROC CURVE
@@ -423,6 +464,9 @@ class DataPlotter:
         The ROC curve is a graphical representation of the true positive rate (sensitivity)
         against the false positive rate (1 - specificity) for different thresholds.
         """
+
+        # make the directory if it does not exist
+        os.makedirs(f"{self.plot_save_path}Evaluation/", exist_ok=True)
 
         if self.evaluator is None or self.evaluator.roc_auc is None:
             logging.warning("Evaluator or ROC AUC data not available. Cannot plot ROC curve.")
@@ -449,10 +493,8 @@ class DataPlotter:
         plt.legend(loc="lower right")
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
-        plt.savefig("/scratch4/levans/tth-network/plots/Evaluation/roc_curve.png")
-        logging.info(
-            "ROC curve plot produced and saved to '/scratch4/levans/tth-network/plots/Evaluation/roc_curve.png'"
-        )
+        plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.png")
+        logging.info(f"ROC curve plot produced and saved to '{self.plot_save_path}Evaluation/roc_curve.png'")
 
     # =========================================================================
     # PLOT CONFUSION MATRIX
@@ -487,12 +529,8 @@ class DataPlotter:
         plt.ylabel("True labels")
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
-        plt.savefig(
-            "/scratch4/levans/tth-network/plots/Evaluation/confusion_matrix.png"
-        )
-        logging.info(
-            "Confusion matrix plot produced and saved as '/scratch4/levans/tth-network/plots/Evaluation/confusion_matrix.png'"
-        )
+        plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.png")
+        logging.info(f"Confusion matrix plot produced and saved as '{self.plot_save_path}Evaluation/confusion_matrix.png'")
 
 
     # =========================================================================
@@ -529,7 +567,76 @@ class DataPlotter:
         plt.legend(loc="lower left")
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
-        plt.savefig("plots/Evaluation/pr_curve.png")
-        logging.info(
-            "Precision-Recall curve plot produced and saved to '/scratch4/levans/tth-network/plots/Evaluation/pr_curve.png"
-        )
+        plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.png")
+        logging.info(f"Precision-Recall curve plot produced and saved to '{self.plot_save_path}Evaluation/pr_curve.png")
+
+    # =========================================================================
+    # PLOT SCORE DISTRIBUTION
+
+    def plot_score_distribution(self):
+        """
+        Plots the distribution of the model's decision scores for each class.
+
+        Args:
+            scores (np.ndarray):
+                The decision scores from the model.
+            true_labels (np.ndarray):
+                The true labels for the data.
+        """
+        plt.style.use(hep.style.ROOT)
+        scores = self.evaluator.y_scores
+        true_labels = self.evaluator.y_true
+
+        signal_indices = np.where(true_labels == 1)[0]
+        background_indices = np.where(true_labels == 0)[0]
+
+        plt.figure()
+        plt.hist(scores[signal_indices], bins=50, alpha=0.5, label='Signal', color='blue', density=True)
+        plt.hist(scores[background_indices], bins=50, alpha=0.5, label='Background', color='red', density=True)
+        plt.xlabel('Score')
+        plt.ylabel('Normalised Entries')
+        plt.legend(loc='best')
+        plt.savefig(f"{self.plot_save_path}Evaluation/score_distribution.png")
+        logging.info(f"Score distribution plot saved to '{self.plot_save_path}Evaluation/score_distribution.png'")
+
+    # =========================================================================
+    # PLOT LOSS FUNCTION
+
+    def plot_loss_landscape(self, model, criterion, data, target,
+                            alpha_range=[-1.0, 1.0],
+                            beta_range=[-1.0, 1.0] ,
+                            num_points=100):
+
+        """Plots the loss landscape for a given model and data."""
+
+        model = self.evaluator.model
+        criterion = self.evaluator.criterion
+        data = self.evaluator.inputs
+        target = self.evaluator.labels
+
+        # get a grid of points in the parameter space
+        alphas = np.linspace(alpha_range[0], alpha_range[1], num_points)
+        betas = np.linspace(beta_range[0], beta_range[1], num_points)
+        alphas, betas = np.meshgrid(alphas, betas)
+
+        # compute values of the loss for each point in the grid
+        losses = np.zeros_like(alphas)
+        for i in range(num_points):
+            for j in range(num_points):
+                alpha = alphas[i, j]
+                beta = betas[i, j]
+                losses[i, j] = self.compute_loss_landscape(model, criterion, data, target, [alpha, beta], 1)[0]
+
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111, projection='3d')
+        loss_plot = ax.plot_surface(alphas, betas, losses, cmap='viridis', edgecolor='none', alpha=0.6)
+        ax.set_xlabel("alpha", fontsize=12)
+        ax.set_ylabel("beta", fontsize=12)
+        ax.set_zlabel('Loss', fontsize=12)
+        fig.colorbar(loss_plot, shrink=0.5, aspect=5)
+        ax.view_init(elev=30, azim=30)
+        plt.tight_layout()
+
+        plt.tight_layout()
+        plt.savefig(f"{self.plot_save_path}Evaluation/loss_landscape.png")
+        logging.info(f"Loss landscape plot saved to '{self.plot_save_path}Evaluation/loss_landscape.png'")

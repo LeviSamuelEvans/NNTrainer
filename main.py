@@ -1,9 +1,11 @@
 """
-============================================
-== ttH NN Trainer Framework by Levi Evans ==
-============================================
+===========================
+== NN Trainer Framework  ==
+============================
 
-This file is the main entry point of the program. It loads the data, prepares the data loaders, defines the model,
+This file is the main entry point of the programme.
+
+It loads the data, prepares the data loaders, defines the model,
 trains the model, and evaluates the model.
 
 """
@@ -12,6 +14,7 @@ trains the model, and evaluates the model.
 # -*- coding: utf-8 -*-
 
 import logging
+import sys
 from utils.config_utils import print_config_summary, print_intro
 from modules.cli import handleCommandLineArgs
 from modules.logging import configure_logging
@@ -21,6 +24,7 @@ from modules import LoadingFactory, PreparationFactory, FeatureFactory, DataPlot
 from modules import Augmenter
 from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
+from insights.att_maps import AttentionMap
 
 
 def main(config, config_path):
@@ -46,7 +50,6 @@ def main(config, config_path):
 
     # Print configuration summary
     print_config_summary(config_dict)
-
 
     #================================================================================================
     # DATA LOADING
@@ -132,6 +135,31 @@ def main(config, config_path):
     else:
         logging.info("Skipping plotting of inputs")
 
+    #================================================================================================
+    # INSIGHTS (WIP!!)
+
+    def get_run_mode():
+        run_mode = config_dict.get("run_mode", "train")
+        return run_mode
+
+    while True:
+        run_mode = get_run_mode()
+        if run_mode == "train":
+            break
+        elif run_mode == "attention_map":
+            attention_map = AttentionMap(network_type, config_dict)
+            loaded_model = attention_map.load_model()
+            attention_weights = attention_map.get_attention_weights(val_loader, loaded_model)
+            feature_names = config_dict["features"]
+
+            # plot attention weights and entropy
+            attention_map.plot_attention_weights(attention_weights, feature_names)
+            attention_map.plot_attention_entropy(attention_weights, feature_names)
+            sys.exit(0) # now, exit, as that's all we wanted to do :p
+
+        else:
+            logging.error(f"Invalid run mode: {run_mode}")
+
 
     #================================================================================================
     # MODEL TRAINING
@@ -178,15 +206,20 @@ def main(config, config_path):
             else trainer.model
         ),
         val_loader=trainer.val_loader,
+        criterion=trainer.criterion,
     )
 
-    accuracy, roc_auc, average_precision = evaluator.evaluate_model()
+    accuracy, roc_auc, average_precision, model, criterion, inputs, labels = evaluator.evaluate_model()
 
     # pass the trainer, evaluator to the DataPlotter
     plotter = DataPlotter(config_dict, trainer, evaluator)
 
     # plot all val and eval metrics
     plotter.plot_all()
+
+    if config_dict["evaluation"].get("plot_loss_landscape", False):
+        # takes some time to run
+        plotter.plot_loss_landscape(model, criterion, inputs, labels)
 
     # print the final accuracy and AUC score
     logging.info(f"Final Accuracy: {accuracy:.2f}%")

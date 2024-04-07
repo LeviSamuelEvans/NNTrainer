@@ -32,7 +32,10 @@ class TransformerClassifier3(nn.Module):
         )
 
     def forward(self, x): # x_coords):
-        """Forward pass of the TransformerClassifier3 model."""
+        """Forward pass of the TransformerClassifier3 model.
+
+        The pooling here is done using the attention mechanism.
+        """
         x = self.input_embedding(x)
         #x = self.pos_encoder(x, x_coords)
         x = self.pos_encoder(x)

@@ -3,6 +3,7 @@
 # =====================================================#
 
 # --------------------------------------------------------------------------------------
+#run_mode: attention_map
 
 #=============#
 # Model Block #
@@ -24,6 +25,7 @@ data:
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
+  plot_save_path: /scratch4/levans/tth-network/plots/
 
 #===============#
 # Network Block #
@@ -141,6 +143,7 @@ training:
   ramp_down: 25
   gradient_clipping: True
   max_norm: 5.0
+  model_save_path: /scratch4/levans/tth-network/models/outputs/
 
 #==================#
 # Evaluation Block #
