@@ -2,7 +2,7 @@
 
 This repository contains a small framework for training NN models in tasks such as classifcation and reconstruction.
 
-[!WARNING]  Work in progress [!WARNING]  
+**⚠️ WARNING: Work in progress ⚠️**
 
 ## Installation
 Please clone this repository using
