@@ -33,13 +33,24 @@ class DataLoadingFactory:
                 config["data"]["background_path"],
                 features=config["features"],
             )
+            logging.info(f"DataLoadingFactory :: Loading data for {network_type} network")
+
         elif network_type in ["GNN", "LENN"]:
             loader = DataLoader(
                 config["data"]["signal_path"],
                 config["data"]["background_path"],
                 features=config["features"],
             )
-            logging.info(f"DataLoadingFactory: Loading data for {network_type} network")
+            logging.info(f"DataLoadingFactory :: Loading data for {network_type} network")
+
+        elif network_type == "TransformerGCN":
+            loader = TransformerGCNDataLoader(
+                config["data"]["signal_path"],
+                config["data"]["background_path"],
+                features=config["features"],
+            )
+            logging.info(f"DataLoadingFactory :: Loading data for {network_type} network")
+
         else:
             raise ValueError("Invalid network type")
 
@@ -47,7 +58,7 @@ class DataLoadingFactory:
 
         # Move logging to after load_data()
         if network_type in ["GNN", "LENN"]:
-            logging.info(f"DataLoadingFactory: Loading data for {network_type} network")
+            logging.info(f"DataLoadingFactory:: Loading data for {network_type} network")
             logging.info(
                 f"Preparing data for GNN/LENN with node_features_signal shape: {loader.node_features_sig.shape}, edge_features_signal shape: {loader.edge_features_sig.shape}"
             )
@@ -120,9 +131,20 @@ class DataLoader:
             self.df_bkg,
         )
 
-
 class FFNNDataLoader(DataLoader):
     """A data loader for a FFNN."""
+
+    def load_data(self):
+        self._read_dataframes()
+
+        # Filter the dataframes based on the features
+        self.df_sig = self.df_sig[self.features]
+        self.df_bkg = self.df_bkg[self.features]
+
+        return self.df_sig, self.df_bkg
+
+class TransformerGCNDataLoader(DataLoader):
+    """A data loader for a Transformer with GCN."""
 
     def load_data(self):
         self._read_dataframes()

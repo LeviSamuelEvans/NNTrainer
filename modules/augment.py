@@ -50,7 +50,7 @@ class DataAugmentation:
         self.use_four_vectors = use_four_vectors
 
         def __str__(self):
-            return f"Data augmentation initialised with configuration: {self.__dict__}"
+            return f"Augmenter :: Data augmentation initialised with configuration: {self.__dict__}"
 
         # log initlialisation of the augmentation
         self.__str__()
@@ -138,7 +138,7 @@ class DataAugmentation:
         if not self.use_four_vectors:
             raise ValueError("Phi rotation augmentation requires `use_four_vectors` to be True.")
 
-        logging.info("Applying phi-rotations...")
+        logging.info("Augmenter :: Applying phi-rotations...")
         # get number of events
         num_signal_events, num_background_events = self.get_number_of_events(
             signal_features, background_features
@@ -156,7 +156,7 @@ class DataAugmentation:
             background_features, background_angles
         )
 
-        logging.info("Phi-rotations complete.")
+        logging.info("Augmenter :: Phi-rotations complete.")
         return augmented_signal_features, augmented_background_features
 
     @staticmethod
@@ -220,7 +220,7 @@ class DataAugmentation:
         if not self.use_four_vectors:
             raise ValueError("Eta reflection augmentation requires `use_four_vectors` to be True.")
 
-        logging.info("Applying eta-reflections...")
+        logging.info("Augmenter :: Applying eta-reflections...")
         # generate some random reflection flags for each event
         num_signal_events, num_background_events = self.get_number_of_events(
             signal_features, background_features
@@ -236,7 +236,7 @@ class DataAugmentation:
             background_features, background_reflect
         )
 
-        logging.info("Eta-reflections complete.")
+        logging.info("Augmenter :: Eta-reflections complete.")
         return augmented_signal_features, augmented_background_features
 
     @staticmethod
@@ -293,7 +293,7 @@ class DataAugmentation:
         if not self.use_four_vectors:
             raise ValueError("Eta-phi translation augmentation requires `use_four_vectors` to be True.")
 
-        logging.info("Applying eta-phi translations...")
+        logging.info("Augmenter :: Applying eta-phi translations...")
         # generate a random shift in eta and phi for each event
         num_signal_events, num_background_events = self.get_number_of_events(
             signal_features, background_features
@@ -311,7 +311,7 @@ class DataAugmentation:
             background_features, background_eta_shift, background_phi_shift
         )
 
-        logging.info("Eta-phi translations complete.")
+        logging.info("Augmenter :: Eta-phi translations complete.")
         return augmented_signal_features, augmented_background_features
 
     @staticmethod
@@ -383,7 +383,7 @@ class DataAugmentation:
         if not self.use_four_vectors:
             raise ValueError("Energy-momentum scaling augmentation requires `use_four_vectors` to be True.")
 
-        logging.info("Applying energy-momentum scaling...")
+        logging.info("Augmenter :: Applying energy-momentum scaling...")
         # generate random scaling factors for each event
         num_signal_events, num_background_events = self.get_number_of_events(
             signal_features, background_features
@@ -397,7 +397,7 @@ class DataAugmentation:
             background_features, background_scales
         )
 
-        logging.info("Energy-momentum scaling complete.")
+        logging.info("Augmenter :: Energy-momentum scaling complete.")
         return augmented_signal_features, augmented_background_features
 
     @staticmethod

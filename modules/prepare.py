@@ -4,10 +4,14 @@ import numpy as np
 from torch.utils.data import DataLoader, TensorDataset, random_split
 import torch_geometric.data as geo_data
 from torch_geometric.loader import DataLoader as GeoDataLoader
+from torch_geometric.data import Batch
 import logging
 from tqdm import tqdm
 import os
 
+
+# ================================================================================================
+# THE DATA PREPARATION FACTORY
 
 class DataPreparationFactory:
     """Factory class for the type of data preparation to use.
@@ -45,6 +49,10 @@ class DataPreparationFactory:
         config,
         signal_fvectors=None,
         background_fvectors=None,
+        signal_edges=None,
+        signal_edge_attr=None,
+        background_edges=None,
+        background_edge_attr=None,
     ):
 
         batch_size = config["training"]["batch_size"]
@@ -139,9 +147,36 @@ class DataPreparationFactory:
                     val_dataset, batch_size=batch_size, shuffle=False
                 )
                 return train_loader, val_loader
+
+        elif network_type == "TransformerGCN":
+            df_sig, df_bkg = loaded_data
+            batch_size = config["training"]["batch_size"]
+            train_ratio = config["data"]["train_ratio"]
+            value_threshold = float(config["data"]["value_threshold"])
+            preparer = TransformerGCNDataPreparation(
+                signal_fvectors,
+                background_fvectors,
+                batch_size,
+                train_ratio,
+                value_threshold,
+                features_or_fvectors=signal_fvectors,
+            )
+
+            train_dataset, val_dataset = preparer.prepare_transformer_gcn_data(
+                signal_edges, signal_edge_attr, background_edges, background_edge_attr
+            )
+
+            train_loader = GeoDataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+            val_loader = GeoDataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+            return train_loader, val_loader
+
         else:
             raise ValueError("Invalid network type")
 
+
+# ================================================================================================
+# BASE CLASS FOR DATA PREPARATION
 
 class BaseDataPreparation:
     """The base class for data preparation.
@@ -214,7 +249,7 @@ class BaseDataPreparation:
             - X: PyTorch tensor containing concatenated signal and background data
             - y: PyTorch tensor containing concatenated target values
         """
-        logging.info("Converting to Tensors...")
+        logging.info("PreparationFactory :: Converting to Tensors...")
 
         if isinstance(self.features_or_fvectors, list):
             logging.info("Using the pre-defined features...")
@@ -226,13 +261,13 @@ class BaseDataPreparation:
                 self.df_bkg[self.features_or_fvectors].values, dtype=torch.float32
             )
         else:
-            logging.info("Using the constructed four-vectors...")
+            logging.info("PreparationFactory :: Using the constructed four-vectors...")
             # Use the constructed four-vectors
             X_sig = torch.tensor(self.df_sig, dtype=torch.float32)
             X_bkg = torch.tensor(self.df_bkg, dtype=torch.float32)
 
         logging.info(
-            f"Removing small values at {self.value_threshold} threshold value..."
+            f"PreparationFactory :: Removing small values at {self.value_threshold} threshold value..."
         )
         # veto small values for training stability
         X_sig = self.mask_small_values(X_sig, self.value_threshold)
@@ -264,7 +299,7 @@ class BaseDataPreparation:
             - train_dataset (torch.utils.data.dataset.TensorDataset): Training dataset.
             - val_dataset (torch.utils.data.dataset.TensorDataset): Validation dataset.
         """
-        logging.info("Creating the training and validation datasets...")
+        logging.info("PreparationFactory :: Creating the training and validation datasets...")
 
         # Shuffle the data
         indices = torch.randperm(X.size(0))
@@ -340,6 +375,10 @@ class BaseDataPreparation:
         return train_dataset, val_dataset
 
 
+# ================================================================================================
+# FEED-FOWARD DATA PREPARATION
+
+
 class FFDataPreparation(BaseDataPreparation):
     """A class for preparing data for feed-forward neural networks.
 
@@ -377,6 +416,9 @@ class FFDataPreparation(BaseDataPreparation):
             features_or_fvectors,
         )
 
+
+# ================================================================================================
+# GRAPH DATA PREPARATION
 
 class GraphDataPreparation(BaseDataPreparation):
     """A class for preparing data in graph format for GNN training.
@@ -681,7 +723,6 @@ class GraphDataPreparation(BaseDataPreparation):
 
         return train_dataset, val_dataset
 
-
     def verify_data(self, data_list):
         """Verify if the edge indices in each graph in the data list are within bounds.
 
@@ -705,3 +746,168 @@ class GraphDataPreparation(BaseDataPreparation):
                 return False
         print("All graphs have valid edge indices.")
         return True
+
+
+# ================================================================================================
+# TRANSFORMERS WITH GCN CLASSIFIER DATA PREPARATION
+class TransformerGCNDataPreparation(BaseDataPreparation):
+    """A class for preparing data for Transformer with GCN training.
+
+    This transformer is designed to work with the 4-vectors and
+    additional edge attributes, for instance the separation in eta
+    and phi between all objects in the event.
+
+    Attributes
+    ----------
+    df_sig : pandas.DataFrame
+        The signal dataset.
+    df_bkg : pandas.DataFrame
+        The background dataset.
+    batch_size : int
+        The batch size for training.
+    train_ratio : float, optional
+        The ratio of training data to total data.
+    value_threshold : float, optional
+        The threshold for removing small values in the input data.
+    four_vectors : numpy.ndarray
+        The four-vectors used as input features.
+    """
+
+    def __init__(
+        self,
+        df_sig,
+        df_bkg,
+        batch_size,
+        train_ratio,
+        value_threshold,
+        features_or_fvectors,
+    ):
+        super().__init__(
+            df_sig,
+            df_bkg,
+            batch_size,
+            train_ratio,
+            value_threshold,
+            features_or_fvectors,
+        )
+
+    def convert_to_tensors(self):
+        """Converts the input dataframes into PyTorch tensors and creates corresponding target tensors.
+
+        Returns
+        -------
+        tuple
+            A tuple containing:
+            - X_sig: PyTorch tensor containing signal data
+            - X_bkg: PyTorch tensor containing background data
+            - y_sig: PyTorch tensor containing target values for signal data
+            - y_bkg: PyTorch tensor containing target values for background data
+        """
+        logging.info("PreparationFactory :: Converting to Tensors...")
+        if isinstance(self.features_or_fvectors, list):
+            logging.info("Using the pre-defined features...")
+
+            print("self.df_sig:", self.df_sig)
+            print("self.df_bkg:", self.df_bkg)
+            # Use the pre-defined features
+            X_sig = torch.tensor(
+                self.df_sig[self.features_or_fvectors].values, dtype=torch.float32
+            )
+            X_bkg = torch.tensor(
+                self.df_bkg[self.features_or_fvectors].values, dtype=torch.float32
+            )
+        else:
+            logging.info("PreparationFactory :: Using the constructed four-vectors...")
+            # Use the constructed four-vectors
+            X_sig = torch.tensor(self.df_sig, dtype=torch.float32)
+            X_bkg = torch.tensor(self.df_bkg, dtype=torch.float32)
+
+        logging.info(
+            f"PreparationFactory :: Removing small values at {self.value_threshold} threshold value..."
+        )
+        # veto small values for training stability
+        X_sig = self.mask_small_values(X_sig, self.value_threshold)
+        X_bkg = self.mask_small_values(X_bkg, self.value_threshold)
+
+        y_sig = torch.ones((X_sig.shape[0], 1), dtype=torch.float32)
+        y_bkg = torch.zeros((X_bkg.shape[0], 1), dtype=torch.float32)
+
+        # calc mean and std for normalisation
+        X = torch.cat((X_sig, X_bkg), dim=0)
+        mean = X.mean(dim=0, keepdim=True)
+        std = X.std(dim=0, keepdim=True)
+
+        return X_sig, X_bkg, y_sig, y_bkg, mean, std
+
+    def normalize_node_features(self, X, mean, std):
+        return (X - mean) / (std + 1e-7)
+
+    def prepare_transformer_gcn_data(
+        self, signal_edges, signal_edge_attr, background_edges, background_edge_attr
+    ):
+        np.random.seed(42)
+        torch.manual_seed(42)
+
+        X_sig, X_bkg, y_sig, y_bkg, mean, std = self.convert_to_tensors()
+
+        logging.info(
+            f"PreparationFactory :: Normalising the node features using mean and std..."
+        )
+        # normalise the node features
+        X_sig = self.normalize_node_features(X_sig, mean, std)
+        X_bkg = self.normalize_node_features(X_bkg, mean, std)
+
+        # convert to tensors
+        signal_edges = [torch.tensor(edges, dtype=torch.long) for edges in signal_edges]
+        signal_edge_attr = [torch.tensor(attr, dtype=torch.float32) for attr in signal_edge_attr]
+        background_edges = [torch.tensor(edges, dtype=torch.long) for edges in background_edges]
+        background_edge_attr = [torch.tensor(attr, dtype=torch.float32) for attr in background_edge_attr]
+
+        logging.info(
+            f"PreparationFactory :: Splitting the data into training and validation datasets..."
+        )
+        # split data
+        train_dataset_sig, val_dataset_sig = self.split_data(X_sig, y_sig)
+        train_dataset_bkg, val_dataset_bkg = self.split_data(X_bkg, y_bkg)
+
+        # split edges and edge attributes together
+        train_size_sig = int(self.train_ratio * len(signal_edges))
+        train_size_bkg = int(self.train_ratio * len(background_edges))
+
+        train_edges_sig = signal_edges[:train_size_sig]
+        val_edges_sig = signal_edges[train_size_sig:]
+        train_edge_attr_sig = signal_edge_attr[:train_size_sig]
+        val_edge_attr_sig = signal_edge_attr[train_size_sig:]
+
+        train_edges_bkg = background_edges[:train_size_bkg]
+        val_edges_bkg = background_edges[train_size_bkg:]
+        train_edge_attr_bkg = background_edge_attr[:train_size_bkg]
+        val_edge_attr_bkg = background_edge_attr[train_size_bkg:]
+
+        # prepare graphs
+        train_graphs_sig = self._prepare_graphs(train_dataset_sig, train_edges_sig, train_edge_attr_sig)
+        val_graphs_sig = self._prepare_graphs(val_dataset_sig, val_edges_sig, val_edge_attr_sig)
+        train_graphs_bkg = self._prepare_graphs(train_dataset_bkg, train_edges_bkg, train_edge_attr_bkg)
+        val_graphs_bkg = self._prepare_graphs(val_dataset_bkg, val_edges_bkg, val_edge_attr_bkg)
+
+
+        # Combine signal and background graphs
+        train_graphs = train_graphs_sig + train_graphs_bkg
+        val_graphs = val_graphs_sig + val_graphs_bkg
+
+        # Find the maximum edge index across all tensors in the lists
+        max_index_sig = max(torch.max(edges).item() for edges in signal_edges if edges.numel() > 0)
+        max_index_bkg = max(torch.max(edges).item() for edges in background_edges if edges.numel() > 0)
+
+        print("Max edge index:", max_index_sig, max_index_bkg)
+
+        return train_graphs, val_graphs
+
+    def _prepare_graphs(self, dataset, edges_list, edge_attr_list):
+        graphs = []
+
+        for (x, y), edges, edge_attr in tqdm(zip(dataset, edges_list, edge_attr_list), desc="Preparing Graphs"):
+            graph = geo_data.Data(x=x, edge_index=edges, edge_attr=edge_attr, y=y.unsqueeze(0))
+            graphs.append(graph)
+
+        return graphs

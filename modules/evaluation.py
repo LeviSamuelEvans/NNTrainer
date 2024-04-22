@@ -11,14 +11,6 @@ from sklearn.metrics import (
     precision_recall_curve,
 )
 
-"""
-TODO:
-- Add F1 score
-- Add support for multi-class classification
-- Add future support for regression tasks
-"""
-
-
 class ModelEvaluator:
     """Class to evaluate a trained model on the validation set.
 
@@ -66,6 +58,7 @@ class ModelEvaluator:
         self.inputs = None
         self.labels = None
         self.score = None
+        self.network_type=None,
 
         if config.get("evaluation", {}).get("use_saved_model", False):
             saved_model_path = config["evaluation"]["saved_model_path"]
@@ -76,6 +69,7 @@ class ModelEvaluator:
             raise ValueError(
                 "Model not provided and 'use_saved_model' is False in config."
             )
+        self.network_type = config["Network_type"][0]
 
     def evaluate_model(self):
         """Evaluate the model on the validation set.
@@ -100,19 +94,36 @@ class ModelEvaluator:
         device = next(self.model.parameters()).device
 
         with torch.no_grad():
-            for inputs, labels in self.val_loader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                self.inputs = inputs
-                self.labels = labels
-                if (
-                    self.model.__class__.__name__ == "TransformerClassifier2"
-                    or self.model.__class__.__name__ == "SetsTransformerClassifier"
-                    or self.model.__class__.__name__ == "TransformerClassifier5"
-                ):
-                    outputs = self.model(inputs, inputs)  # pass inputs twice for x and x_coords
+            for batch_data in self.val_loader:
+                if isinstance(batch_data, tuple):
+                    inputs, labels = batch_data
+                    inputs = inputs.to(device)
+                    labels = labels.to(device)
+                elif isinstance(batch_data, list) and all(isinstance(x, torch.Tensor) for x in batch_data):
+                    batch_data = [x.to(device) for x in batch_data]
+                    inputs, labels = batch_data
                 else:
-                    outputs = self.model(inputs)
-                scores = torch.sigmoid(outputs).cpu().numpy()
+                    batch_data = batch_data.to(device)
+                    inputs = batch_data.x
+                    labels = batch_data.y
+                    edge_index = batch_data.edge_index
+                    if hasattr(batch_data, 'batch'):
+                        batch = batch_data.batch  # for batch-wise operations in GNNs
+                # process the data based on the network type
+                if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+                    # our graph-based models
+                    outputs = self.model(inputs, edge_index, batch) if hasattr(batch_data, 'batch') else self.model(inputs, edge_index)
+                    scores = torch.sigmoid(outputs).cpu().numpy()
+                elif self.network_type == "FFNN":
+                    if self.model.__class__.__name__ in ["TransformerClassifier2", "SetsTransformerClassifier", "TransformerClassifier5"]:
+                        outputs = self.model(inputs, inputs)  # pass inputs twice for x and x_coords!
+                    else:
+                        outputs = self.model(inputs)
+
+                    scores = torch.sigmoid(outputs).cpu().numpy()
+                else:
+                    raise ValueError(f"Unsupported network type: {self.network_type}")
+
                 predicted = (outputs > 0.5).float()
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()

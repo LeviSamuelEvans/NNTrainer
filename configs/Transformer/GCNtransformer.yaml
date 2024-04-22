@@ -1,0 +1,171 @@
+# ==================================================== #
+# Transformer Classifier 5 Testing Configuration File  #
+# =====================================================#
+
+# Information
+# -----------
+# * applies cross-attention
+
+# --------------------------------------------------------------------------------------
+
+#=============#
+# Model Block #
+#=============#
+model:
+  name: 'GCNtransformer'
+  input_dim: 8
+  d_model: 128
+  nhead: 2
+  num_encoder_layers: 2
+  dropout: 0.3
+
+#============#
+# Data Block #
+#============#
+data:
+  #signal_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttH_4vec_btag_500k_12j.h5
+  #background_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttbb_4vec_btag_500k_12j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttH_4vec_dev_btag_100k_10j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttbb_4vec_dev_btag_100k_10j.h5
+  train_ratio: 0.8
+  value_threshold: 1e-6
+  plot_inputs: False
+  plot_save_path: /scratch4/levans/tth-network/plots/
+
+#===============#
+# Network Block #
+#===============#
+Network_type:
+  - TransformerGCN
+
+#===============#
+# Feature Block #
+#===============#
+features:
+  - jet_pt_1
+  - jet_pt_2
+  - jet_pt_3
+  - jet_pt_4
+  - jet_pt_5
+  - jet_pt_6
+  - jet_pt_7
+  - jet_pt_8
+  - jet_pt_9
+  - jet_pt_10
+  # - jet_pt_11
+  # - jet_pt_12
+  - jet_eta_1
+  - jet_eta_2
+  - jet_eta_3
+  - jet_eta_4
+  - jet_eta_5
+  - jet_eta_6
+  - jet_eta_7
+  - jet_eta_8
+  - jet_eta_9
+  - jet_eta_10
+  # - jet_eta_11
+  # - jet_eta_12
+  - jet_phi_1
+  - jet_phi_2
+  - jet_phi_3
+  - jet_phi_4
+  - jet_phi_5
+  - jet_phi_6
+  - jet_phi_7
+  - jet_phi_8
+  - jet_phi_9
+  - jet_phi_10
+  # - jet_phi_11
+  # - jet_phi_12
+  - jet_e_1
+  - jet_e_2
+  - jet_e_3
+  - jet_e_4
+  - jet_e_5
+  - jet_e_6
+  - jet_e_7
+  - jet_e_8
+  - jet_e_9
+  - jet_e_10
+  # - jet_e_11
+  # - jet_e_12
+  - jet_tagWeightBin_DL1r_Continuous_1
+  - jet_tagWeightBin_DL1r_Continuous_2
+  - jet_tagWeightBin_DL1r_Continuous_3
+  - jet_tagWeightBin_DL1r_Continuous_4
+  - jet_tagWeightBin_DL1r_Continuous_5
+  - jet_tagWeightBin_DL1r_Continuous_6
+  - jet_tagWeightBin_DL1r_Continuous_7
+  - jet_tagWeightBin_DL1r_Continuous_8
+  - jet_tagWeightBin_DL1r_Continuous_9
+  - jet_tagWeightBin_DL1r_Continuous_10
+  # - jet_tagWeightBin_DL1r_Continuous_11
+  # - jet_tagWeightBin_DL1r_Continuous_12
+  - mu_pt
+  - mu_eta
+  - mu_phi
+  - mu_e
+  - el_pt
+  - el_eta
+  - el_phi
+  - el_e
+  - nElectrons
+  - nMuons
+
+#===================#
+# Preparation Block #
+#===================#
+preparation:
+  feature_maker: True
+  feature_type: '4-vectors'
+  use_representations: True
+  use_extra_feats: True
+  use_angular_separation: True
+  extra_feats: btag
+  max_particles: 6
+  n_leptons: 1
+  append_four_vectors: False
+  use_four_vectors: True
+  augment_data: True
+  augmentation_methods:
+    phi-rotation: True
+    eta-reflection: True
+    translate_eta_phi: False #BUG 04.04.23 :(
+    energy-variation: True
+
+#================#
+# Training Block #
+#================#
+training:
+  num_epochs: 10
+  learning_rate: 0.00001
+  weight_decay: 0.0001
+  batch_size: 1024
+  patience: 7
+  early_stopping: True
+  use_scheduler: False
+  factor: 0.5
+  initialise_weights: True
+  balance_classes: True
+  criterion: 'BCELoss'
+  use_cosine_burnin: True
+  lr_init: 1e-11
+  lr_max: 5e-5
+  lr_final: 1e-9
+  burn_in: 2
+  ramp_up: 3
+  plateau: 8
+  ramp_down: 12
+  gradient_clipping: True
+  max_norm: 1.0
+  model_save_path: /scratch4/levans/tth-network/models/outputs/
+
+#==================#
+# Evaluation Block #
+#==================#
+evaluation:
+  use_saved_model: False
+  saved_model_path: /scratch4/levans/tth-network/models/outputs/transfo4model.pt
+
+# --------------------------------------------------------------------------------------
