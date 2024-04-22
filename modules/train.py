@@ -1,610 +1,608 @@
+import json
 import os
 import time
+import logging
+
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
-import logging
-import re
-import numpy as np
-import torch.nn.init as init
+from torch_geometric.data import Batch
 from torch_geometric.loader import DataLoader as GeoDataLoader
-from sklearn.utils.class_weight import compute_class_weight
-from utils.log_model_summary import _print_model_summary, _print_cosine_scheduler_params
-from modules.scheduler import CosineRampUpDownLR
+import torch.optim as optim
 
-"""
-TODO:
-    - Add model saving (state_dict)
-    - Add model loading (state_dict)
-    - Add model comparison feature
-"""
+from modules import CosineRampUpDownLR
+from utils import (
+    gather_all_labels,
+    compute_class_weights,
+    initialise_weights,
+    separator,
+    _print_model_summary,
+    _print_cosine_scheduler_params,
+)
+
 logging.basicConfig(level=logging.INFO)
 
-
-def gather_all_labels(loader, device):
-    """Gathers all labels from the given data loader and concatenates them into a single tensor.
-
-    Parameters:
-    -----------
-        loader : torch.utils.data.DataLoader
-            The data loader containing the labeled data.
-        device : torch.device
-            The device to move the labels to.
-
-    Returns:
-    --------
-        torch.Tensor
-            A tensor containing all the labels concatenated along the specified dimension.
-    """
-    all_labels = []
-    for data in loader:
-        labels = data.y.to(device)
-        all_labels.append(labels)
-    return torch.cat(all_labels, dim=0)
-
-
-def compute_class_weights(all_labels):
-    """Compute class weights for binary classification.
-
-    Parameters:
-    -----------
-        all_labels : torch.Tensor
-            Tensor containing all the labels.
-
-    Returns:
-    --------
-        torch.Tensor
-            Tensor containing the class weights.
-    """
-    positive_examples = float((all_labels == 1).sum())
-    negative_examples = float((all_labels == 0).sum())
-    pos_weight = negative_examples / positive_examples
-    return torch.tensor([pos_weight], dtype=torch.float32)
-
-
 class Trainer:
-    """A class used to train a PyTorch model(s).
+    """A class used to steer the training of a PyTorch NN.
 
     Attributes
     ----------
-    model : torch.nn.Module
-        The PyTorch model to be trained.
-    train_loader : torch.utils.data.DataLoader
-        The data loader for the training set.
-    val_loader : torch.utils.data.DataLoader
-        The data loader for the validation set.
-    num_epochs : int
-        The number of epochs to train the model for.
-    lr : float
-        The learning rate for the optimizer.
-    weight_decay : float
-        The weight decay for the optimizer.
-    patience : int
-        The number of epochs to wait before reducing the learning rate.
-    criterion : torch.nn.Module
-        The loss function to be used for training.
-    early_stopping : bool, optional
-        Whether to use early stopping. Defaults to False.
-    use_scheduler : bool, optional
-        Whether to use a learning rate scheduler. Defaults to False.
-    scheduler : torch.optim.lr_scheduler._LRScheduler, optional
-        The learning rate scheduler to be used. Defaults to None.
-    factor : float, optional
-        The factor by which to reduce the learning rate. Defaults to None.
-    initialise_weights : bool, optional
-        Whether to initialise the weights of the model. Defaults to False.
-    class_weights : torch.Tensor, optional
-        The class weights to use for the loss function. Defaults to None.
-    balance_classes : bool, optional
-        Whether to balance the classes during training. Defaults to False.
-    network_type : str, optional
-        The type of neural network being trained. Defaults to None.
-    use_cosine_burnin : bool, optional
-        Whether to use cosine annealing with burn-in for learning rate scheduling. Defaults to False.
-    lr_init : float, optional
-        The initial learning rate for cosine annealing. Defaults to 1e-8.
-    lr_max : float, optional
-        The maximum learning rate for cosine annealing. Defaults to 1e-3.
-    lr_final : float, optional
-        The final learning rate for cosine annealing. Defaults to 1e-5.
-    burn_in : int, optional
-        The number of burn-in epochs for cosine annealing. Defaults to 5.
-    ramp_up : int, optional
-        The number of ramp-up epochs for cosine annealing. Defaults to 10.
-    plateau : int, optional
-        The number of plateau epochs for cosine annealing. Defaults to 15.
-    ramp_down : int, optional
-        The number of ramp-down epochs for cosine annealing. Defaults to 20.
-    gradient_clipping : bool, optional
-        Whether to use gradient clipping. Defaults to False.
-    max_norm : float, optional
-        The maximum norm for gradient clipping. Defaults to None.
-    model_save_path : str, optional
-        The path to save the model. Defaults to None.
+        config : dict
+            The configuration dictionary for training.
+        model : torch.nn.Module
+            The PyTorch model to be trained.
+        train_loader : torch.utils.data.DataLoader
+            The data loader for training data.
+        val_loader : torch.utils.data.DataLoader
+            The data loader for validation data.
+        device : torch.device
+            The device (GPU or CPU) to be used for training.
+        gradient_clipping : bool
+            Whether to apply gradient clipping during training.
+        max_norm : float
+            The maximum norm value for gradient clipping.
+        lr : float
+            The learning rate for the optimizer.
+        train_losses : list
+            A list to store the training losses.
+        val_losses : list
+            A list to store the validation losses.
+        train_accuracies : list
+            A list to store the training accuracies.
+        val_accuracies : list
+            A list to store the validation accuracies.
+        learning_rates : list
+            A list to store the learning rates.
+        current_epoch : int
+            The current epoch number.
+
+    Methods
+    -------
+        __len__():
+            Return the total number of training samples.
+        __iter__():
+            Return an iterator over the training batches.
+        __next__():
+            Return the next training batch.
+        state_dict():
+            Return the state dictionary of the Trainer instance.
+        load_state_dict(state_dict):
+            Load the state dictionary of the Trainer instance.
+        get_losses():
+            Return the training and validation losses.
+        get_accuracies():
+            Return the training and validation accuracies.
+        save_checkpoint(epoch):
+            Save the training checkpoint at a specific epoch.
+        load_checkpoint(checkpoint_path):
+            Load a training checkpoint from a given path.
+        log_metrics(epoch):
+            Log the training and validation metrics for each epoch.
+        get_hyperparameters():
+            Return the hyperparameters used for training.
+        get_total_parameters():
+            Return the total number of trainable parameters in the model.
+        save_metrics_to_json(file_path):
+            Save the training metrics and metadata to a JSON file.
+        save_model(model):
+            Save the model to the specified path.
+        _validate_loaders():
+            Validate the train_loader and val_loader for specific network types.
+        _initialise_model():
+            Initialise the model and optimiser.
+        _initialise_attributes():
+            Initialise the attributes of the Trainer instance.
+        _initialise_criterion():
+            Initialise the loss criterion.
+        _compute_pos_weight(all_labels):
+            Compute the positive weight for imbalanced classes.
+        _initialise_scheduler():
+            Initialise the learning rate scheduler.
+        _print_optimizer_params():
+            Print the optimiser parameters.
+        _early_stopping(val_loss, best_val_loss, patience_counter):
+            Check if early stopping criteria are met.
+        _train_epoch(epoch):
+            Perform a single training epoch.
+        train_model():
+            Train the model using the specified criterion, optimiser, and data loaders
+            for a given number of epochs.
     """
 
-    def __init__(
-        self,
-        model,
-        train_loader,
-        val_loader,
-        num_epochs,
-        lr,
-        weight_decay,
-        patience,
-        criterion,
-        early_stopping=False,
-        use_scheduler=False,
-        scheduler=None,
-        factor=None,
-        initialise_weights=False,
-        class_weights=None,
-        balance_classes=False,
-        network_type=None,
-        use_cosine_burnin=False,
-        lr_init=1e-8,
-        lr_max=1e-3,
-        lr_final=1e-5,
-        burn_in=5,
-        ramp_up=10,
-        plateau=15,
-        ramp_down=20,
-        gradient_clipping=False,
-        max_norm=None,
-        model_save_path=None,
-    ):
-
-        self.device = torch.device(
-            "cuda:0" if torch.cuda.is_available() else "cpu"
-        )  # Use GPU if available
-        logging.info(f"Device: {self.device}")
-        # If using a GNN or the LEGNNs, we need to use the GeoDataLoader!
-        if network_type in ["GNN", "LENN"]:
-            self.train_loader = GeoDataLoader(train_loader, shuffle=True)
-            self.val_loader = GeoDataLoader(val_loader, shuffle=False)
-            # print(f"Initial train_loader type: {type(self.train_loader)}")  # DEBUG
-        else:
-            self.train_loader = train_loader
-            self.val_loader = val_loader
-
+    def __init__(self, config, model, train_loader, val_loader, **kwargs):
+        self.config = config
         self.model = model
-        self.model.to(self.device)  # Move model to GPU if available
-        self.num_epochs = num_epochs
-        self.lr = lr
-        self.class_weights = class_weights
-        self.criterion = criterion
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.gradient_clipping = kwargs.get("gradient_clipping", False)
+        self.max_norm = kwargs.get("max_norm", None)
+        self.lr = float(kwargs.get("lr", 0.001))
+        logging.info(f"Device: {self.device}")
+
+        self._validate_loaders()
+        self._initialise_model()
+        self._initialise_attributes()
+        self._initialise_criterion()
+        self._initialise_scheduler()
+
+    def __len__(self):
+        """Return the total number of training samples."""
+        return len(self.train_loader.dataset)
+
+    def __iter__(self):
+        """Return an iterator over the training batches."""
+        return iter(self.train_loader)
+
+    def __next__(self):
+        """Return the next training batch."""
+        return next(self.train_loader)
+
+# ======================================================================================
+
+    def _validate_loaders(self):
+        if self.config["network_type"] in ["GNN", "LENN", "TransformerGCN"]:
+            assert isinstance(
+                self.train_loader, GeoDataLoader
+            ), "For GNN, LENN, and TransformerGCN, train_loader must be an instance of GeoDataLoader!"
+            assert isinstance(
+                self.val_loader, GeoDataLoader
+            ), "For GNN, LENN, and TransformerGCN, val_loader must be an instance of GeoDataLoader!"
+
+    def _initialise_model(self):
+        self.model.to(self.device)
+        lr = float(self.config["training"]["learning_rate"])
         self.optimizer = optim.Adam(
-            model.parameters(), lr=lr, weight_decay=weight_decay
+            self.model.parameters(),
+            lr=lr,
+            weight_decay=self.config["training"]["weight_decay"],
         )
+
+    def _initialise_attributes(self):
+        for key, value in self.config.items():
+            if isinstance(value, dict):
+                for subkey, subvalue in value.items():
+                    if hasattr(self, subkey):
+                        current_type = type(getattr(self, subkey))
+                        setattr(self, subkey, current_type(subvalue))
+                    else:
+                        setattr(self, subkey, subvalue)
+            else:
+                if hasattr(self, key):
+                    current_type = type(getattr(self, key))
+                    setattr(self, key, current_type(value))
+                else:
+                    setattr(self, key, value)
+
         self.train_losses = []
         self.val_losses = []
         self.train_accuracies = []
         self.val_accuracies = []
         self.learning_rates = []
-        self.early_stopping = early_stopping
-        self.weight_decay = weight_decay
-        self.use_scheduler = use_scheduler
-        self.use_cosine_burnin = use_cosine_burnin
-        self.lr_init = lr_init
-        self.lr_max = lr_max
-        self.lr_final = lr_final
-        self.burn_in = burn_in
-        self.ramp_up = ramp_up
-        self.plateau = plateau
-        self.ramp_down = ramp_down
-        self.patience = patience
-        self.factor = factor
-        self.initialise_weights = initialise_weights
-        self.balance_classes = balance_classes
-        self.gradient_clipping = gradient_clipping
-        self.max_norm = max_norm
-        self.model_save_path = model_save_path
-        self.network_type = network_type
 
-        if self.balance_classes == True:
-            if self.network_type in ["GNN", "LENN"]:
-                all_labels = gather_all_labels(train_loader, self.device)
-                pos_weight = compute_class_weights(all_labels)
-                pos_weight = pos_weight.to(self.device)
-                self.criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-            else:
-                all_labels = torch.cat([labels for *_, labels in self.train_loader])
-                class_weights = self.get_class_weights(all_labels)
-                positive_examples = float((all_labels == 1).sum())
-                negative_examples = float((all_labels == 0).sum())
-                pos_weight = torch.tensor([negative_examples / positive_examples])
-                pos_weight = pos_weight.to(self.device)
-                self.criterion = torch.nn.BCEWithLogitsLoss(weight=pos_weight)
+    def _initialise_criterion(self):
+        if self.balance_classes:
+            all_labels = gather_all_labels(self.train_loader, self.device)
+            pos_weight = (
+                compute_class_weights(all_labels)
+                if self.network_type in ["GNN", "LENN", "TransformerGCN"]
+                else self._compute_pos_weight(all_labels)
+            )
+            pos_weight = pos_weight.to(self.device)
+            self.criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         else:
             self.criterion = torch.nn.BCELoss()
 
-        if torch.cuda.is_available():
-            logging.info("GPU is available. Using GPU for training.")
-        else:
-            logging.info("GPU not available. Using CPU for training.")
-
-        if self.use_scheduler == True:
+    def _initialise_scheduler(self):
+        if self.use_scheduler:
             self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                 self.optimizer,
                 mode="min",
-                factor=factor,
-                patience=patience,
+                factor=self.factor,
+                patience=self.patience,
                 verbose=True,
             )
             logging.info("Initialised ReduceLROnPlateau scheduler.")
         else:
             self.scheduler = None
 
-        if self.use_cosine_burnin == True:
-            cosine_scheduler = CosineRampUpDownLR(
+        if self.use_cosine_burnin:
+            self.cosine_scheduler = CosineRampUpDownLR(
                 self.optimizer,
-                lr_init,
-                lr_max,
-                lr_final,
-                burn_in,
-                ramp_up,
-                plateau,
-                ramp_down,
+                float(self.lr_init),
+                float(self.lr_max),
+                float(self.lr_final),
+                self.burn_in,
+                self.ramp_up,
+                self.plateau,
+                self.ramp_down,
                 last_epoch=-1,
             )
-            self.cosine_scheduler = cosine_scheduler
-            _print_cosine_scheduler_params(cosine_scheduler)
+            _print_cosine_scheduler_params(self.cosine_scheduler)
         else:
             self.cosine_scheduler = None
 
-    def get_class_weights(self, y) -> torch.Tensor:
-        """Compute class weights based on the given labels.
+# ======================================================================================
 
-        Parameters
-        ----------
-        y : torch.Tensor
-            Labels tensor.
+    def state_dict(self):
+        """Return the state dictionary of the Trainer instance."""
+        return {
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "train_losses": self.train_losses,
+            "val_losses": self.val_losses,
+            "train_accuracies": self.train_accuracies,
+            "val_accuracies": self.val_accuracies,
+            "learning_rates": self.learning_rates,
+            "epoch": self.current_epoch,
+        }
 
-        Returns
-        -------
-        torch.Tensor
-            Computed class weights.
-        """
+    def load_state_dict(self, state_dict):
+        """Load the state dictionary of the Trainer instance."""
+        self.model.load_state_dict(state_dict["model_state_dict"])
+        self.optimizer.load_state_dict(state_dict["optimizer_state_dict"])
+        self.train_losses = state_dict["train_losses"]
+        self.val_losses = state_dict["val_losses"]
+        self.train_accuracies = state_dict["train_accuracies"]
+        self.val_accuracies = state_dict["val_accuracies"]
+        self.learning_rates = state_dict["learning_rates"]
+        self.current_epoch = state_dict["epoch"]
 
-        logging.info("Computing class weights...")
-        # Convert tensor to numpy array
-        y_np = y.numpy().squeeze()
-        # Compute class weights using sklearns compute_class_weight
-        classes = np.unique(y_np)
-        class_weights = compute_class_weight("balanced", classes=classes, y=y_np)
+    def save_checkpoint(self, epoch):
+        """Save the training checkpoint at a specific epoch."""
+        checkpoint = {
+            "epoch": epoch,
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "train_losses": self.train_losses,
+            "val_losses": self.val_losses,
+            "train_accuracies": self.train_accuracies,
+            "val_accuracies": self.val_accuracies,
+            "learning_rates": self.learning_rates,
+        }
+        torch.save(checkpoint, f"checkpoint_epoch_{epoch}.pt")  # add savepath
 
-        # Convert class weights to a tensor and move to the same device as y
-        class_weights_tensor = torch.tensor(class_weights, dtype=torch.float32).to(y.device)
+    def load_checkpoint(self, checkpoint_path):
+        """Load a training checkpoint from a given path."""
+        checkpoint = torch.load(checkpoint_path)
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.train_losses = checkpoint["train_losses"]
+        self.val_losses = checkpoint["val_losses"]
+        self.train_accuracies = checkpoint["train_accuracies"]
+        self.val_accuracies = checkpoint["val_accuracies"]
+        self.learning_rates = checkpoint["learning_rates"]
+        self.current_epoch = checkpoint["epoch"]
 
-        return class_weights_tensor
+    def save_metrics_to_json(self, file_path):
+        """Save the training metrics and metadata to a JSON file."""
+        metrics_data = {
+            "train_losses": self.train_losses,
+            "val_losses": self.val_losses,
+            "train_accuracies": self.train_accuracies,
+            "val_accuracies": self.val_accuracies,
+            "learning_rates": self.learning_rates,
+            "hyperparameters": self.get_hyperparameters(),
+            "total_parameters": self.get_total_parameters(),
+        }
 
-    @staticmethod
-    def initialise_weights(model) -> None:
-        """Initialise the weights of the given model using Xavier Uniform initialization for linear layers.
+        with open(file_path, "w") as json_file:
+            json.dump(metrics_data, json_file, indent=4)
 
-        Parameters
-        ----------
-        model : torch.nn.Module
-            PyTorch model whose weights need to be initialized.
+    def save_model(self, model, model_save_path):
+        """save the model state dictionary to the specified path."""
+        if not os.path.exists(model_save_path):
+            os.makedirs(model_save_path, exist_ok=True)
+        torch.save(model.state_dict(), os.path.join(model_save_path, "model_state_dict.pt"))
+        logging.info(f"Model state dictionary saved to {os.path.join(model_save_path, 'model_state_dict.pt')}")
 
-        Notes:
-             - https://arxiv.org/abs/1706.03762 uses Xavier Uniform initialisation for linear layers.
-             - another method is applying a normal distribution with mean 0 and std 0.02
-        """
-        if isinstance(model, nn.TransformerEncoder) or isinstance(model, nn.TransformerDecoder):
-            # initialise weights for transformer encoder
-            for name, param in model.named_parameters():
-                if 'weight' in name:
-                    nn.init.xavier_uniform_(param)
-                elif 'bias' in name:
-                    nn.init.constant_(param, 0.0)
-        else:
-            # initialise weights for other layers
-            for m in model.modules():
-                if isinstance(m, nn.Linear):
-                    nn.init.xavier_uniform_(m.weight)
-                    if m.bias is not None:
-                        nn.init.constant_(m.bias, 0)
+# ======================================================================================
 
-    def validate(self) -> float:
-        """Perform validation on the model.
+    def get_losses(self):
+        """Return the training and validation losses."""
+        return self.train_losses, self.val_losses
 
-        Returns
-        -------
-        float
-            The validation loss.
-        """
-        self.model.eval()
-        val_epoch_loss = 0.0
-        with torch.no_grad():
-            for inputs, labels in self.val_loader:
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
-                if (
-                    self.model.__class__.__name__ == "TransformerClassifier2"
-                    or self.model.__class__.__name__ == "SetsTransformerClassifier"
-                    or self.model.__class__.__name__ == "TransformerClassifier5"
-                ):
-                    outputs = self.model(inputs, inputs)
-                else:
-                    outputs = self.model(inputs)
-                loss = self.criterion(outputs, labels)
-                val_epoch_loss += loss.item() * inputs.size(0)
-        val_epoch_loss /= len(self.val_loader.dataset)
-        logging.info(f"Validation Loss: {val_epoch_loss:.4f}")
-        return val_epoch_loss
+    def get_accuracies(self):
+        """Return the training and validation accuracies."""
+        return self.train_accuracies, self.val_accuracies
 
-    def save_model(self, model):
-        """Save the model to the specified path.
+    def get_hyperparameters(self):
+        """Return the hyperparameters used for training."""
+        return {
+            "learning_rate": self.lr,
+            "batch_size": self.train_loader.batch_size,
+            "num_epochs": self.num_epochs,
+            "optimizer": type(self.optimizer).__name__,
+            "criterion": type(self.criterion).__name__,
+            "model": type(self.model).__name__,
+        }
 
-        Parameters
-        ----------
-        model : torch.nn.Module
-            The PyTorch model to be saved.
+    def get_total_parameters(self):
+        """Return the total number of trainable parameters in the model."""
+        return sum(p.numel() for p in self.model.parameters() if p.requires_grad)
 
-        Notes
-        -----
-        The model is saved as a .pt file using torch.save().
+    def _compute_pos_weight(self, all_labels):
+        """Compute the positive weight for imbalanced classes."""
+        all_labels = torch.cat([labels for *_, labels in self.train_loader])
+        positive_examples = float((all_labels == 1).sum())
+        negative_examples = float((all_labels == 0).sum())
+        return torch.tensor([negative_examples / positive_examples])
 
-        """
-        model_save_path = self.model_save_path
-
-        # make the direcotry if it doesn't exist
-        os.makedirs(model_save_path, exist_ok=True)
-        torch.save(model, f"{model_save_path}model.pt")
-        logging.info(f"Model saved to {model_save_path}model.pt")
-
-    def train_model(self) -> None:
-        """Train the model using the specified criterion, optimizer, and data loaders for a given number of epochs.
-
-        Logs training and validation loss and accuracy, and stops early if validation loss doesn't improve for a given
-        number of epochs.
-        """
-        # A loada logging stuff (move outside of training during the separate refactor)
-        _print_model_summary(self.model)
-        header = "{:<20} {:<15}".format("Parameter",  "Value")
-        logging.info(header)
-        logging.info('-' * len(header))
-        optimizer_params = self.optimizer.state_dict()['param_groups'][0]
+    def _print_optimizer_params(self):
+        """Print the optimisers parameters."""
+        optimizer_params = self.optimizer.state_dict()["param_groups"][0]
         for param, value in optimizer_params.items():
-            # skip non-scalar values like the 'betas'
             if isinstance(value, (float, int, bool)):
                 logging.info(f"{param:<20}   {value:<15}")
-
-        if 'betas' in optimizer_params:
-            betas = optimizer_params['betas']
+        if "betas" in optimizer_params:
+            betas = optimizer_params["betas"]
             logging.info(f"{'betas[0]':<20}   {betas[0]:<15.5f}")
             logging.info(f"{'betas[1]':<20}   {betas[1]:<15.5f}")
-        start_time = time.time()
-        logging.info(f"Loss function:         {self.criterion}")
-        logging.info(f"Number of epochs:      {self.num_epochs}")
-        logging.info(f"Scheduler:             {self.scheduler}")
-        logging.info(f"Patience:              {self.patience}")
-        logging.info(f"Factor:                {self.factor}")
-        logging.info(f"Weight decay:          {self.weight_decay}")
-        logging.info(f"Initialise weights:    {self.initialise_weights}")
-        logging.info(f"Criterion:             {self.criterion}")
-        logging.info(f"Balance classes:       {self.balance_classes}")
-        logging.info(f"Cosine Scheduler:      {self.cosine_scheduler}")
-        logging.info(f"Initial learning rate: {self.lr}")
-        logging.info(f"Early Stopping:        {self.early_stopping}")
-        logging.info(f"Number of Epochs:      {self.num_epochs}")
-        logging.info(f"Training samples:      {len(self.train_loader.dataset)}")
-        logging.info(f"Validating samples:    {len(self.val_loader.dataset)}")
-        logging.info("Start time:            {}".format(time.strftime("%H:%M:%S", time.localtime()))
-        )
-        logging.info("=" * 50)
-        logging.info("=" * 50)
-        # Onwards with the training...
-        best_val_loss = float("inf")
-        patience_counter = 0
-        self.val_labels_list = []
-        self.val_outputs_list = []
 
-        if self.initialise_weights:
-            Trainer.initialise_weights(self.model)
+# ======================================================================================
 
-        if self.network_type in ["GNN", "LENN"]:
-            data_iter = self.train_loader.dataset
-        else:
-            data_iter = self.train_loader
+    def _train_epoch(self, epoch):
+        self.model.train()
+        running_loss = 0.0
+        correct = 0
+        total = 0
+        tot_samples = 0
 
-        for epoch in range(self.num_epochs):
-            for data in data_iter:
-                if self.network_type in ["GNN", "LENN"]:
-                    data = torch.tensor(data).to(self.device)
-                    outputs = self.model(data.x, data.edge_index, data.global_features)
-                    logging.info(
-                        f"Max node index in edge_index: {data.edge_index.max()}, Number of nodes: {data.x.size(0)}"
-                    )
-                    labels = data.y
-                else:
-                    break
+        for batch_idx, batch_data in enumerate(self.train_loader):
+            inputs, labels, edge_index, batch = self._process_batch_data(batch_data)
 
-            self.model.train()
+            self.optimizer.zero_grad()
 
-            if self.cosine_scheduler:
-                self.cosine_scheduler.step()
-                current_lr = self.optimizer.param_groups[0]["lr"]
-                logging.info(
-                    f"Epoch {epoch+1}: Cosine Scheduler sets learning rate to {current_lr:.12f}"
-                )
-                self.learning_rates.append(current_lr)  # Store learning rate for this epoch
+            if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+                outputs = self._forward_pass(inputs, edge_index, batch)
             else:
-                current_lr = self.lr  # Set current_lr to self.lr when cosine scheduler is not used
-                self.optimizer.param_groups[0]["lr"] = self.lr  # Set learning rate
-                logging.info(f"Epoch {epoch+1}: Learning rate set to {self.lr:.6f}")
-                self.learning_rates.append(current_lr)
+                outputs = self._forward_pass(inputs)
 
-            # movce to after optimiser for >PyT v1.2
-            running_loss = 0.0
-            correct = 0  # Counter for correct predictions
-            total = 0  # Counter for total predictions
+            loss = self.criterion(outputs, labels)
+            loss.backward()
+            self.optimizer.step()
 
-            for batch_idx, (inputs, labels) in enumerate(data_iter):
-                if self.network_type in ["GNN", "LENN"]:
-                    outputs = self.model(data.x, data.edge_index, data.batch)
-                    labels = data.y  # Access labels directly from the batch
-                    # mean over sequence_length label adjustments for transformer # TEMP
-                    # if labels.dim() > 2:
-                    #     labels = labels.mean(dim=1, keepdim=True)
-                    loss = self.criterion(outputs, labels)
-                    print(
-                        f"Batch {batch_idx}: Max node index in edge_index: {data.edge_index.max()}, Number of nodes: {data.x.size(0)}"
-                    )
-                    print(f"Max node index: {data.edge_index.max()}")
-                    print(f"Number of nodes: {data.x.size(0)}")
-                elif self.network_type in ["FFNN"]:
-                    inputs = inputs.to(self.device)
-                    labels = labels.to(self.device)
-                    if (
-                        self.model.__class__.__name__ == "TransformerClassifier2"
-                        or self.model.__class__.__name__ == "SetsTransformerClassifier"
-                        or self.model.__class__.__name__ == "TransformerClassifier5"
-                    ):
-                        outputs = self.model(inputs, inputs)
-                    else:
-                        outputs = self.model(inputs)
-                    loss = self.criterion(outputs, labels)
-                else:
-                    raise ValueError(f"Unsupported network type: {self.network_type}")
+            running_loss += loss.item() * inputs.size(0)
+            predicted = self._get_predictions(outputs)
+            correct += (predicted == labels.view_as(predicted)).sum().item()
+            total += labels.size(0)
+            tot_samples += inputs.size(0)
 
-                self.optimizer.zero_grad()
-                if self.gradient_clipping:
-                    nn.utils.clip_grad_norm_(
-                        self.model.parameters(), max_norm=self.max_norm
-                    )
-                loss.backward()
-                self.optimizer.step()
-                running_loss += loss.item() * inputs.size(0)
+            if (batch_idx + 1) % 50 == 0:
+                self._log_batch_progress(epoch, batch_idx, loss.item(), correct, total)
 
-                # Compute accuracy for this batch
-                # since all training is done with BCEWithLogitsLoss, we
-                # need to apply the sigmoid function to the output to get the probabilities!
-                # NOTE: all sigmoid functions should be removed from the model!
-                probabilities = torch.sigmoid(outputs).squeeze()
-                predicted = torch.round(probabilities)
-
-                labels = labels.squeeze()
-                # DEBUG
-                logging.debug("Predicted shape:", predicted.shape)
-                logging.debug("Labels shape:", labels.shape)
-                # the first 10 predicted values
-                logging.debug("Predicted values:", predicted[:10])
-                # the first 10 true label values
-                logging.debug("Label values:", labels[:10])
-
-                correct += (predicted == labels).sum().item()
-                total += labels.size(0)
-
-                # Log batch progress
-                if (batch_idx + 1) % 50 == 0:
-                    logging.info(
-                        f"Epoch [{epoch+1}/{self.num_epochs}], Batch [{batch_idx+1}/{len(self.train_loader)}], Loss: {loss.item():.6f}, Accuracy: {correct/total:.4f}"
-                    )
-
+        if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+            epoch_loss = running_loss / tot_samples
+            epoch_accuracy = correct / total
+        else:
             epoch_loss = running_loss / len(self.train_loader.dataset)
-            self.train_losses.append(epoch_loss)  # Store training loss for this epoch
+            epoch_accuracy = correct / total
 
-            epoch_accuracy = correct / total  # Compute training accuracy for this epoch
-            self.train_accuracies.append(epoch_accuracy)
-            # Validation loss for the epoch
-            val_epoch_loss = self.validate()
-            if self.scheduler:
-                self.scheduler.step(
-                    val_epoch_loss
-                )  # Adjust learning rate based on validation loss, using ReduceLROnPlateau
-                current_lr = self.optimizer.param_groups[0]["lr"]
+        self.train_losses.append(epoch_loss)
+        self.train_accuracies.append(epoch_accuracy)
+
+    def _validate_epoch(self, epoch):
+        self.model.eval()
+        val_loss = 0.0
+        correct = 0
+        total = 0
+        tot_samples = 0
+
+        with torch.no_grad():
+            for batch_data in self.val_loader:
+                # if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+                #     inputs, labels, edge_index, batch = self._process_batch_data(batch_data)
+                #     outputs = self._forward_pass(inputs, edge_index, batch)
+                # else:
+                inputs, labels, edge_index, batch = self._process_batch_data(batch_data)
+                outputs = self._forward_pass(inputs)
+
+                loss = self.criterion(outputs, labels)
+                val_loss += loss.item() * inputs.size(0)
+                predictions = self._get_predictions(outputs)
+                correct += (predictions == labels.view_as(predictions)).sum().item()
+
+                total += labels.size(0)
+                tot_samples += inputs.size(0)
+
+        if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+            val_loss /= tot_samples
+            val_accuracy = correct / total
+        else:
+            val_loss /= total
+            val_accuracy = correct / total
+
+        self.val_losses.append(val_loss)
+        self.val_accuracies.append(val_accuracy)
+
+        return val_loss
+
+    def _early_stopping(self, val_loss, best_val_loss, patience_counter):
+        """Check if early stopping criteria are met."""
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+        else:
+            patience_counter += 1
+            if patience_counter >= self.patience:
                 logging.info(
-                    f"Epoch {epoch+1}: ReduceLROnPlateau sets learning rate to {current_lr:.6f}"
+                    f"Validation loss hasn't improved for {self.patience} epochs. Stopping early."
                 )
+                return True, best_val_loss, patience_counter
+        return False, best_val_loss, patience_counter
 
-            val_correct = 0
-            val_total = 0
-            with torch.no_grad():
-                if self.network_type in ["GNN", "LENN"]:
-                    for data in self.val_loader:
-                        data = data.to(self.device)
-                        outputs = self.model(data.x, data.edge_index, data.batch)
-                        labels = data.y
-                else:
-                    for inputs, labels in self.val_loader:
-                        inputs, labels = inputs.to(self.device), labels.to(self.device)
-                        if (
-                            self.model.__class__.__name__ == "TransformerClassifier2"
-                            or self.model.__class__.__name__ == "SetsTransformerClassifier"
-                            or self.model.__class__.__name__ == "TransformerClassifier5"
-                        ):
-                            outputs = self.model(inputs, inputs)
-                        else:
-                            outputs = self.model(inputs)
+    def _process_batch_data(self, batch_data):
+        """Process the batch data based on the network type."""
+        # check if the batch data is a tuple of inputs and labels
 
-                        # squeeze the output to remove the extra singleton dimensions
-                        # since all training is done with BCEWithLogitsLoss, we
-                        # need to apply the sigmoid function to the output to get the probabilities!
-                        # NOTE: all sigmoid functions should be removed from the model!
-                        probabilities = torch.sigmoid(outputs).squeeze()
-                        predicted = torch.round(probabilities)
+        if hasattr(batch_data, 'x') and hasattr(batch_data, 'edge_index'):
+            # for our graph networks
+            batch_data = batch_data.to(self.device)
+            inputs = batch_data.x
+            labels = batch_data.y
+            edge_index = batch_data.edge_index
+            batch = batch_data.batch if hasattr(batch_data, 'batch') else None
+            return inputs, labels, edge_index, batch
+        elif isinstance(batch_data, tuple):
+            # for our ff networks
+            inputs = batch_data[0].to(self.device)
+            labels = batch_data[1].to(self.device).squeeze() if len(batch_data) > 1 else None
+            return inputs, labels, None, None
+        elif isinstance(batch_data, torch.Tensor):
+            # handle the case where batch_data is a single tensor
+            inputs = batch_data.to(self.device)
+            labels = None
+            return inputs, labels, None, None
+        elif isinstance(batch_data, list) and all(isinstance(x, torch.Tensor) for x in batch_data):
+            # Assume batch_data is a list of tensors
+            batch_data = [x.to(self.device) for x in batch_data]
+            inputs = batch_data[0]
+            labels = batch_data[1] if len(batch_data) > 1 else None
+            return inputs, labels, None, None
+        else:
+            raise ValueError("Unsupported batch data format." + str(type(batch_data)))
 
-                        labels = labels.squeeze()
 
-                        # DEBUG
-                        logging.debug("Predicted shape:", predicted.shape)
-                        logging.debug("Labels shape:", labels.shape)
-                        # the first 10 predicted values
-                        logging.debug("Predicted values:", predicted[:10])
-                        # the first 10 true label values
-                        logging.debug("Label values:", labels[:10])
+    def _forward_pass(self, inputs, edge_index=None, batch=None):
+        """
+        Perform a forward pass through the model.
 
-                        val_correct += (predicted == labels).sum().item()
-                        val_total += labels.size(0)
+        This function is conditioned to handle different network types, where
+        different inputs might be necessary, such as edge indices for graph networks
+        or additional batch tensors for batched operations.
 
-                # Store the predicted scores and true labels
-                self.val_labels_list.extend(labels.cpu().numpy())
-                self.val_outputs_list.extend(outputs.cpu().numpy())
+        Parameters:
+        - inputs (torch.Tensor): The input features to the model.
+        - edge_index (torch.Tensor): The edge indices in a COO format (if applicable).
+        - batch (torch.Tensor): The batch index for each node (if applicable).
 
-            self.val_losses.append(
-                val_epoch_loss
-            )  # Store validation loss for this epoch
-            val_epoch_accuracy = (
-                val_correct / val_total
-            )  # Compute validation accuracy for this epoch
-            self.val_accuracies.append(
-                val_epoch_accuracy
-            )  # Store validation accuracy for this epoch
+        Returns:
+        - torch.Tensor: The output from the model.
+        """
+        if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+            # here, the model expects inputs, edge_index, and possibly batch for graph-level pooling
+            outputs = self.model(inputs, edge_index, batch)
+        elif self.model.__class__.__name__ in ["TransformerClassifier2", "SetsTransformerClassifier", "TransformerClassifier5"]:
+            # for some models, our inputs are duplicated or transformed differently
+            outputs = self.model(inputs, inputs)
+        else:
+            # For standard models with basic inputs
+            outputs = self.model(inputs)
+
+        return outputs
+
+    def _get_predictions(self, outputs):
+        """Get the predictions from the model outputs."""
+        probabilities = torch.sigmoid(outputs).squeeze()
+        return torch.round(probabilities)
+
+    def _log_batch_progress(self, epoch, batch_idx, loss, correct, total):
+        """Log the progress of the current batch."""
+        logging.info(
+            f"Epoch: [{epoch+1}/{self.num_epochs}] | Batch: [{batch_idx+1}/{len(self.train_loader)}], Loss = {loss:.4f}, Acc = {100 * correct/total:.4f}%"
+        )
+
+    def _log_epoch_metrics(self, epoch):
+        """Log the training and validation metrics for each epoch."""
+        if hasattr(self, "train_losses") and hasattr(self, "val_losses"):
+            train_loss = self.train_losses[-1] if self.train_losses else 0.0
+            train_acc = self.train_accuracies[-1] if self.train_accuracies else 0.0
+            val_loss = self.val_losses[-1] if self.val_losses else 0.0
+            val_acc = self.val_accuracies[-1] if self.val_accuracies else 0.0
+
             logging.info(
                 f"Epoch {epoch+1}/{self.num_epochs} - "
-                f"Train Loss: {epoch_loss:.4f}, Train Acc: {epoch_accuracy:.4f}, "
-                f"Val Loss: {val_epoch_loss:.4f}, Val Acc: {val_epoch_accuracy:.4f}"
+                f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
+                f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}"
             )
+        else:
+            logging.warning("Attempted to log metrics without complete data.")
 
-            # Check for early stopping
-            if self.early_stopping == True:
-                if val_epoch_loss < best_val_loss:
-                    best_val_loss = val_epoch_loss
-                    patience_counter = 0
-                else:
-                    patience_counter += 1
-                    if patience_counter >= self.patience:
-                        logging.info(
-                            f"Validation loss hasn't improved for {self.patience} epochs. Stopping early."
-                        )
-                        break
+    def log_metrics(self, epoch):
+        """Log the training and validation metrics for each epoch."""
+        logging.info(
+            f"Epoch {epoch+1}/{self.num_epochs} - "
+            f"Train Loss: {self.train_losses[-1]:.4f}, Train Acc: {100 * self.train_accuracies[-1]:.4f}%, "
+            f"Val Loss: {self.val_losses[-1]:.4f}, Val Acc: {100 * self.val_accuracies[-1]:.4f}%"
+        )
+# ======================================================================================
+# ======================================================================================
+# MAIN TRAINING METHOD
+
+    def train_model(self):
+        """Train the model using the specified criterion, optimiser, and data loaders for a given number of epochs.
+
+        Logs training and validation loss and accuracy, and stops early if validation loss doesn't improve for a given number of epochs.
+
+        Saves the model and training metrics to a JSON file.
+        """
+        _print_model_summary(self.model)
+        self._print_optimizer_params()
+        separator()
+        start_time = time.time()
+        logging.info(
+            "Start time: {}".format(time.strftime("%H:%M:%S", time.localtime()))
+        )
+        separator()
+
+        best_val_loss = float("inf")
+        patience_counter = 0
+
+        if self.initialise_weights:
+            initialise_weights(self.model)
+
+        for epoch in range(self.num_epochs):
+            self._train_epoch(epoch)  # Train for one epoch
+            val_loss = self._validate_epoch(epoch)  # Validate after training
+
+            # scheduler updates
+            if self.scheduler and isinstance(
+                self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau
+            ):
+                self.scheduler.step(
+                    val_loss
+                )  # using ReduceLROnPlateau scheduler to update learning rate
+            elif self.cosine_scheduler:
+                 # the CosineRampUpDownLR updates each epoch unconditionally,
+                 # based on configurations in config file made by user
+                self.cosine_scheduler.step()
+
+            self._log_epoch_metrics(epoch)
+
+            # log the current learning rate
+            current_lr = self.optimizer.param_groups[0]["lr"]
+            logging.info(f"Epoch {epoch+1}: Current LR = {current_lr:.11f}")
+
+            # update learning rate history
+            self.learning_rates.append(current_lr)
+
+            # check if we want to stop early, based on validation loss
+            stop_early, best_val_loss, patience_counter = self._early_stopping(
+                val_loss, best_val_loss, patience_counter
+            )
+            if stop_early:
+                logging.info(
+                    "Trainer :: Stopping early due to lack of improvement in validation loss."
+                )
+                break
+
         end_time = time.time()
+        # log the total training time
         training_time = end_time - start_time
+        logging.info(f"Trainer :: Training complete. Total time: {training_time:.2f} seconds")
 
-        logging.info("Training complete.")
-
-        logging.info(f"Training time: {training_time:.2f} seconds")
-
-        # Print CPU/GPU usage
+        # log the memory usage if GPU is used
         if torch.cuda.is_available():
             logging.info(
                 f"GPU Usage: {torch.cuda.memory_allocated() / 1024 ** 3:.2f} GB"
             )
-            logging.info(f"GPU Usage (cached): {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB")
+            logging.info(
+                f"GPU Usage (cached): {torch.cuda.memory_reserved() / 1024 ** 3:.2f} GB"
+            )
         else:
             logging.info("GPU not available. Using CPU.")
 
-        # Save our model for further use
-        # saving just the state dictionary with torch.save(model.state_dict(), 'path_to_model_state_dict.pt') [MOVE TO THIS]
-        self.save_model(self.model)
+        # save the final model state dictionary
+        self.save_model(self.model, self.model_save_path)
+
+# ======================================================================================

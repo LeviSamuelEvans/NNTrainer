@@ -62,7 +62,7 @@ def main(config, config_path):
 
     # Unpack the loaded data into signal and background DataFrames
 
-    if network_type == "FFNN":
+    if network_type == "FFNN" or network_type == "TransformerGCN":
         signal_data, background_data = loaded_data
     elif network_type == "GNN" or network_type == "LENN":
         (
@@ -80,9 +80,10 @@ def main(config, config_path):
     # FEATURE EXTRACTION
 
     # extract features using the FeatureFactory
-    signal_fvectors, background_fvectors = FeatureFactory.extract_features(
-        config_dict, signal_data, background_data
+    signal_fvectors, background_fvectors, signal_edges, signal_edge_attr, background_edges, background_edge_attr = FeatureFactory.extract_features(
+    config_dict, signal_data, background_data
     )
+
     use_four_vectors = config["preparation"].get("use_four_vectors", False)
 
 
@@ -91,7 +92,7 @@ def main(config, config_path):
 
     try:
         if config["preparation"].get("augment_data", False) and use_four_vectors:
-            logging.info("Proceeding to augment the input data...")
+            logging.info("Augmenter :: Proceeding to augment the input data...")
             augmenter = Augmenter.standard_augmentation(use_four_vectors)
 
             if "augmentation_methods" not in config["preparation"]:
@@ -105,9 +106,9 @@ def main(config, config_path):
                     augmenter.translate_eta_phi(signal_fvectors, background_fvectors)
                 if config["preparation"]["augmentation_methods"].get("energy-variation", False):
                     augmenter.scale_energy_momentum(signal_fvectors, background_fvectors)
-            logging.info("Data augmentation complete.")
+            logging.info("Augmenter :: Data augmentation complete.")
         else:
-            logging.info("Skipping data augmentation.")
+            logging.info("Augmenter :: Skipping data augmentation.")
     except Exception as e:
         logging.error(f"Failed to augment the input data: {e}")
 
@@ -121,6 +122,10 @@ def main(config, config_path):
         config_dict,
         signal_fvectors,
         background_fvectors,
+        signal_edges,
+        signal_edge_attr,
+        background_edges,
+        background_edge_attr,
     )
 
     #================================================================================================
@@ -133,7 +138,7 @@ def main(config, config_path):
         plotter.plot_correlation_matrix("background")
         plotter.plot_correlation_matrix("signal")
     else:
-        logging.info("Skipping plotting of inputs")
+        logging.info("DataPlotter :: Skipping plotting of inputs")
 
     #================================================================================================
     # INSIGHTS (WIP!!)
@@ -184,17 +189,19 @@ def main(config, config_path):
 
 
     # prepare the arguments to pass to the Trainer class
-    trainer_args = TrainerArgs(config, model, train_loader, val_loader)
+    trainer_args = TrainerArgs(config, model, train_loader, val_loader, network_type)
 
     # create the Trainer class and proceed to train the model
     trainer = Trainer(**trainer_args.prepare_trainer_args())
 
     logging.info(
-        f"Training model '{config['model']['name']}' for {config['training']['num_epochs']} epochs."
+        f"Trainer :: Training model '{config['model']['name']}' for {config['training']['num_epochs']} epochs."
     )
 
     trainer.train_model()
 
+    # save metadata to JSON for further use...
+    trainer.save_metrics_to_json(f"{trainer.model_save_path}/metadata.json")
     #================================================================================================
     # MODEL EVALUATION
 
@@ -222,10 +229,10 @@ def main(config, config_path):
         plotter.plot_loss_landscape(model, criterion, inputs, labels)
 
     # print the final accuracy and AUC score
-    logging.info(f"Final Accuracy: {accuracy:.2f}%")
-    logging.info(f"Final AUC: {roc_auc:.4f}")
-    logging.info(f"Average Precision: {average_precision:.4f}")
-    logging.info("Program finished successfully.")
+    logging.info(f"Evaluator :: Final Accuracy: {accuracy:.2f}%")
+    logging.info(f"Evaluator :: Final AUC: {roc_auc:.4f}")
+    logging.info(f"Evaluator :: Average Precision: {average_precision:.4f}")
+    logging.info("Program finished successfully!")
     #================================================================================================
 
 

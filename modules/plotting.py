@@ -311,7 +311,7 @@ class DataPlotter:
         plt.legend(loc="upper right")
         hep.atlas.label(loc=0, label="Internal", lumi="140.0", com="13")
         plt.savefig(f"{self.plot_save_path}Inputs/{feature}.png")
-        logging.info(f"Plot of {feature} saved to {self.plot_save_path}Inputs/{feature}.png")
+        logging.info(f"DataPlotter :: Plot of {feature} saved to {self.plot_save_path}Inputs/{feature}.png")
         # Close the plot to free up memory
         plt.close()
 
@@ -363,7 +363,7 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal")
         plt.tight_layout()
         plt.savefig(save_path)
-        logging.info(f"Correlation matrix for {data_type} saved to {save_path}")
+        logging.info(f"DataPlotter :: Correlation matrix for {data_type} saved to {save_path}")
         plt.close()
 
     # =========================================================================
@@ -395,7 +395,7 @@ class DataPlotter:
         )
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/loss.png")
-        logging.info(f"Loss plot saved to {self.plot_save_path}Validation/loss.png")
+        logging.info(f"DataPlotter :: Loss plot saved to {self.plot_save_path}Validation/loss.png")
 
     # =========================================================================
     # PLOT ACCURACY
@@ -427,7 +427,7 @@ class DataPlotter:
         )
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/accuracy.png")
-        logging.info(f"Accuracy plot saved to {self.plot_save_path}Validation/accuracy.png")
+        logging.info(f"DataPlotter :: Accuracy plot saved to {self.plot_save_path}Validation/accuracy.png")
 
     # =========================================================================
     # PLOT LEARNING-RATE CURVE
@@ -453,7 +453,7 @@ class DataPlotter:
         )
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/learning_rate.png")
-        logging.info(f"Learning rate plot saved to {self.plot_save_path}Validation/learning_rate.png")
+        logging.info(f"DataPlotter :: Learning rate plot saved to {self.plot_save_path}Validation/learning_rate.png")
 
     # =========================================================================
     # PLOT ROC CURVE
@@ -494,7 +494,7 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.png")
-        logging.info(f"ROC curve plot produced and saved to '{self.plot_save_path}Evaluation/roc_curve.png'")
+        logging.info(f"DataPlotter :: ROC curve plot produced and saved to '{self.plot_save_path}Evaluation/roc_curve.png'")
 
     # =========================================================================
     # PLOT CONFUSION MATRIX
@@ -530,7 +530,7 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.png")
-        logging.info(f"Confusion matrix plot produced and saved as '{self.plot_save_path}Evaluation/confusion_matrix.png'")
+        logging.info(f"DataPlotter :: Confusion matrix plot produced and saved as '{self.plot_save_path}Evaluation/confusion_matrix.png'")
 
 
     # =========================================================================
@@ -568,7 +568,7 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.png")
-        logging.info(f"Precision-Recall curve plot produced and saved to '{self.plot_save_path}Evaluation/pr_curve.png")
+        logging.info(f"DataPlotter :: Precision-Recall curve plot produced and saved to '{self.plot_save_path}Evaluation/pr_curve.png")
 
     # =========================================================================
     # PLOT SCORE DISTRIBUTION
@@ -597,7 +597,7 @@ class DataPlotter:
         plt.ylabel('Normalised Entries')
         plt.legend(loc='best')
         plt.savefig(f"{self.plot_save_path}Evaluation/score_distribution.png")
-        logging.info(f"Score distribution plot saved to '{self.plot_save_path}Evaluation/score_distribution.png'")
+        logging.info(f"DataPlotter :: Score distribution plot saved to '{self.plot_save_path}Evaluation/score_distribution.png'")
 
     # =========================================================================
     # PLOT LOSS FUNCTION
@@ -639,4 +639,4 @@ class DataPlotter:
 
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/loss_landscape.png")
-        logging.info(f"Loss landscape plot saved to '{self.plot_save_path}Evaluation/loss_landscape.png'")
+        logging.info(f"DataPlotter :: Loss landscape plot saved to '{self.plot_save_path}Evaluation/loss_landscape.png'")

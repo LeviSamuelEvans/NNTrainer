@@ -11,3 +11,5 @@ from .load import (
 from .plotting import DataPlotter
 from .features import FeatureFactory as FeatureFactory
 from .augment import DataAugmentation as Augmenter
+
+from .scheduler import CosineRampUpDownLR

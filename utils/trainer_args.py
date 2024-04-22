@@ -4,7 +4,7 @@ import torch
 class TrainerArgs:
     """Class to prepare arguments for the Trainer class."""
 
-    def __init__(self, config, model, train_loader, val_loader):
+    def __init__(self, config, model, train_loader, val_loader, network_type):
         """Initialises the TrainerArgs class.
 
         Attributes
@@ -23,6 +23,8 @@ class TrainerArgs:
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.network_type = network_type
+
 
     def prepare_trainer_args(self):
         """Prepares the arguments to pass to the Trainer class.
@@ -56,13 +58,16 @@ class TrainerArgs:
         - model_save_path
 
         """
+        self.config['network_type'] = self.network_type
+
         trainer_args = {
+            'config': self.config,
             "model": self.model,
             "train_loader": self.train_loader,
             "val_loader": self.val_loader,
             "num_epochs": self.config["training"]["num_epochs"],
-            "lr": self.config["training"]["learning_rate"],
-            "weight_decay": self.config["training"]["weight_decay"],
+            "lr": float(self.config["training"]["learning_rate"]),
+            "weight_decay": float(self.config["training"]["weight_decay"]),
             "patience": self.config["training"]["patience"],
             "early_stopping": self.config["training"]["early_stopping"],
             "use_scheduler": self.config["training"]["use_scheduler"],
@@ -88,6 +93,9 @@ class TrainerArgs:
         if "gradient_clipping" in self.config["training"]:
             trainer_args["gradient_clipping"] = self.config["training"]["gradient_clipping"]
             trainer_args["max_norm"] = self.config["training"]["max_norm"]
+        else:
+            trainer_args["gradient_clipping"] = False
+            trainer_args["max_norm"] = None
 
         if self.config["training"]["criterion"] == "BCELoss":
             trainer_args["criterion"] = torch.nn.BCELoss()
