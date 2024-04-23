@@ -61,11 +61,11 @@ preparation:
 # Training Block #
 #================#
 training:
-  num_epochs: 5
+  num_epochs: 30
   learning_rate: 0.01
   weight_decay: 0.001
-  batch_size: 128
-  patience: 5
+  batch_size: 512
+  patience: 10
   early_stopping: True
   use_scheduler: True
   factor: 0.5

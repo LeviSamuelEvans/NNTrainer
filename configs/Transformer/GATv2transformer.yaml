@@ -135,7 +135,7 @@ preparation:
   augmentation_methods:
     phi-rotation: True
     eta-reflection: True
-    translate_eta_phi: False #BUG 04.04.23 :(
+    translate_eta_phi: True
     energy-variation: True
 
 #================#

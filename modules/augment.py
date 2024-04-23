@@ -338,7 +338,9 @@ class DataAugmentation:
 
         # calc pt and eta
         pt = np.sqrt(px**2 + py**2)
-        eta = np.arcsinh(pz / pt)
+        # avoid a division by zero by adding a small value
+        epsilon = 1e-8
+        eta = np.arcsinh(pz / (pt + epsilon))
 
         # Apply eta and phi shifts
         translated_eta = eta + eta_shift[:, np.newaxis]

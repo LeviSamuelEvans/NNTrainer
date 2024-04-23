@@ -82,7 +82,7 @@ class TransformerClassifier5(nn.Module):
         x = x + cross_attention_output
 
         pooled_output, _ = self.attention_pooling(x, x, x)
-        pooled_output = pooled_output.mean(dim=1)
+        pooled_output, _ = torch.max(pooled_output, dim=1)
         x = self.classifier(pooled_output)
 
         return x
