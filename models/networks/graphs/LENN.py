@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 from torch_geometric.nn import EdgeConv, global_mean_pool
 from torch.nn import Sequential as Seq, Linear as Lin, ReLU, BatchNorm1d
-from torch_scatter import scatter_mean
+#from torch_scatter import scatter_mean
 from torch_geometric.nn import MetaLayer
 import numpy as np
 

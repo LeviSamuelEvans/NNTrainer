@@ -1,6 +1,7 @@
 
 # test configs and output plots
 configs/test*.yaml
+configs/dev/*
 plots/*
 
 # ignore all .h5 files
@@ -28,3 +29,10 @@ MLenv/*
 # extra
 tips.txt
 Worklog.md
+
+# UChicago
+TrainingLogs/*
+
+# HTCondor
+HTCondor/logs
+HTCondor/TEST
