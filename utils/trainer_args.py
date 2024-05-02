@@ -25,7 +25,6 @@ class TrainerArgs:
         self.val_loader = val_loader
         self.network_type = network_type
 
-
     def prepare_trainer_args(self):
         """Prepares the arguments to pass to the Trainer class.
 
@@ -58,10 +57,10 @@ class TrainerArgs:
         - model_save_path
 
         """
-        self.config['network_type'] = self.network_type
+        self.config["network_type"] = self.network_type
 
         trainer_args = {
-            'config': self.config,
+            "config": self.config,
             "model": self.model,
             "train_loader": self.train_loader,
             "val_loader": self.val_loader,
@@ -91,7 +90,9 @@ class TrainerArgs:
         }
 
         if "gradient_clipping" in self.config["training"]:
-            trainer_args["gradient_clipping"] = self.config["training"]["gradient_clipping"]
+            trainer_args["gradient_clipping"] = self.config["training"][
+                "gradient_clipping"
+            ]
             trainer_args["max_norm"] = self.config["training"]["max_norm"]
         else:
             trainer_args["gradient_clipping"] = False

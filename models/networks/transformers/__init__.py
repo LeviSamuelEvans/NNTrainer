@@ -9,6 +9,8 @@ from models.networks.embedding.LorentzEmbedding_v2 import (
 from models.networks.embedding.positional import PositionalEncoding
 from models.networks.embedding.Learned import LearnedPositionalEncoding
 from models.networks.embedding.Learned import LearnedPositionalEncodingv2
+from models.networks.embedding.fusion import AttentionFusion
+from models.networks.embedding.discriminant import LearnedPositionalEncodingWithDiscriminant
 
 # layers
 from models.networks.layers.residual import (

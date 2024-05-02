@@ -66,6 +66,9 @@ class NetworkImporter:
         if config.get("preparation", {}).get("use_four_vectors", False) \
         and config.get("preparation", {}).get("use_representations", False):
             return 8
+        if config.get("preparation", {}).get("use_four_vectors", False) \
+        and config.get("preparation", {}).get("use_all_representations", False):
+            return 11
         elif config.get("preparation", {}).get("use_four_vectors", False):
             return 4
         else:

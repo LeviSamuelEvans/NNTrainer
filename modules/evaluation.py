@@ -107,16 +107,19 @@ class ModelEvaluator:
                     inputs = batch_data.x
                     labels = batch_data.y
                     edge_index = batch_data.edge_index
+                    edge_attr = batch_data.edge_attr
                     if hasattr(batch_data, 'batch'):
                         batch = batch_data.batch  # for batch-wise operations in GNNs
                 # process the data based on the network type
                 if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
                     # our graph-based models
-                    outputs = self.model(inputs, edge_index, batch) if hasattr(batch_data, 'batch') else self.model(inputs, edge_index)
+                    outputs = self.model(inputs, edge_index, edge_attr, batch) if hasattr(batch_data, 'batch') else self.model(inputs, edge_index)
                     scores = torch.sigmoid(outputs).cpu().numpy()
                 elif self.network_type == "FFNN":
                     if self.model.__class__.__name__ in ["TransformerClassifier2", "SetsTransformerClassifier", "TransformerClassifier5"]:
-                        outputs = self.model(inputs, inputs)  # pass inputs twice for x and x_coords!
+                        outputs = self.model(inputs, inputs,)
+                    elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
+                        outputs = self.model(inputs, inputs, labels)  # pass inputs twice for x and x_coords!
                     else:
                         outputs = self.model(inputs)
 

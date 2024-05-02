@@ -78,6 +78,8 @@ class DataImporter(object):
         listOfFiles = sorted(glob.glob(absDirectory + "/*.root"))
         return listOfFiles
 
+    # ==============================================================================
+
     @staticmethod
     def flatten_jagged_array(array, var_name, fixed_length, pad_value=0):
         """Flatten a jagged array to a fixed length and return a DataFrame."""
@@ -105,8 +107,10 @@ class DataImporter(object):
         )
         return pd.concat([df.drop(columns=[column_name]), flattened_df], axis=1)
 
+    # ==============================================================================
+
     def getDataFrameFromRootfile(
-        self, filepath, fixed_jet_length, max_events=None, max_jets=12
+        self, filepath, fixed_jet_length, max_events=None, max_jets=12, order_jets=True
     ):
         """Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
 
@@ -157,6 +161,12 @@ class DataImporter(object):
             # Convert the dictionary to a DataFrame
             df = pd.DataFrame(df_dict)
 
+            if order_jets:
+                print("INFO: Ordering jets in each event by b-tagging score and pT...")
+                self.order_jets(df, max_jets)
+            else:
+                print("INFO: Jets will not be ordered in each event!")
+
             # Log basic DataFrame information  DEBUGGING
             print(f"\nDataFrame Info for file {filename}:")
             print(f"Shape: {df.shape}")
@@ -176,6 +186,7 @@ class DataImporter(object):
                 "jet_e_softmu_corr",
                 "jet_index_PCBT_ordered",
             ]  # Add anymore jagged array-type vars TODO:
+
             for column in jagged_columns:
                 if column in df.columns:
                     print(f"Processing {column}...")
@@ -193,20 +204,42 @@ class DataImporter(object):
             print("\nDataFrame Sample after processing jagged arrays:")
             print(df.head())  # Prints the first 5 rows of the DataFrame
 
-            # Convert the data types of the columns
+            # convert columns to the correct data types
             for col, dtype in DATA_TYPES:
                 if col in df.columns:
-                    if dtype == "float32":
-                        df[col] = (
-                            df[col].astype(str).astype(dtype, errors="ignore")
-                        )  # Convert to string first to avoid errors
-                    else:
-                        df[col] = df[col].astype(dtype, errors="ignore")
+                    df[col] = df[col].astype(dtype, errors="ignore")
+
+            # Cconversion of the object columns for lepton data
+            object_columns = [
+                "mu_pt",
+                "mu_eta",
+                "mu_phi",
+                "mu_e",
+                "el_pt",
+                "el_eta",
+                "el_phi",
+                "el_e",
+            ]
+            for col in object_columns:
+                if col in df.columns:
+                    # get length of the longest list in the column
+                    max_length = df[col].apply(len).max()
+
+                    # create new columns for each element
+                    for i in range(max_length):
+                        new_col = f"{col}_{i}"
+                        df[new_col] = df[col].apply(
+                            lambda x: x[i] if len(x) > i else 0.0
+                        )
+
+                    # drop original object
+                    df.drop(columns=[col], inplace=True)
 
             # Log final DataFrame structure before appending to HDF5 DEBUGGING
             print(
                 f"INFO: \nFinal DataFrame structure before appending to HDF5 for file {filename}:"
             )
+
             print(f"Shape: {df.shape}")
             print("Columns and Data Types:")
             print(df.dtypes)
@@ -228,10 +261,10 @@ class DataImporter(object):
                 f"INFO: A file named {filename} already exists in the store. Ignored."
             )
 
-    def processAllFiles(self, max_events=None, max_jets=12):
-        """
-        Process all ROOT files in the specified directory and display a progress bar.
-        """
+    # ==============================================================================
+
+    def processAllFiles(self, max_events=None, max_jets=12, order_jets=True):
+        """Process all ROOT files in the specified directory and display a progress bar."""
         fixed_jet_length = max_jets
         filepaths = self.getRootFilepaths()
         for filepath in tqdm(
@@ -244,45 +277,119 @@ class DataImporter(object):
             self.getDataFrameFromRootfile(
                 filepath, fixed_jet_length, max_events, max_jets
             )
+    # ==============================================================================
 
+    def order_jets(self, df, max_jets):
+        """
+        Order the jets in each event according to the b-tagging score and pT as tie-breaker.
+
+        Parameters
+        ----------
+            df : pandas.DataFrame
+                The DataFrame containing the jet data.
+            max_jets : int
+                The maximum number of jets to consider.
+
+        Returns
+        -------
+            pandas.DataFrame:
+                The DataFrame with the jets ordered based on the b-tagging
+                score and pT.
+
+        """
+        jet_columns = [col for col in df.columns if col.startswith("jet_")]
+
+        # create a structured array to store b-tagging scores and pT for each jet
+        dtype = [("btag", float), ("pt", float)]
+        jet_scores = np.empty((len(df), max_jets), dtype=dtype)
+
+        jet_btag = df["jet_tagWeightBin_DL1r_Continuous"].tolist()
+        jet_pt = df["jet_pt"].tolist()
+
+        for i in range(max_jets):
+            jet_scores[:, i]["btag"] = [
+                btag[i] if len(btag) > i else 0.0 for btag in jet_btag
+            ]
+            jet_scores[:, i]["pt"] = [pt[i] if len(pt) > i else 0.0 for pt in jet_pt]
+
+        # get indices that sort the structured array based on b-tagging score and pT
+        sorted_indices = np.argsort(jet_scores, order=("btag", "pt"))[:, ::-1]
+
+        # reorder jet columns based on the sorted indices
+        for col in jet_columns:
+            if col in ["jet_tagWeightBin_DL1r_Continuous", "jet_pt"]:
+                jet_values = df[col].tolist()
+                df[col] = [
+                    [
+                        jet_values[i][j] if len(jet_values[i]) > j else 0.0
+                        for j in indices
+                    ]
+                    for i, indices in enumerate(sorted_indices)
+                ]
+            else:
+                jet_values = df[col].tolist()
+                df[col] = [
+                    [
+                        jet_values[i][j] if len(jet_values[i]) > j else 0.0
+                        for j in indices
+                    ]
+                    for i, indices in enumerate(sorted_indices)
+                ]
+
+        return df
+    # ==============================================================================
 
 def handleCommandLineArgs():
-    """
-    Parse and handle command-line arguments.
+    """Parse and handle command-line arguments.
 
     Returns:
     --------
     Namespace:
         Parsed command-line arguments.
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-d", "--directory", help="Directory with ROOT files.", required=True
+    parser = argparse.ArgumentParser(
+        description="Convert ROOT files to HDF5 format.",
+        formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
-        "-s", "--storeName", help="Path for the HDF5 store.", default="store.h5"
+        "-d", "--directory", help="Directory containing the ROOT files.", required=True
+    )
+    parser.add_argument(
+        "-s",
+        "--storeName",
+        help="Path for the output HDF5 store (default: store.h5).",
+        default="store.h5",
     )
     parser.add_argument(
         "-v",
         "--variables",
-        help="YAML file containing variables to read from ROOT files.",
+        help="YAML file containing the list of variables to read from ROOT files.",
         required=True,
     )
     parser.add_argument(
-        "-O", "--overwrite", help="Overwrite existing store.", action="store_true"
+        "-O",
+        "--overwrite",
+        help="Overwrite existing store if it exists.",
+        action="store_true",
     )
     parser.add_argument(
         "-n",
         "--num-events",
         type=int,
-        default=None,
-        help="Maximum number of events to process per file. Default is to process all.",
+        help="Maximum number of events to process per file (default: process all events).",
     )
     parser.add_argument(
         "--max-jets",
         type=int,
         default=12,
-        help="Maximum number of jets to process per event. Default is 12.",
+        help="Maximum number of jets to process per event (default: 12).",
+    )
+    parser.add_argument(
+        "--order-jets",
+        type=bool,
+        default=True,
+        help="Order jets in each event by b-tagging score and pT (default: True).\n"
+        "This is useful when using --max-jets option to avoid losing important jets.",
     )
     args = parser.parse_args()
 
@@ -309,13 +416,19 @@ def handleCommandLineArgs():
     return args
 
 
+# ==============================================================================
+# MAIN METHOD TO EXECUTE THE DATA IMPORT PROCESS AND CONERT TO H5
 def main():
     """Main function to execute the data import process."""
     args = handleCommandLineArgs()
     with DataImporter(
         args.storeName, args.directory, args.variables, args.overwrite
     ) as importer:
-        importer.processAllFiles(max_events=args.num_events, max_jets=args.max_jets)
+        importer.processAllFiles(
+            max_events=args.num_events,
+            max_jets=args.max_jets,
+            order_jets=args.order_jets,
+        )
 
 
 if __name__ == "__main__":
