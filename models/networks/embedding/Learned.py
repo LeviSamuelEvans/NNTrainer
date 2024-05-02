@@ -17,6 +17,7 @@ class LearnedPositionalEncoding(nn.Module):
         This is a variation from the original positional encoding, where the positional
         encoding is fixed and not learned during training.
 
+
     References
     ----------
         https://pytorch.org/docs/stable/generated/torch.nn.Embedding.html
@@ -56,6 +57,9 @@ class LearnedPositionalEncodingv2(nn.Module):
 
         This is a variation from the original positional encoding, where the positional
         encoding is fixed and not learned during training.
+
+        Additional reshaping and error checking to ensure compatibility
+        between the input and positional embeddings from v1.
 
     References
     ----------

@@ -1,11 +1,12 @@
 import numpy as np
 import pandas as pd
-import ast
 import logging
 from tqdm import tqdm
 import time
 from scipy.spatial import cKDTree
-#from joblib import Parallel, delayed
+
+# from tabulate import tabulate
+# from joblib import Parallel, delayed -> improve edge feature creation speeds
 
 """
 TODO:
@@ -16,7 +17,6 @@ TODO:
     - Energy flow correlations (no clue: https://arxiv.org/pdf/1305.0007.pdf;
       https://jduarte.physics.ucsd.edu/iaifi-summer-school/1.1_tabular_data_efps.html)
     - 2neutrino scanning method (https://indico.cern.ch/event/1032082/#2-dilepton-ttbar-reconstruction)
-    - Extra Fox-Wolfram moments (https://arxiv.org/pdf/1212.4436.pdf)
 """
 
 # Objects for matching
@@ -72,7 +72,7 @@ class FeatureFactory:
         background_fvectors = None
         signal_edges = None
         signal_edge_attr = None
-        background_edges =  None
+        background_edges = None
         background_edge_attr = None
 
         if config_dict["preparation"]["feature_maker"]:
@@ -94,28 +94,75 @@ class FeatureFactory:
                     n_leptons=feature_config["n_leptons"],
                     extra_feats=feature_config.get("extra_feats", None),
                     representation=feature_config.get("use_representations", False),
-                    angular_separation=feature_config.get("use_angular_separation", False),
+                    further_representation=feature_config.get(
+                        "use_all_representations", False
+                    ),
+                    include_met=feature_config.get("include_met", False),
+                    angular_separation=feature_config.get(
+                        "use_angular_separation", False
+                    ),
                 )
 
-                if feature_maker.extra_feats and config_dict["preparation"]["use_extra_feats"]:
-                    logging.info(f"FeatureFactory :: Feature maker successfully created with the following extra features: {feature_maker.extra_feats}")
-                if feature_maker.representation and config_dict["preparation"]["use_representations"]:
-                    logging.info("FeatureFactory :: Using multiple four-vector representations in the model.")
+                if (
+                    feature_maker.extra_feats
+                    and config_dict["preparation"]["use_extra_feats"]
+                ):
+                    logging.info(
+                        f"FeatureFactory :: Feature maker successfully created with the following extra features: {feature_maker.extra_feats}"
+                    )
+                if (
+                    feature_maker.representation
+                    and config_dict["preparation"]["use_representations"]
+                ):
+                    logging.info(
+                        "FeatureFactory :: Using multiple four-vector representations in the model."
+                    )
+                if config_dict["preparation"]["use_all_representations"]:
+                    logging.info(
+                        "FeatureFactory :: Using all the four-vector representations in the model! :D"
+                    )  # add logging of all reps!
+                if config_dict["preparation"]["include_met"]:
+                    logging.info(
+                        "FeatureFactory :: Including the missing transverse energy in the features."
+                    )
 
                 signal_fvectors = feature_maker.get_four_vectors(signal_data)
                 background_fvectors = feature_maker.get_four_vectors(background_data)
                 logging.info("FeatureFactory :: Four-vectors successfully constructed!")
 
                 if config_dict["preparation"]["use_angular_separation"]:
-                    logging.info(f"FeatureFactory :: Constructing the angular separation features...")
-                    signal_edges, signal_edge_attr = feature_maker.get_angular_separation(signal_data)
-                    background_edges, background_edge_attr = feature_maker.get_angular_separation(background_data)
-                    logging.info("FeatureFactory :: Angular separation features successfully constructed!")
+                    logging.info(
+                        f"FeatureFactory :: Constructing the angular separation features..."
+                    )
+                    signal_edges, signal_edge_attr = (
+                        feature_maker.get_angular_separation(signal_data)
+                    )
+                    background_edges, background_edge_attr = (
+                        feature_maker.get_angular_separation(background_data)
+                    )
+                    logging.info(
+                        "FeatureFactory :: Angular separation features successfully constructed!"
+                    )
 
-        return signal_fvectors, background_fvectors, signal_edges, signal_edge_attr, background_edges, background_edge_attr
+        return (
+            signal_fvectors,
+            background_fvectors,
+            signal_edges,
+            signal_edge_attr,
+            background_edges,
+            background_edge_attr,
+        )
 
     @staticmethod
-    def make(max_particles, n_leptons, extra_feats=None, representation=False, angular_separation=False):
+    def make(
+        max_particles,
+        n_leptons,
+        extra_feats=None,
+        representation=False,
+        further_representation=False,
+        include_met=False,
+        angular_separation=False,
+    ):
         """Create an instance of the FeatureMaker class.
 
         Parameters
@@ -129,6 +176,10 @@ class FeatureFactory:
         representation : bool, optional
             A boolean indicating whether to use multiple four-vector
             representations in the model. Defaults to False.
+        further_representation : bool, optional
+            A boolean indicating whether to use even more four-vector style features.
+        include_met: bool, optional
+            A boolean indicating whether to include the missing transverse energy in the features.
         angular_separation : bool, optional
             A boolean indicating whether to use angular separation of the objects.
             Defaults to False.
@@ -138,7 +189,15 @@ class FeatureFactory:
         FeatureMaker
             An instance of the FeatureMaker class.
         """
-        return FeatureMaker(max_particles, n_leptons, extra_feats, representation, angular_separation)
+        return FeatureMaker(
+            max_particles,
+            n_leptons,
+            extra_feats,
+            representation,
+            further_representation,
+            include_met,
+            angular_separation,
+        )
 
 
 class FeatureMaker:
@@ -155,12 +214,41 @@ class FeatureMaker:
         A list of extra features to include. Defaults to None.
     """
 
-    def __init__(self, max_particles, n_leptons, extra_feats=None, representation=False, angular_separation=False):
+    def __init__(
+        self,
+        max_particles,
+        n_leptons,
+        extra_feats=None,
+        representation=False,
+        further_representation=False,
+        include_met=False,
+        angular_separation=False,
+    ):
         self.max_particles = max_particles
         self.n_leptons = n_leptons
         self.extra_feats = extra_feats if extra_feats else []
         self.representation = representation
+        self.further_representation = further_representation
+        self.include_met = include_met
         self.angular_separation = angular_separation
+        self.ht_all = None
+
+    def get_event_info(self, sample, info_type):
+        """Fetches event-level information.
+
+        Parameters
+        ----------
+        sample : pandas.DataFrame
+            The input data sample.
+        info_type : str
+            Type of event info to fetch (e.g., 'nJets' or 'HT_all').
+
+        Returns
+        -------
+        np.ndarray
+            The requested event information.
+        """
+        return sample[info_type].values
 
     def get_jet_features(self, sample, feature_name, max_jets):
         """Get jet features from the input sample.
@@ -184,6 +272,7 @@ class FeatureMaker:
         jet_features = sample[feature_columns].values
         return jet_features
 
+    # NEW TRIAL
     def compute_lepton_arrays(self, sample, array_name):
         """Compute lepton arrays from the input sample.
 
@@ -200,30 +289,24 @@ class FeatureMaker:
             The computed lepton arrays.
         """
         # create an empty array of shape (n_samples, n_leptons)
-        out = np.full((len(sample), self.n_leptons), np.nan)
+        out = np.full((len(sample), self.n_leptons), 0.0)
+
         # loop over the samples
-        for i, (n_electrons, n_muons, el_data, mu_data) in enumerate(
-            zip(
-                sample["nElectrons"],
-                sample["nMuons"],
-                sample["el_" + array_name],
-                sample["mu_" + array_name],
-            )
-        ):
-            # convert the string representation of the arrays to actual arrays
-            # TODO: move away from using eval here...
-            el_data = ast.literal_eval(el_data)
-            mu_data = ast.literal_eval(mu_data)
+        for i in range(len(sample)):
+            # get the lepton data for the current sample
+            lepton_data = []
+            for j in range(self.n_leptons):
+                if sample[f"el_{array_name}_{j}"].iloc[i] != 0.0:
+                    lepton_data.append(sample[f"el_{array_name}_{j}"].iloc[i])
+                elif sample[f"mu_{array_name}_{j}"].iloc[i] != 0.0:
+                    lepton_data.append(sample[f"mu_{array_name}_{j}"].iloc[i])
 
-            # get the total number of leptons
-            n_leptons = n_electrons + n_muons
+            # assign the lepton data to the output array
+            out[i, : len(lepton_data)] = lepton_data
 
-            # make sure we have the right number of leptons
-            assert n_leptons == self.n_leptons
-            out[i, :n_electrons] = el_data[:n_electrons]
-            out[i, n_electrons:n_leptons] = mu_data[:n_muons]
         return out
 
+    # TODO: refactor this met
     def get_four_vectors(self, sample):
         """Compute four-vectors and extra features from the input sample.
 
@@ -237,6 +320,9 @@ class FeatureMaker:
         numpy.ndarray
             The computed four-vectors and extra features.
         """
+
+        epsilon = 1e-8
+
         # lepton and jet info
         lep_pt = self.compute_lepton_arrays(sample, "pt")
         lep_eta = self.compute_lepton_arrays(sample, "eta")
@@ -260,15 +346,84 @@ class FeatureMaker:
         p_py = p_pt * np.sin(p_phi)  # sin(phi) = py/pt
         p_pz = p_pt * np.sinh(p_eta)  # sinh(eta) = pz/pt
 
+        # calculate additional components for further representations
+        p_theta = np.where(p_pt > 0, np.arctan2(p_pt, p_pz), 0)
+
+        # mass with epsilon to avoid invalid values in sqrt
+        p_mass = np.where(
+            p_pt > 0,
+            np.sqrt(np.maximum(p_e**2 - p_px**2 - p_py**2 - p_pz**2, epsilon)),
+            0,
+        )
+
+        # Calculate E/m and pT/m (NOT USED)
+        p_E_over_m = np.where(p_pt > 0, p_e / (p_mass + epsilon), 0)
+        p_pT_over_m = np.where(p_pt > 0, p_pt / (p_mass + epsilon), 0)
+
+        # Calculate log(pT) and log(m) (NOT USED)
+        p_log_pT = np.where(p_pt > 0, np.log(p_pt + epsilon), 0)
+        p_log_m = np.where(p_pt > 0, np.log(p_mass + epsilon), 0)
+
         p_extra = {}
 
         lep_btag = np.zeros_like(lep_e)
 
+        if self.include_met:
+            met_met = sample["met_met"].values
+            met_phi = sample["met_phi"].values
+
+            # Set MET eta and pt to 0 since they are not well-defined for MET
+            met_eta = np.zeros_like(met_met)
+            met_pt = np.zeros_like(met_met)
+
+            # Calculate MET px and py
+            met_px = met_met * np.cos(met_phi)
+            met_py = met_met * np.sin(met_phi)
+
+            # Set MET pz to 0 and energy from met_met
+            met_pz = np.zeros_like(met_met)
+            met_e = met_met  # think this right...need to check
+
+            # Set MET b-tag score to 0, similar to leptons
+            met_btag = np.zeros_like(met_met)
+
+            met_theta = np.zeros_like(met_met)
+
+            # set rest mass to zero
+            met_mass = np.zeros_like(met_met)
+
+            p_px = np.concatenate((p_px, met_px[:, np.newaxis]), axis=1)
+            p_py = np.concatenate((p_py, met_py[:, np.newaxis]), axis=1)
+            p_pz = np.concatenate((p_pz, met_pz[:, np.newaxis]), axis=1)
+            p_e = np.concatenate((p_e, met_e[:, np.newaxis]), axis=1)
+            p_pt = np.concatenate((p_pt, met_pt[:, np.newaxis]), axis=1)
+            p_eta = np.concatenate((p_eta, met_eta[:, np.newaxis]), axis=1)
+            p_phi = np.concatenate((p_phi, met_phi[:, np.newaxis]), axis=1)
+            p_theta = np.concatenate((p_theta, met_theta[:, np.newaxis]), axis=1)
+            p_mass = np.concatenate((p_mass, met_mass[:, np.newaxis]), axis=1)
+
+            met_flag = np.ones_like(met_met)
+            p_flag = np.concatenate(
+                (np.zeros((len(p_pt), self.max_particles)), met_flag[:, np.newaxis]),
+                axis=1,
+            )
+
         if self.extra_feats is not None:
             feat = self.extra_feats
             if feat == "btag":
-                jet_btag = self.get_jet_features(sample, "jet_tagWeightBin_DL1r_Continuous", max_jets)
-                p_extra["btag"] = np.concatenate((lep_btag, jet_btag), axis=-1)
+                jet_btag = self.get_jet_features(
+                    sample, "jet_tagWeightBin_DL1r_Continuous", max_jets
+                )
+                # NOT USED YET
+                # self.ht_all = sample["HT_all"].values
+                # self.njets = sample["nJets"].values
+                if self.include_met:
+                    p_extra["btag"] = np.concatenate(
+                        (lep_btag, jet_btag, met_btag[:, np.newaxis]), axis=-1
+                    )
+                else:
+                    p_extra["btag"] = np.concatenate((lep_btag, jet_btag), axis=-1)
+                # NOT USED YET
             # elif feat == ["jet_charge"]:
             #     p_extra["jet_charge"] = self.get_jet_features(sample, "jet_charge", max_jets)
             #     p_extra["jet_charge"] = np.hstack((np.zeros((len(lep_pt), 1)), p_extra["jet_charge"]), axis=-1)
@@ -279,9 +434,34 @@ class FeatureMaker:
         # add extra features to the four-vectors
         if self.extra_feats:
             if self.representation:
-                four_vectors= np.stack((p_px, p_py, p_pz, p_e, p_pt, p_eta, p_phi), axis=-1)
+                four_vectors = np.stack(
+                    (p_px, p_py, p_pz, p_e, p_pt, p_eta, p_phi), axis=-1
+                )
                 p_extra[feat] = np.expand_dims(p_extra[feat], axis=-1)
                 four_vectors = np.concatenate((four_vectors, p_extra[feat]), axis=-1)
+
+            elif self.further_representation:
+                # more four-vec representations:
+                four_vectors = np.stack(
+                    (p_px, p_py, p_pz, p_e, p_pt, p_eta, p_phi, p_theta, p_mass),
+                    axis=-1,
+                )
+                # four_vectors_extra = np.stack(( ), axis=-1)
+                # p_E_over_m, p_pT_over_m, p_log_pT, p_log_m, np.cos(p_phi), (np.sin(p_phi)),
+                p_extra[feat] = np.expand_dims(p_extra[feat], axis=-1)
+
+                four_vectors = np.concatenate((four_vectors, p_extra[feat]), axis=-1)
+
+                # TEMP
+                # ht_all_expanded = np.expand_dims(self.ht_all, axis=(1, 2))
+                # njets_expanded = np.expand_dims(self.njets, axis=(1, 2))
+
+                # TEMP EXPANSION TO RIGHT DIM -> want this to be global graph feature in the future
+                # ht_all_tiled = np.tile(ht_all_expanded, (1, four_vectors.shape[1], 1))
+                # njets_tiled = np.tile(njets_expanded, (1, four_vectors.shape[1], 1))
+                # four_vectors = np.concatenate((four_vectors, ht_all_tiled), axis=-1)
+                # four_vectors = np.concatenate((four_vectors, njets_tiled), axis=-1)
+
             else:
                 p_extra[feat] = np.expand_dims(p_extra[feat], axis=-1)
                 four_vectors = np.stack((p_px, p_py, p_pz, p_e), axis=-1)
@@ -291,53 +471,83 @@ class FeatureMaker:
             logging.info("FeatureFactory :: Using only the four-vectors in the model.")
             four_vectors = np.stack((p_px, p_py, p_pz, p_e), axis=-1)
 
+        print(four_vectors.shape)  # TEST
+        print(p_flag.shape)  # TEST
+
+        if self.include_met:
+            four_vectors = np.concatenate(
+                (four_vectors, p_flag[:, :, np.newaxis]), axis=-1
+            )
+
+        # self.log_features(four_vectors, lep_pt, lep_eta, lep_phi, lep_e, jet_pt, jet_eta, jet_phi, jet_e,
+        #   p_pt, p_eta, p_phi, p_e, p_px, p_py, p_pz, p_theta, p_mass, p_E_over_m, p_pT_over_m,
+        #   p_log_pT, p_log_m)
+
+        print(four_vectors[:1])
         return four_vectors
 
     # TODO: make max_distance configurable and add to the logging
-    def get_angular_separation(self, sample, max_distance=3.5):
-        """Computes the angular separation (deltaR) between jets in each event of the given sample
-        and returns the edges and edge attributes based on a maximum distance threshold.
-
+    def get_angular_separation(self, sample, max_distance=3.0):
+        """Computes the angular separation (deltaR) between particles (jets and leptons) in each event of the given sample
+            and returns the edges, edge attributes, and edge types based on a maximum distance threshold.
         Parameters
         ----------
         sample : numpy.ndarray
             The input sample containing particle data.
         max_distance : float, optional
             The maximum angular separation threshold for considering
-            two jets as connected by an edge. Default is 0.9.
+            two particles as connected by an edge. Default is 3.5.
 
         Returns
         -------
         tuple
             A tuple containing:
             - edges (list): A list of numpy.ndarray, where each array represents the edges for an event
-                            and has shape (2, num_edges_in_event).
+            and has shape (2, num_edges_in_event).
             - edge_attr (list): A list of numpy.ndarray, where each array represents the angular separation (deltaR)
-                                for the edges in an event and has shape (num_edges_in_event,).
+            for the edges in an event and has shape (num_edges_in_event,).
 
         Notes
         -----
         This method uses a KDTree data structure from the scipy.spatial module for efficient nearest neighbor search.
-        It computes the angular separation (deltaR) between jets based on their eta and phi values.
+        It computes the angular separation (deltaR) between particles (jets and leptons) based on their eta and phi values.
         If no edges are found within the specified maximum distance threshold for an event, empty arrays are used
-        for both edges and edge_attr for that event.
+        for edges, edge_attr.
+
         [deltaR = sqrt(delta_eta^2 + delta_phi^2)]
+
+        FUTURE -> Edge types:
+        - 1: jet-jet
+        - 2: jet-lepton
         """
-        start_time = time.time()  # start the timer for benchmarking...
+
+        start_time = time.time()
 
         num_events = sample.shape[0]
         edges_list = []
         edge_attr_list = []
+        # edge_type_list = []
+
+        # precompute jet and lepton features for all events
+        jet_eta = self.get_jet_features(sample, "jet_eta", self.max_particles).astype(
+            np.float64
+        )
+        jet_phi = self.get_jet_features(sample, "jet_phi", self.max_particles).astype(
+            np.float64
+        )
+        lep_eta = self.compute_lepton_arrays(sample, "eta")
+        lep_phi = self.compute_lepton_arrays(sample, "phi")
+
+        # jet and lepton data for all events
+        particle_eta = np.concatenate((jet_eta, lep_eta), axis=1)
+        particle_phi = np.concatenate((jet_phi, lep_phi), axis=1)
 
         for event_idx in range(num_events):
-            event_sample = sample.iloc[event_idx]
+            event_eta = particle_eta[event_idx]
+            event_phi = particle_phi[event_idx]
 
-            # get the eta and phi values for the jets in the current event
-            jet_eta = self.get_jet_features(event_sample, "jet_eta", self.max_particles).astype(np.float64)
-            jet_phi = self.get_jet_features(event_sample, "jet_phi", self.max_particles).astype(np.float64)
-
-            # use KDTree for nearest neighbor search
-            points = np.column_stack((jet_eta, jet_phi))
+            # KDTree for nearest neighbor search
+            points = np.column_stack((event_eta, event_phi))
             tree = cKDTree(points)
 
             # query the tree for pairs of points within the maximum distance
@@ -345,29 +555,43 @@ class FeatureMaker:
             event_edges = np.array(list(event_edges)).T
 
             if event_edges.size == 0:
-                # use empty arrays if no edges are found for the current event
                 event_edges = np.empty((2, 0), dtype=int)
                 event_edge_attr = np.empty((0,), dtype=float)
             else:
-                # compute deltaR for the edges in the current event
-                delta_eta = jet_eta[event_edges[0]] - jet_eta[event_edges[1]]
-                delta_phi = np.mod(jet_phi[event_edges[0]] - jet_phi[event_edges[1]] + np.pi, 2*np.pi) - np.pi
-
-                # Ensure delta_eta and delta_phi are arrays
-                delta_eta = np.array(delta_eta, ndmin=1)
-                delta_phi = np.array(delta_phi, ndmin=1)
-
+                # Compute deltaR
+                delta_eta = event_eta[event_edges[0]] - event_eta[event_edges[1]]
+                delta_phi = (
+                    np.mod(
+                        event_phi[event_edges[0]] - event_phi[event_edges[1]] + np.pi,
+                        2 * np.pi,
+                    )
+                    - np.pi
+                )
                 event_edge_attr = np.sqrt(delta_eta**2 + delta_phi**2)
+
+            # TODO: add edge types based on the particle indices
+            # Determine the edge types based on the particle indices
+            # event_edge_type = np.where(
+            #     (event_edges[0] < num_jets) & (event_edges[1] < num_jets),
+            #     1,  # jet-jet
+            #     np.where(
+            #         ((event_edges[0] < num_jets) & (event_edges[1] >= num_jets)) |
+            #         ((event_edges[0] >= num_jets) & (event_edges[1] < num_jets)),
+            #         2,  # jet-lepton
+            #         3   # lepton-lepton (only relevant for n_leptons > 1 i.e dilepton events)
+            #     )
+            # )
 
             edges_list.append(event_edges)
             edge_attr_list.append(event_edge_attr)
+            # edge_type_list.append(event_edge_type)
+            # print(f"Event {event_idx} :: Edges: {event_edges}, Edge Attr: {event_edge_attr}, Edge Type: {event_edge_type}")
 
         end_time = time.time()
-        execution_time = end_time - start_time  # execution time return
+        execution_time = end_time - start_time
         print(f"Execution time: {execution_time:.2f} seconds")
 
         return edges_list, edge_attr_list
-
 
     def get_matched_objetcs():
         return None  # TODO: implement method (for the Higgs decay angles and other matching tasks)
@@ -377,3 +601,146 @@ class FeatureMaker:
         # could also add the jet substructure variables and energy flow correlations after
         # the decay angles, alongside some invariant mass variables?
         # add met to extra variables as well, with flag for missing met
+
+    # TODO: fix and implement
+    def log_features(
+        self,
+        four_vectors,
+        lep_pt,
+        lep_eta,
+        lep_phi,
+        lep_e,
+        jet_pt,
+        jet_eta,
+        jet_phi,
+        jet_e,
+        p_pt,
+        p_eta,
+        p_phi,
+        p_e,
+        p_px,
+        p_py,
+        p_pz,
+        p_theta,
+        p_mass,
+        p_E_over_m,
+        p_pT_over_m,
+        p_log_pT,
+        p_log_m,
+        verbose=False,
+    ):
+        """Log the features extracted from the input samples with optional verbosity using tabulated format.
+
+        Parameters
+        ----------
+        four_vectors : numpy.ndarray
+            The extracted four-vectors.
+        lep_pt, lep_eta, lep_phi, lep_e : numpy.ndarray
+            The lepton quantities.
+        jet_pt, jet_eta, jet_phi, jet_e : numpy.ndarray
+            The jet quantities.
+        p_pt, p_eta, p_phi, p_e, p_px, p_py, p_pz, p_theta, p_mass, p_E_over_m, p_pT_over_m, p_log_pT, p_log_m : numpy.ndarray
+            The combined quantities.
+        verbose : bool, optional
+            If True, logs detailed data. Defaults to False.
+        """
+
+        logging.info("FeatureFactory :: Logging the extracted features...")
+        logging.info(
+            f"FeatureFactory :: Four-vectors shape: {four_vectors.shape}, dtype: {four_vectors.dtype}"
+        )
+
+        def log_table(data):
+            headers = ["Statistic", "Value"]
+            table = tabulate(data, headers, tablefmt="pretty")
+            logging.info("\n" + table)
+
+        def log_summary(name, data):
+            summary_data = [
+                ["mean", np.mean(data)],
+                ["min", np.min(data)],
+                ["max", np.max(data)],
+                ["std", np.std(data)],
+            ]
+            logging.info(f"Statistics for {name}:")
+            log_table(summary_data)
+
+        if verbose:
+            logging.info("Detailed data logging enabled.")
+
+            logging.info("Lepton Quantities:")
+            for name, array in zip(
+                ["lep_pt", "lep_eta", "lep_phi", "lep_e"],
+                [lep_pt, lep_eta, lep_phi, lep_e],
+            ):
+                log_summary(name, array)
+
+            logging.info("Jet Quantities:")
+            for name, array in zip(
+                ["jet_pt", "jet_eta", "jet_phi", "jet_e"],
+                [jet_pt, jet_eta, jet_phi, jet_e],
+            ):
+                log_summary(name, array)
+
+            logging.info("Combined Quantities:")
+            for name, array in zip(
+                [
+                    "p_pt",
+                    "p_eta",
+                    "p_phi",
+                    "p_e",
+                    "p_px",
+                    "p_py",
+                    "p_pz",
+                    "p_theta",
+                    "p_mass",
+                    "p_E_over_m",
+                    "p_pT_over_m",
+                    "p_log_pT",
+                    "p_log_m",
+                ],
+                [
+                    p_pt,
+                    p_eta,
+                    p_phi,
+                    p_e,
+                    p_px,
+                    p_py,
+                    p_pz,
+                    p_theta,
+                    p_mass,
+                    p_E_over_m,
+                    p_pT_over_m,
+                    p_log_pT,
+                    p_log_m,
+                ],
+            ):
+                log_summary(name, array)
+        else:
+            logging.info("Summary data logging only.")
+            combined_data = np.concatenate(
+                [
+                    lep_pt,
+                    lep_eta,
+                    lep_phi,
+                    lep_e,
+                    jet_pt,
+                    jet_eta,
+                    jet_phi,
+                    jet_e,
+                    p_pt,
+                    p_eta,
+                    p_phi,
+                    p_e,
+                    p_px,
+                    p_py,
+                    p_pz,
+                    p_theta,
+                    p_mass,
+                    p_E_over_m,
+                    p_pT_over_m,
+                    p_log_pT,
+                    p_log_m,
+                ]
+            )
+            log_summary("All Quantities Combined", combined_data)

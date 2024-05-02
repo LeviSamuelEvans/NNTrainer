@@ -1,14 +1,15 @@
 import logging
 import re
 
+
 def print_intro():
-    """Prints the introduction message for the ttH Neural Network Trainer Framework.
-    """
+    """Prints the introduction message for the ttH Neural Network Trainer Framework."""
     logging.info("=" * 36)
     logging.info("NN Trainer Framework")
     logging.info(get_version_from_file())
     logging.info("=" * 36)
     logging.info("")
+
 
 def print_config_summary(config):
     """Prints a summary of the configuration settings.
@@ -27,7 +28,9 @@ def print_config_summary(config):
     if re.search(r"transformer", config["model"]["name"], re.IGNORECASE):
         logging.info("- d_model: {}".format(config["model"]["d_model"]))
         logging.info("- nhead: {}".format(config["model"]["nhead"]))
-        logging.info("- num_encoder_layers: {}".format(config["model"]["num_encoder_layers"]))
+        logging.info(
+            "- num_encoder_layers: {}".format(config["model"]["num_encoder_layers"])
+        )
         logging.info("- dropout: {}".format(config["model"]["dropout"]))
 
     # = Data Configuration =
@@ -41,7 +44,9 @@ def print_config_summary(config):
         "Jet Features": [f for f in config["features"] if f.startswith("jet_")],
         "Electron Features": [f for f in config["features"] if f.startswith("el_")],
         "Muon Features": [f for f in config["features"] if f.startswith("mu_")],
-        "Other Features": [f for f in config["features"] if not f.startswith(("jet_", "el_", "mu_"))],
+        "Other Features": [
+            f for f in config["features"] if not f.startswith(("jet_", "el_", "mu_"))
+        ],
     }
 
     for group, features in feature_groups.items():
@@ -57,6 +62,7 @@ def print_config_summary(config):
 
     logging.info("=" * 30)
 
+
 def log_with_separator(message):
     """Logs a message with a separator of equal signs.
 
@@ -65,8 +71,9 @@ def log_with_separator(message):
     message : str
         The message to log.
     """
-    separator = '=' * len(message)
+    separator = "=" * len(message)
     return f"\n{separator}\n{message}\n{separator}"
+
 
 def get_version_from_file(filename="version.txt"):
     """Reads the version number from a file.

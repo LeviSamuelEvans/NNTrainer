@@ -15,9 +15,9 @@ model:
   name: 'TransformerClassifier5'
   input_dim: 8
   d_model: 128
-  nhead: 4
-  num_encoder_layers: 4
-  dropout: 0.05
+  nhead: 8
+  num_encoder_layers: 8
+  dropout: 0.10
 
 #============#
 # Data Block #
@@ -25,10 +25,10 @@ model:
 data:
   # signal_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttH_4vec_btag_500k_12j.h5
   # background_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttbb_4vec_btag_500k_12j.h5
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_10k_10j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_10k_10j.h5
-  #signal_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttH_4vec_dev_btag_100k_10j.h5
-  #background_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttbb_4vec_dev_btag_100k_10j.h5
+  #signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_10k_10j.h5
+  #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_10k_10j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_10k_12j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_10k_12j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -104,16 +104,18 @@ features:
   - jet_tagWeightBin_DL1r_Continuous_10
   # - jet_tagWeightBin_DL1r_Continuous_11
   # - jet_tagWeightBin_DL1r_Continuous_12
-  - mu_pt
-  - mu_eta
-  - mu_phi
-  - mu_e
-  - el_pt
-  - el_eta
-  - el_phi
-  - el_e
+  - mu_pt_0
+  - mu_eta_0
+  - mu_phi_0
+  - mu_e_0
+  - el_pt_0
+  - el_eta_0
+  - el_phi_0
+  - el_e_0
   - nElectrons
   - nMuons
+  - met_met
+  - met_phi
 
 #===================#
 # Preparation Block #
@@ -121,9 +123,11 @@ features:
 preparation:
   feature_maker: True
   feature_type: '4-vectors'
-  use_representations: True
+  use_representations: False
+  use_all_representations: True
   use_extra_feats: True
   extra_feats: btag
+  include_met: True
   use_angular_separation: False
   max_particles: 10
   n_leptons: 1
@@ -133,18 +137,18 @@ preparation:
   augmentation_methods:
     phi-rotation: True
     eta-reflection: True
-    translate_eta_phi: True #BUG 04.04.23 :(
+    translate_eta_phi: True
     energy-variation: True
 
 #================#
 # Training Block #
 #================#
 training:
-  num_epochs: 32
+  num_epochs: 20
   learning_rate: 0.00001
   weight_decay: 0.0001
-  batch_size: 1024
-  patience: 20
+  batch_size: 512
+  patience: 10
   early_stopping: True
   use_scheduler: False
   factor: 0.5
@@ -153,14 +157,14 @@ training:
   criterion: 'BCELoss'
   use_cosine_burnin: True
   lr_init: 1e-11
-  lr_max: 1e-3
+  lr_max: 9e-5
   lr_final: 1e-9
-  burn_in: 4
-  ramp_up: 8
-  plateau: 10
-  ramp_down: 12
+  burn_in: 2
+  ramp_up: 4
+  plateau: 6
+  ramp_down: 8
   gradient_clipping: True
-  max_norm: 5.0
+  max_norm: 10.0
   model_save_path: /scratch4/levans/tth-network/models/outputs/
 
 #==================#

@@ -13,6 +13,7 @@ import os
 # ================================================================================================
 # THE DATA PREPARATION FACTORY
 
+
 class DataPreparationFactory:
     """Factory class for the type of data preparation to use.
 
@@ -166,8 +167,12 @@ class DataPreparationFactory:
                 signal_edges, signal_edge_attr, background_edges, background_edge_attr
             )
 
-            train_loader = GeoDataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-            val_loader = GeoDataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+            train_loader = GeoDataLoader(
+                train_dataset, batch_size=batch_size, shuffle=True
+            )
+            val_loader = GeoDataLoader(
+                val_dataset, batch_size=batch_size, shuffle=False
+            )
 
             return train_loader, val_loader
 
@@ -177,6 +182,7 @@ class DataPreparationFactory:
 
 # ================================================================================================
 # BASE CLASS FOR DATA PREPARATION
+
 
 class BaseDataPreparation:
     """The base class for data preparation.
@@ -299,7 +305,9 @@ class BaseDataPreparation:
             - train_dataset (torch.utils.data.dataset.TensorDataset): Training dataset.
             - val_dataset (torch.utils.data.dataset.TensorDataset): Validation dataset.
         """
-        logging.info("PreparationFactory :: Creating the training and validation datasets...")
+        logging.info(
+            "PreparationFactory :: Creating the training and validation datasets..."
+        )
 
         # Shuffle the data
         indices = torch.randperm(X.size(0))
@@ -419,6 +427,7 @@ class FFDataPreparation(BaseDataPreparation):
 
 # ================================================================================================
 # GRAPH DATA PREPARATION
+
 
 class GraphDataPreparation(BaseDataPreparation):
     """A class for preparing data in graph format for GNN training.
@@ -859,9 +868,15 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
 
         # convert to tensors
         signal_edges = [torch.tensor(edges, dtype=torch.long) for edges in signal_edges]
-        signal_edge_attr = [torch.tensor(attr, dtype=torch.float32) for attr in signal_edge_attr]
-        background_edges = [torch.tensor(edges, dtype=torch.long) for edges in background_edges]
-        background_edge_attr = [torch.tensor(attr, dtype=torch.float32) for attr in background_edge_attr]
+        signal_edge_attr = [
+            torch.tensor(attr, dtype=torch.float32) for attr in signal_edge_attr
+        ]
+        background_edges = [
+            torch.tensor(edges, dtype=torch.long) for edges in background_edges
+        ]
+        background_edge_attr = [
+            torch.tensor(attr, dtype=torch.float32) for attr in background_edge_attr
+        ]
 
         logging.info(
             f"PreparationFactory :: Splitting the data into training and validation datasets..."
@@ -885,19 +900,30 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
         val_edge_attr_bkg = background_edge_attr[train_size_bkg:]
 
         # prepare graphs
-        train_graphs_sig = self._prepare_graphs(train_dataset_sig, train_edges_sig, train_edge_attr_sig)
-        val_graphs_sig = self._prepare_graphs(val_dataset_sig, val_edges_sig, val_edge_attr_sig)
-        train_graphs_bkg = self._prepare_graphs(train_dataset_bkg, train_edges_bkg, train_edge_attr_bkg)
-        val_graphs_bkg = self._prepare_graphs(val_dataset_bkg, val_edges_bkg, val_edge_attr_bkg)
-
+        train_graphs_sig = self._prepare_graphs(
+            train_dataset_sig, train_edges_sig, train_edge_attr_sig
+        )
+        val_graphs_sig = self._prepare_graphs(
+            val_dataset_sig, val_edges_sig, val_edge_attr_sig
+        )
+        train_graphs_bkg = self._prepare_graphs(
+            train_dataset_bkg, train_edges_bkg, train_edge_attr_bkg
+        )
+        val_graphs_bkg = self._prepare_graphs(
+            val_dataset_bkg, val_edges_bkg, val_edge_attr_bkg
+        )
 
         # Combine signal and background graphs
         train_graphs = train_graphs_sig + train_graphs_bkg
         val_graphs = val_graphs_sig + val_graphs_bkg
 
         # Find the maximum edge index across all tensors in the lists
-        max_index_sig = max(torch.max(edges).item() for edges in signal_edges if edges.numel() > 0)
-        max_index_bkg = max(torch.max(edges).item() for edges in background_edges if edges.numel() > 0)
+        max_index_sig = max(
+            torch.max(edges).item() for edges in signal_edges if edges.numel() > 0
+        )
+        max_index_bkg = max(
+            torch.max(edges).item() for edges in background_edges if edges.numel() > 0
+        )
 
         print("Max edge index:", max_index_sig, max_index_bkg)
 
@@ -906,8 +932,12 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
     def _prepare_graphs(self, dataset, edges_list, edge_attr_list):
         graphs = []
 
-        for (x, y), edges, edge_attr in tqdm(zip(dataset, edges_list, edge_attr_list), desc="Preparing Graphs"):
-            graph = geo_data.Data(x=x, edge_index=edges, edge_attr=edge_attr, y=y.unsqueeze(0))
+        for (x, y), edges, edge_attr in tqdm(
+            zip(dataset, edges_list, edge_attr_list), desc="Preparing Graphs"
+        ):
+            graph = geo_data.Data(
+                x=x, edge_index=edges, edge_attr=edge_attr, y=y.unsqueeze(0)
+            )
             graphs.append(graph)
 
         return graphs

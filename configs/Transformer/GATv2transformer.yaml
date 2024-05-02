@@ -14,10 +14,10 @@
 model:
   name: 'HierarchicalGATTransformer'
   input_dim: 8
-  d_model: 128
-  nhead: 2
-  num_encoder_layers: 2
-  dropout: 0.45
+  d_model: 256
+  nhead: 8
+  num_encoder_layers: 10
+  dropout: 0.02
 
 #============#
 # Data Block #
@@ -29,8 +29,10 @@ data:
   #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_10k_10j.h5
   #signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_50k_10j.h5
   #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_50k_10j.h5
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttH_4vec_dev_btag_100k_10j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/03_04_24/ttbb_4vec_dev_btag_100k_10j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_100k_12j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_100k_12j.h5
+  # signal_path: /scratch4/levans/tth-network/Datasets/dev/27_04_24/ttH_4vec_btag_250k_12j.h5
+  # background_path: /scratch4/levans/tth-network/Datasets/dev/27_04_24/ttbb_4vec_btag_250k_12j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -56,7 +58,7 @@ features:
   - jet_pt_8
   - jet_pt_9
   - jet_pt_10
-  # - jet_pt_11
+  - jet_pt_11
   # - jet_pt_12
   - jet_eta_1
   - jet_eta_2
@@ -68,7 +70,7 @@ features:
   - jet_eta_8
   - jet_eta_9
   - jet_eta_10
-  # - jet_eta_11
+  - jet_eta_11
   # - jet_eta_12
   - jet_phi_1
   - jet_phi_2
@@ -80,7 +82,7 @@ features:
   - jet_phi_8
   - jet_phi_9
   - jet_phi_10
-  # - jet_phi_11
+  - jet_phi_11
   # - jet_phi_12
   - jet_e_1
   - jet_e_2
@@ -92,7 +94,7 @@ features:
   - jet_e_8
   - jet_e_9
   - jet_e_10
-  # - jet_e_11
+  - jet_e_11
   # - jet_e_12
   - jet_tagWeightBin_DL1r_Continuous_1
   - jet_tagWeightBin_DL1r_Continuous_2
@@ -104,18 +106,20 @@ features:
   - jet_tagWeightBin_DL1r_Continuous_8
   - jet_tagWeightBin_DL1r_Continuous_9
   - jet_tagWeightBin_DL1r_Continuous_10
-  # - jet_tagWeightBin_DL1r_Continuous_11
+  - jet_tagWeightBin_DL1r_Continuous_11
   # - jet_tagWeightBin_DL1r_Continuous_12
-  - mu_pt
-  - mu_eta
-  - mu_phi
-  - mu_e
-  - el_pt
-  - el_eta
-  - el_phi
-  - el_e
+  - mu_pt_0
+  - mu_eta_0
+  - mu_phi_0
+  - mu_e_0
+  - el_pt_0
+  - el_eta_0
+  - el_phi_0
+  - el_e_0
   - nElectrons
   - nMuons
+  - met_met
+  - met_phi
 
 #===================#
 # Preparation Block #
@@ -123,10 +127,12 @@ features:
 preparation:
   feature_maker: True
   feature_type: '4-vectors'
-  use_representations: True
+  use_representations: False
+  use_all_representations: True
   use_extra_feats: True
-  use_angular_separation: True
   extra_feats: btag
+  include_met: True
+  use_angular_separation: True
   max_particles: 10
   n_leptons: 1
   append_four_vectors: False
@@ -142,11 +148,11 @@ preparation:
 # Training Block #
 #================#
 training:
-  num_epochs: 10
+  num_epochs: 40
   learning_rate: 0.00001
   weight_decay: 0.001
   batch_size: 256
-  patience: 12
+  patience: 10
   early_stopping: True
   use_scheduler: False
   factor: 0.5
@@ -154,15 +160,15 @@ training:
   balance_classes: True
   criterion: 'BCELoss'
   use_cosine_burnin: True
-  lr_init: 1e-7
-  lr_max: 9e-5
-  lr_final: 1e-6
-  burn_in: 3
-  ramp_up: 5
-  plateau: 8
-  ramp_down: 9
+  lr_init: 1e-10
+  lr_max: 4e-5
+  lr_final: 2e-9
+  burn_in: 5
+  ramp_up: 8
+  plateau: 12
+  ramp_down: 17
   gradient_clipping: True
-  max_norm: 1.0
+  max_norm: 5.0
   model_save_path: /scratch4/levans/tth-network/models/outputs/
 
 #==================#

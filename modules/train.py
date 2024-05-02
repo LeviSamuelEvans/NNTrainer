@@ -22,6 +22,7 @@ from utils import (
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Trainer:
     """A class used to steer the training of a PyTorch NN.
 
@@ -138,7 +139,7 @@ class Trainer:
         """Return the next training batch."""
         return next(self.train_loader)
 
-# ======================================================================================
+    # ======================================================================================
 
     def _validate_loaders(self):
         if self.config["network_type"] in ["GNN", "LENN", "TransformerGCN"]:
@@ -222,7 +223,7 @@ class Trainer:
         else:
             self.cosine_scheduler = None
 
-# ======================================================================================
+    # ======================================================================================
 
     def state_dict(self):
         """Return the state dictionary of the Trainer instance."""
@@ -293,10 +294,14 @@ class Trainer:
         """save the model state dictionary to the specified path."""
         if not os.path.exists(model_save_path):
             os.makedirs(model_save_path, exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(model_save_path, "model_state_dict.pt"))
-        logging.info(f"Model state dictionary saved to {os.path.join(model_save_path, 'model_state_dict.pt')}")
+        torch.save(
+            model.state_dict(), os.path.join(model_save_path, "model_state_dict.pt")
+        )
+        logging.info(
+            f"Model state dictionary saved to {os.path.join(model_save_path, 'model_state_dict.pt')}"
+        )
 
-# ======================================================================================
+    # ======================================================================================
 
     def get_losses(self):
         """Return the training and validation losses."""
@@ -339,7 +344,7 @@ class Trainer:
             logging.info(f"{'betas[0]':<20}   {betas[0]:<15.5f}")
             logging.info(f"{'betas[1]':<20}   {betas[1]:<15.5f}")
 
-# ======================================================================================
+    # ======================================================================================
 
     def _train_epoch(self, epoch):
         self.model.train()
@@ -349,14 +354,20 @@ class Trainer:
         tot_samples = 0
 
         for batch_idx, batch_data in enumerate(self.train_loader):
-            inputs, labels, edge_index, batch = self._process_batch_data(batch_data)
+            inputs, labels, edge_index, edge_attr, batch = self._process_batch_data(
+                batch_data
+            )
 
             self.optimizer.zero_grad()
 
             if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
-                outputs = self._forward_pass(inputs, edge_index, batch)
+                outputs = self._forward_pass(inputs, edge_index, edge_attr, batch)
+
+            elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
+                outputs = self._forward_pass(inputs, labels=labels)  # TEMP
+
             else:
-                outputs = self._forward_pass(inputs)
+                outputs = self._forward_pass(inputs)  # TEMP
 
             loss = self.criterion(outputs, labels)
             loss.backward()
@@ -390,12 +401,21 @@ class Trainer:
 
         with torch.no_grad():
             for batch_data in self.val_loader:
-                # if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
-                #     inputs, labels, edge_index, batch = self._process_batch_data(batch_data)
-                #     outputs = self._forward_pass(inputs, edge_index, batch)
-                # else:
-                inputs, labels, edge_index, batch = self._process_batch_data(batch_data)
-                outputs = self._forward_pass(inputs)
+                if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+                    inputs, labels, edge_index, edge_attr, batch = (
+                        self._process_batch_data(batch_data)
+                    )
+                    outputs = self._forward_pass(inputs, edge_index, edge_attr, batch)
+                elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
+                    inputs, labels, edge_index, batch = self._process_batch_data(
+                        batch_data
+                    )
+                    outputs = self._forward_pass(inputs, labels=labels)  # TEMPPP
+                else:
+                    inputs, labels, edge_index, batch = self._process_batch_data(
+                        batch_data
+                    )
+                    outputs = self._forward_pass(inputs)  # TEMPPP
 
                 loss = self.criterion(outputs, labels)
                 val_loss += loss.item() * inputs.size(0)
@@ -435,25 +455,34 @@ class Trainer:
         """Process the batch data based on the network type."""
         # check if the batch data is a tuple of inputs and labels
 
-        if hasattr(batch_data, 'x') and hasattr(batch_data, 'edge_index'):
+        if (
+            hasattr(batch_data, "x")
+            and hasattr(batch_data, "edge_index")
+            and hasattr(batch_data, "edge_attr")
+        ):
             # for our graph networks
             batch_data = batch_data.to(self.device)
             inputs = batch_data.x
             labels = batch_data.y
             edge_index = batch_data.edge_index
-            batch = batch_data.batch if hasattr(batch_data, 'batch') else None
-            return inputs, labels, edge_index, batch
+            edge_attr = batch_data.edge_attr
+            batch = batch_data.batch if hasattr(batch_data, "batch") else None
+            return inputs, labels, edge_index, edge_attr, batch
         elif isinstance(batch_data, tuple):
             # for our ff networks
             inputs = batch_data[0].to(self.device)
-            labels = batch_data[1].to(self.device).squeeze() if len(batch_data) > 1 else None
+            labels = (
+                batch_data[1].to(self.device).squeeze() if len(batch_data) > 1 else None
+            )
             return inputs, labels, None, None
         elif isinstance(batch_data, torch.Tensor):
             # handle the case where batch_data is a single tensor
             inputs = batch_data.to(self.device)
             labels = None
             return inputs, labels, None, None
-        elif isinstance(batch_data, list) and all(isinstance(x, torch.Tensor) for x in batch_data):
+        elif isinstance(batch_data, list) and all(
+            isinstance(x, torch.Tensor) for x in batch_data
+        ):
             # Assume batch_data is a list of tensors
             batch_data = [x.to(self.device) for x in batch_data]
             inputs = batch_data[0]
@@ -462,8 +491,9 @@ class Trainer:
         else:
             raise ValueError("Unsupported batch data format." + str(type(batch_data)))
 
-
-    def _forward_pass(self, inputs, edge_index=None, batch=None):
+    def _forward_pass(
+        self, inputs, edge_index=None, edge_attr=None, batch=None, labels=None
+    ):
         """
         Perform a forward pass through the model.
 
@@ -481,9 +511,17 @@ class Trainer:
         """
         if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
             # here, the model expects inputs, edge_index, and possibly batch for graph-level pooling
-            outputs = self.model(inputs, edge_index, batch)
-        elif self.model.__class__.__name__ in ["TransformerClassifier2", "SetsTransformerClassifier", "TransformerClassifier5"]:
+            outputs = self.model(inputs, edge_index, edge_attr, batch)
+        elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
             # for some models, our inputs are duplicated or transformed differently
+            if labels is None:
+                print("Error:: Labels are not being passed!")
+            outputs = self.model(inputs, inputs, labels)
+        elif self.model.__class__.__name__ in [
+            "TransformerClassifier2",
+            "SetsTransformerClassifier",
+            "TransformerClassifier5",
+        ]:
             outputs = self.model(inputs, inputs)
         else:
             # For standard models with basic inputs
@@ -525,9 +563,10 @@ class Trainer:
             f"Train Loss: {self.train_losses[-1]:.4f}, Train Acc: {100 * self.train_accuracies[-1]:.4f}%, "
             f"Val Loss: {self.val_losses[-1]:.4f}, Val Acc: {100 * self.val_accuracies[-1]:.4f}%"
         )
-# ======================================================================================
-# ======================================================================================
-# MAIN TRAINING METHOD
+
+    # ======================================================================================
+    # ======================================================================================
+    # MAIN TRAINING METHOD
 
     def train_model(self):
         """Train the model using the specified criterion, optimiser, and data loaders for a given number of epochs.
@@ -563,8 +602,8 @@ class Trainer:
                     val_loss
                 )  # using ReduceLROnPlateau scheduler to update learning rate
             elif self.cosine_scheduler:
-                 # the CosineRampUpDownLR updates each epoch unconditionally,
-                 # based on configurations in config file made by user
+                # the CosineRampUpDownLR updates each epoch unconditionally,
+                # based on configurations in config file made by user
                 self.cosine_scheduler.step()
 
             self._log_epoch_metrics(epoch)
@@ -589,7 +628,9 @@ class Trainer:
         end_time = time.time()
         # log the total training time
         training_time = end_time - start_time
-        logging.info(f"Trainer :: Training complete. Total time: {training_time:.2f} seconds")
+        logging.info(
+            f"Trainer :: Training complete. Total time: {training_time:.2f} seconds"
+        )
 
         # log the memory usage if GPU is used
         if torch.cuda.is_available():
@@ -604,5 +645,6 @@ class Trainer:
 
         # save the final model state dictionary
         self.save_model(self.model, self.model_save_path)
+
 
 # ======================================================================================
