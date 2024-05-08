@@ -6,6 +6,9 @@ import logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+# /afs/cern.ch/user/l/leevans/miniconda3
+# /afs/cern.ch/user/l/leevans/NNTrainer/tth-network
+# MLenv
 
 
 class Submission:
@@ -78,13 +81,10 @@ class Submission:
             f.write('echo "Checking current directory and its contents:"\n')
             f.write("pwd\n")
             f.write("ls -l\n\n")
-            f.write("# Debug: Check if PyTorch is installed\n")
+            f.write("# Train the model with provided configuration file\n")
+            f.write('echo "Starting training with configuration file: $1"\n')
             f.write(
-                f'$CONDA_INSTALL_DIR/envs/{self.env_name}/bin/python -c "import torch; print(torch.__version__)"\n\n'
-            )
-            f.write("# Train the model\n")
-            f.write(
-                f"$CONDA_INSTALL_DIR/envs/{self.env_name}/bin/python main.py -c $(config_file)\n"
+                f"$CONDA_INSTALL_DIR/envs/{self.env_name}/bin/python main.py -c $1\n"
             )
             f.write('echo "Training completed"\n')
 
@@ -96,23 +96,22 @@ class Submission:
             f.write("getenv = True\n")
             f.write("Request_GPUs = 1\n")
             f.write("request_CPUs = 1\n")
-            f.write(f"request_memory = 16 GB\n")
+            f.write(f"request_memory = 24 GB\n")
             f.write(f"output = {self.log_dir}/$(ClusterId).$(ProcId).out\n")
             f.write(f"error = {self.log_dir}/$(ClusterId).$(ProcId).err\n")
             f.write(f"log = {self.log_dir}/$(ClusterId).log\n")
             f.write("should_transfer_files = YES\n")
             f.write("when_to_transfer_output = ON_EXIT\n")
             f.write('+JobFlavour = "workday"\n')
-            f.write('+queue="short"\n')
-            f.write("arguments = $(args)\n")
-            f.write(f"queue args from {self.job_args_file}\n")
+            f.write("arguments = $(config_file)\n")
+            f.write(f"queue config_file from {self.job_args_file}\n")
 
     def setup_job_args(self):
         """Sets up the job arguments file."""
         self.log_dir.mkdir(parents=True, exist_ok=True)
         with open(self.job_args_file, "w") as f:
             for config_file in self.config_files:
-                f.write(f"config_file={config_file}\n")
+                f.write(f"{config_file}\n")
 
     def submit(self, dry_run=False):
         """
