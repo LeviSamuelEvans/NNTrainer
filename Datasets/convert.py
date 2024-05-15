@@ -110,7 +110,7 @@ class DataImporter(object):
     # ==============================================================================
 
     def getDataFrameFromRootfile(
-        self, filepath, fixed_jet_length, max_events=None, max_jets=12, order_jets=True
+        self, filepath, fixed_jet_length, max_events=None, max_jets=12, order_jets=False, run_option="baseline",
     ):
         """Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
 
@@ -235,6 +235,12 @@ class DataImporter(object):
                     # drop original object
                     df.drop(columns=[col], inplace=True)
 
+            if run_option == "signal":
+                print("INFO: Applying signal region selection: nJets >= 6 and nBTags_DL1r_70 >= 4")
+                df = df[(df["nJets"] >= 6) & (df["nBTags_DL1r_70"] >= 4)]
+            elif run_option == "baseline":
+                print("INFO: No additional selection applied for the baseline option.")
+
             # Log final DataFrame structure before appending to HDF5 DEBUGGING
             print(
                 f"INFO: \nFinal DataFrame structure before appending to HDF5 for file {filename}:"
@@ -263,7 +269,7 @@ class DataImporter(object):
 
     # ==============================================================================
 
-    def processAllFiles(self, max_events=None, max_jets=12, order_jets=True):
+    def processAllFiles(self, max_events=None, max_jets=12, order_jets=False, run_option="baseline"):
         """Process all ROOT files in the specified directory and display a progress bar."""
         fixed_jet_length = max_jets
         filepaths = self.getRootFilepaths()
@@ -275,7 +281,7 @@ class DataImporter(object):
             unit_divisor=60,
         ):
             self.getDataFrameFromRootfile(
-                filepath, fixed_jet_length, max_events, max_jets
+                filepath, fixed_jet_length, max_events, max_jets, order_jets, run_option,
             )
     # ==============================================================================
 
@@ -386,10 +392,20 @@ def handleCommandLineArgs():
     )
     parser.add_argument(
         "--order-jets",
-        type=bool,
-        default=True,
+        dest='order_jets',
+        action='store_true',
         help="Order jets in each event by b-tagging score and pT (default: True).\n"
         "This is useful when using --max-jets option to avoid losing important jets.",
+    )
+    parser.set_defaults(order_jets=False)
+
+    parser.add_argument(
+        "--run-option",
+        choices=["baseline", "signal"],
+        default="baseline",
+        help="Run option: The event selection. \n"
+        "baseline = 5j3b,70, Signal = 6j4b,70. \n"
+        "(default: baseline).",
     )
     args = parser.parse_args()
 
@@ -428,6 +444,7 @@ def main():
             max_events=args.num_events,
             max_jets=args.max_jets,
             order_jets=args.order_jets,
+            run_option=args.run_option,
         )
 
 

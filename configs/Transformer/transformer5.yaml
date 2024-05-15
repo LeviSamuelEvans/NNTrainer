@@ -14,10 +14,10 @@
 model:
   name: 'TransformerClassifier5'
   input_dim: 8
-  d_model: 128
-  nhead: 8
-  num_encoder_layers: 8
-  dropout: 0.10
+  d_model: 256
+  nhead: 4
+  num_encoder_layers: 16
+  dropout: 0.04
 
 #============#
 # Data Block #
@@ -27,8 +27,10 @@ data:
   # background_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttbb_4vec_btag_500k_12j.h5
   #signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_10k_10j.h5
   #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_10k_10j.h5
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_10k_12j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_10k_12j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_all_events_12j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_all_events_12j.h5
+  #signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_30k_12j.h5
+  #background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_30k_12j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -144,11 +146,11 @@ preparation:
 # Training Block #
 #================#
 training:
-  num_epochs: 20
+  num_epochs: 37
   learning_rate: 0.00001
   weight_decay: 0.0001
-  batch_size: 512
-  patience: 10
+  batch_size: 256
+  patience: 8
   early_stopping: True
   use_scheduler: False
   factor: 0.5
@@ -156,15 +158,15 @@ training:
   balance_classes: True
   criterion: 'BCELoss'
   use_cosine_burnin: True
-  lr_init: 1e-11
-  lr_max: 9e-5
+  lr_init: 1e-7
+  lr_max: 4e-6
   lr_final: 1e-9
-  burn_in: 2
-  ramp_up: 4
-  plateau: 6
-  ramp_down: 8
+  burn_in: 4
+  ramp_up: 8
+  plateau: 10
+  ramp_down: 15
   gradient_clipping: True
-  max_norm: 10.0
+  max_norm: 1.0
   model_save_path: /scratch4/levans/tth-network/models/outputs/
 
 #==================#

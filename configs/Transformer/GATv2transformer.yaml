@@ -15,22 +15,24 @@ model:
   name: 'HierarchicalGATTransformer'
   input_dim: 8
   d_model: 256
-  nhead: 8
-  num_encoder_layers: 10
+  nhead: 4
+  num_encoder_layers: 4
   dropout: 0.02
 
 #============#
 # Data Block #
 #============#
 data:
-  #signal_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttH_4vec_btag_500k_12j.h5
+  #signal_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttH_4vec_btag_500k_12j.h5 6841346 01:52:31
   #background_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttbb_4vec_btag_500k_12j.h5
   #signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_10k_10j.h5
   #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_10k_10j.h5
   #signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_50k_10j.h5
   #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_50k_10j.h5
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_100k_12j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_100k_12j.h5
+  # signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_30k_12j.h5
+  # background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_30k_12j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_all_events_12j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_all_events_12j.h5
   # signal_path: /scratch4/levans/tth-network/Datasets/dev/27_04_24/ttH_4vec_btag_250k_12j.h5
   # background_path: /scratch4/levans/tth-network/Datasets/dev/27_04_24/ttbb_4vec_btag_250k_12j.h5
   train_ratio: 0.8
@@ -148,10 +150,10 @@ preparation:
 # Training Block #
 #================#
 training:
-  num_epochs: 40
+  num_epochs: 22
   learning_rate: 0.00001
   weight_decay: 0.001
-  batch_size: 256
+  batch_size: 128
   patience: 10
   early_stopping: True
   use_scheduler: False
@@ -163,10 +165,10 @@ training:
   lr_init: 1e-10
   lr_max: 4e-5
   lr_final: 2e-9
-  burn_in: 5
-  ramp_up: 8
-  plateau: 12
-  ramp_down: 17
+  burn_in: 2
+  ramp_up: 4
+  plateau: 6
+  ramp_down: 9
   gradient_clipping: True
   max_norm: 5.0
   model_save_path: /scratch4/levans/tth-network/models/outputs/

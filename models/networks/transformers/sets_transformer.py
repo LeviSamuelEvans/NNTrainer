@@ -1,5 +1,7 @@
 from . import LorentzInvariantAttention
 import torch.nn as nn
+import torch
+from . import ResidualBlock
 
 
 class SetsTransformerEncoder(nn.Module):
@@ -20,7 +22,7 @@ class SetsTransformerEncoder(nn.Module):
         Refs
         -------
         https://pytorch.org/docs/stable/generated/torch.nn.ModuleList.html
-        
+
         """
         super(SetsTransformerEncoder, self).__init__()
         self.layers = nn.ModuleList([
@@ -36,7 +38,9 @@ class SetsTransformerEncoder(nn.Module):
 class SetsTransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, nhead, dropout):
         super(SetsTransformerEncoderLayer, self).__init__()
-        self.attention = LorentzInvariantAttention(d_model, nhead, dropout)
+        #self.attention = LorentzInvariantAttention(d_model, nhead, dropout)
+        self.attention = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
+        self.cross_attention = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
         self.feed_forward = nn.Sequential(
             nn.Linear(d_model, d_model),
             nn.ReLU(),
@@ -46,7 +50,13 @@ class SetsTransformerEncoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(d_model)
 
     def forward(self, x, x_coords):
-        x = x + self.attention(self.norm1(x), x_coords)
+        # Applying self-attention, thus query, key, and value are all the same
+        # make sure x is shaped (L, N, E) (Seq. length, Batch size, Embedding dim)
+        x = x.permute(1, 0, 2)
+        attn_output, _ = self.attention(self.norm1(x), self.norm1(x), self.norm1(x))
+        x = x + attn_output
+         # revert to original shape (N, L, E)
+        x = x.permute(1, 0, 2)
         x = x + self.feed_forward(self.norm2(x))
         return x
 
@@ -56,12 +66,16 @@ class SetsTransformerClassifier(nn.Module):
         self.input_embedding = nn.Linear(input_dim, d_model)
         self.set_transformer = SetsTransformerEncoder(d_model, nhead, num_layers, dropout)
         self.attention_pooling = nn.MultiheadAttention(d_model, nhead, dropout=dropout) # NEW
+        self.cross_attention = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
         self.classifier = nn.Sequential(
             nn.Linear(d_model, 128),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Dropout(dropout),
-            nn.Linear(128, 1),
-            #nn.Sigmoid(),
+            ResidualBlock(128),
+            nn.Linear(128, 64),
+            nn.LeakyReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(64, 1),
         )
 
     def forward(self, x, x_coords):
@@ -70,7 +84,7 @@ class SetsTransformerClassifier(nn.Module):
 
         # attention pooling
         pooled_output, _ = self.attention_pooling(x, x, x)
-        pooled_output = pooled_output.mean(dim=1)
+        pooled_output, _ = torch.max(pooled_output, dim=1)
 
         output = self.classifier(pooled_output)
         return output
