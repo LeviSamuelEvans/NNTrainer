@@ -13,6 +13,7 @@ Datasets/full
 Datasets/test
 Datasets/dev_configs
 Datasets/dev
+Datasets/signal
 
 # all state dict and model files
 models/outputs

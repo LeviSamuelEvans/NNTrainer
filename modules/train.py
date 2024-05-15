@@ -191,8 +191,10 @@ class Trainer:
             )
             pos_weight = pos_weight.to(self.device)
             self.criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+            logging.info("Trainer :: Initialised BCEWithLogitsLoss with class weights.")
         else:
             self.criterion = torch.nn.BCELoss()
+            #self.criterion = torch.nn.BCEWithLogitsLoss()
 
     def _initialise_scheduler(self):
         if self.use_scheduler:
@@ -331,7 +333,16 @@ class Trainer:
         all_labels = torch.cat([labels for *_, labels in self.train_loader])
         positive_examples = float((all_labels == 1).sum())
         negative_examples = float((all_labels == 0).sum())
-        return torch.tensor([negative_examples / positive_examples])
+        if positive_examples > negative_examples:
+            print("Positive examples > Negative examples")
+            print(f"Positive examples: {positive_examples}")
+            print(f"Negative examples: {negative_examples}")
+            return torch.tensor([positive_examples / negative_examples])
+        else:
+            print("N examples > P examples")
+            print(f"Positive examples: {positive_examples}")
+            print(f"Negative examples: {negative_examples}")
+            return torch.tensor([negative_examples / positive_examples])
 
     def _print_optimizer_params(self):
         """Print the optimisers parameters."""
@@ -407,12 +418,12 @@ class Trainer:
                     )
                     outputs = self._forward_pass(inputs, edge_index, edge_attr, batch)
                 elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
-                    inputs, labels, edge_index, batch = self._process_batch_data(
+                    inputs, labels, edge_index, edge_attr, batch = self._process_batch_data(
                         batch_data
                     )
                     outputs = self._forward_pass(inputs, labels=labels)  # TEMPPP
                 else:
-                    inputs, labels, edge_index, batch = self._process_batch_data(
+                    inputs, labels, edge_index, edge_attr, batch = self._process_batch_data(
                         batch_data
                     )
                     outputs = self._forward_pass(inputs)  # TEMPPP
@@ -474,12 +485,12 @@ class Trainer:
             labels = (
                 batch_data[1].to(self.device).squeeze() if len(batch_data) > 1 else None
             )
-            return inputs, labels, None, None
+            return inputs, labels, None, None, None
         elif isinstance(batch_data, torch.Tensor):
             # handle the case where batch_data is a single tensor
             inputs = batch_data.to(self.device)
             labels = None
-            return inputs, labels, None, None
+            return inputs, labels, None, None, None
         elif isinstance(batch_data, list) and all(
             isinstance(x, torch.Tensor) for x in batch_data
         ):
@@ -487,7 +498,7 @@ class Trainer:
             batch_data = [x.to(self.device) for x in batch_data]
             inputs = batch_data[0]
             labels = batch_data[1] if len(batch_data) > 1 else None
-            return inputs, labels, None, None
+            return inputs, labels, None, None, None
         else:
             raise ValueError("Unsupported batch data format." + str(type(batch_data)))
 

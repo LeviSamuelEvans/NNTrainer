@@ -25,6 +25,7 @@ from modules import Augmenter
 from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
 from insights.att_maps import AttentionMap
+from insights.embed_maps import EmbeddingMaps
 
 
 def main(config, config_path):
@@ -141,6 +142,11 @@ def main(config, config_path):
         logging.info("DataPlotter :: Skipping plotting of inputs")
 
     #================================================================================================
+
+    network_importer = NetworkImporter("models")
+    model = network_importer.create_model(config)
+
+    #================================================================================================
     # INSIGHTS (WIP!!)
 
     def get_run_mode():
@@ -162,8 +168,27 @@ def main(config, config_path):
             attention_map.plot_attention_entropy(attention_weights, feature_names)
             sys.exit(0) # now, exit, as that's all we wanted to do :p
 
+        elif run_mode == "evaluate":
+            logging.info(f"Proceeding to evaluation without training...")
+            logging.info(f"Using the model from {config_dict['evaluation']['saved_model_path']}")
+            break
+
+        elif run_mode == "embed_maps":
+            logging.info("Proceeding to extract and visualise the positional embeddings...")
+            embed_maps = EmbeddingMaps(model, network_type, config_dict)
+
+            for batch in val_loader:
+                print(f"Batch: {batch}")
+                x, labels = batch
+                break
+
+            embed_maps.run(x, labels)
+            sys.exit(0) # now, exit, as that's all we wanted to do :p
+
         else:
             logging.error(f"Invalid run mode: {run_mode}")
+            sys.exit(0)
+
 
 
     #================================================================================================
@@ -172,8 +197,6 @@ def main(config, config_path):
     logging.info("Starting the training process...")
 
     # Load the models from the models directory and create the model using the NetworkImporter
-    network_importer = NetworkImporter("models")
-    model = network_importer.create_model(config)
 
     # Debug before training
     logging.info(f"Checking if train_loader is iterable.")
@@ -198,17 +221,19 @@ def main(config, config_path):
         f"Trainer :: Training model '{config['model']['name']}' for {config['training']['num_epochs']} epochs."
     )
 
-    trainer.train_model()
+    run_mode = get_run_mode()
+    if run_mode != "evaluate":
+        trainer.train_model()
+        # save metadata to JSON for further use...
+        trainer.save_metrics_to_json(f"{trainer.model_save_path}/metadata.json")
 
-    # save metadata to JSON for further use...
-    trainer.save_metrics_to_json(f"{trainer.model_save_path}/metadata.json")
     #================================================================================================
     # MODEL EVALUATION
 
     evaluator = ModelEvaluator(
         config=config,
         model=(
-            None
+            trainer.model
             if config.get("evaluation", {}).get("use_saved_model", False)
             else trainer.model
         ),

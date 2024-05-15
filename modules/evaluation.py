@@ -11,6 +11,7 @@ from sklearn.metrics import (
     precision_recall_curve,
 )
 
+
 class ModelEvaluator:
     """Class to evaluate a trained model on the validation set.
 
@@ -53,7 +54,7 @@ class ModelEvaluator:
         self.precision = None
         self.recall = None
         self.average_precision = None
-        self.model = None
+        self.model = model
         self.criterion = criterion
         self.inputs = None
         self.labels = None
@@ -62,7 +63,10 @@ class ModelEvaluator:
 
         if config.get("evaluation", {}).get("use_saved_model", False):
             saved_model_path = config["evaluation"]["saved_model_path"]
-            self.model = torch.load(saved_model_path, map_location=self.device)
+            self.model = model.to(self.device)
+            state_dict = torch.load(saved_model_path, map_location=self.device)
+            self.model.load_state_dict(state_dict)
+            self.model.to(self.device)
         elif model is not None:
             self.model = model.to(self.device)
         else:
@@ -70,6 +74,23 @@ class ModelEvaluator:
                 "Model not provided and 'use_saved_model' is False in config."
             )
         self.network_type = config["Network_type"][0]
+
+    def _compute_pos_weight(self, all_labels):
+        """Compute the positive weight for imbalanced classes."""
+        positive_examples = float((all_labels == 1).sum())
+        negative_examples = float((all_labels == 0).sum())
+
+        if positive_examples == 0 or negative_examples == 0:
+            raise ValueError("Dataset contains no positive or no negative examples, cannot compute pos_weight.")
+
+        # Simplified computation logic with logging
+        weight = positive_examples / negative_examples if positive_examples > negative_examples else negative_examples / positive_examples
+        logging.debug(f"Computed pos_weight: {weight}, Positives: {positive_examples}, Negatives: {negative_examples}")
+        print(f"Positive examples: {positive_examples}")
+        print(f"Negative examples: {negative_examples}")
+        print(f"Computed pos_weight: {weight}")
+
+        return torch.tensor([weight])
 
     def evaluate_model(self):
         """Evaluate the model on the validation set.
@@ -89,10 +110,14 @@ class ModelEvaluator:
         y_true = []
         y_pred = []
         y_scores = []
+        total_loss = 0.0
 
         # get device of our model after training
         device = next(self.model.parameters()).device
-
+        # all_labels = np.concatenate([labels.cpu().numpy() for _, labels in self.val_loader])
+        # pos_weight = self._compute_pos_weight(all_labels)
+        # pos_weight = pos_weight.to(self.device)
+        # self.criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         with torch.no_grad():
             for batch_data in self.val_loader:
                 if isinstance(batch_data, tuple):
@@ -127,6 +152,8 @@ class ModelEvaluator:
                 else:
                     raise ValueError(f"Unsupported network type: {self.network_type}")
 
+                loss = self.criterion(outputs, labels)
+                total_loss += loss.item()
                 predicted = (outputs > 0.5).float()
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
@@ -148,12 +175,16 @@ class ModelEvaluator:
         self.fpr, self.tpr, thresholds = roc_curve(y_true, y_pred)
         self.roc_auc = auc(self.fpr, self.tpr)
         logging.info(f"AUC: {self.roc_auc:.4f}")
+        logging.info(f"Loss: {total_loss:.4f}")
 
         self.y_true = y_true
         self.y_pred = y_pred
 
         self.precision, self.recall, _ = precision_recall_curve(y_true, y_scores)
         self.average_precision = average_precision_score(y_true, y_scores)
+
+        avg_loss = total_loss / len(self.val_loader)
+        logging.info(f"Average loss on validation set: {avg_loss:.4f}")
 
         return accuracy, self.roc_auc, self.average_precision, self.model, self.criterion, self.inputs, self.labels
 

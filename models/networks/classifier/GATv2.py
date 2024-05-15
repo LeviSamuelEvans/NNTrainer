@@ -35,7 +35,7 @@ class GATv2Classifier(nn.Module):
         Sequential neural network for classification.
     """
 
-    def __init__(self, input_dim, hidden_dim, output_dim, dropout, num_heads=8):
+    def __init__(self, input_dim, hidden_dim, output_dim, dropout, num_heads=4):
         super(GATv2Classifier, self).__init__()
 
         edge_attr_dim = 1
