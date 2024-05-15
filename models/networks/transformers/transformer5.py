@@ -40,7 +40,7 @@ class TransformerClassifier5(nn.Module):
         )
 
         self.transformer_encoder_post_cross_attention = nn.TransformerEncoder(
-            encoder_layer_post_cross_attention, num_layers=1
+            encoder_layer_post_cross_attention, num_layers=2
         )
 
         self.pre_pooling_layer_norm = nn.LayerNorm(d_model)

@@ -10,23 +10,23 @@ export PATH="$CONDA_INSTALL_DIR/bin:$PATH"
 # source the conda enviroment
 source "$CONDA_INSTALL_DIR/etc/profile.d/conda.sh"
 
+echo "Setting up the correct environment..."
 # now, activate the environment
 conda activate MLenv
-
-# Debug: Check if PyTorch is installed
-python -c "import torch; print(torch.__version__)"
-
-# Debug: Check the path of condor_gpu_discovery
-which condor_gpu_discovery
-
-# we need to set CUDA_VISIBLE_DEVICES to use the GPUs allocated by HTCondor
-# ensure condor_gpu_discovery path is correct before using it
-export CUDA_VISIBLE_DEVICES=$(condor_gpu_discovery)
+echo "Environment activated! :D"
 
 # go to the framework directory (assume no transfer is needed...)
-cd /home/levans/NNTrainer/tth-network
+cd /afs/cern.ch/user/l/leevans/NNTrainer/tth-network/
+
+echo "Checking current directory and its contents:"
+pwd
+ls -l
+
+# Debug: Check if PyTorch is installed
+$HOME/miniconda3/envs/MLenv/bin/python -c "import torch; print(torch.__version__)"
+
 
 # now, let's train the model!
-$HOME/miniconda3/envs/MLenv/bin/python main.py -c /home/levans/NNTrainer/tth-network/configs/dev/transformer5.yaml
+$HOME/miniconda3/envs/MLenv/bin/python main.py -c /afs/cern.ch/user/l/leevans/NNTrainer/tth-network/configs/dev/config_GATv2.yaml
 
 echo "Training completed"

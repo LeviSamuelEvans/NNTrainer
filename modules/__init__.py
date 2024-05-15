@@ -13,3 +13,4 @@ from .features import FeatureFactory as FeatureFactory
 from .augment import DataAugmentation as Augmenter
 
 from .scheduler import CosineRampUpDownLR
+from .logging import configure_logging

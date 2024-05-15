@@ -18,7 +18,7 @@ source "$CONDA_INSTALL_DIR/etc/profile.d/conda.sh"
 conda init
 
 # path to our environment YAML file
-ENV_YAML="/home/levans/NNTrainer/tth-network/environment.yml"
+ENV_YAML="/afs/cern.ch/user/l/leevans/NNTrainer/tth-network/enviroment/enviroment.yml"
 
 # Now, create or update the Conda environment
 if [ -f "$ENV_YAML" ]; then

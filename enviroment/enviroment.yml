@@ -93,6 +93,6 @@ dependencies:
       - wcwidth==0.2.13
       - yarl==1.9.4
       - zipp==3.18.1
-prefix: /home/levans/miniconda3/envs/MLenv
+prefix: /afs/cern.ch/user/l/leevans/miniconda3/envs/MLenv
 
 # TODO: FIX ISSUE WITH TORCH SCATTER IMPORTS!!
