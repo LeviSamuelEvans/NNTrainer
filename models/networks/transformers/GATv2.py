@@ -6,8 +6,20 @@ from . import GATv2Classifier
 from . import ResidualBlockv2
 from . import GlobalAttentionPooling
 
-class HierarchicalGATTransformer(nn.Module):
-    def __init__(self, input_dim, d_model, nhead, num_layers, dropout, edge_attr_dim=1):
+class CrossAttentionLayer(nn.Module):
+    def __init__(self, d_model, nhead, dropout):
+        super().__init__()
+        self.cross_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead, dropout=dropout)
+
+    def forward(self, query, key, value):
+        # query: (T, N, E) where T is the sequence length, N is the batch size, E is the embedding dimension
+        # key: (S, N, E) where S is the source sequence length
+        # value: (S, N, E)
+        attn_output, _ = self.cross_attn(query, key, value)
+        return attn_output
+
+class GATtransformer(nn.Module):
+    def __init__(self, input_dim, d_model, nhead, num_layers, dropout, edge_attr_dim=5):
         super().__init__()
         self.input_embedding = nn.Sequential(
             nn.Linear(input_dim, d_model), nn.LayerNorm(d_model)
@@ -17,11 +29,16 @@ class HierarchicalGATTransformer(nn.Module):
 
         self.gat_layers = nn.ModuleList()
         self.gat_transforms = nn.ModuleList()
+        self.cross_attn_layers = nn.ModuleList()
         for _ in range(num_layers):
             self.gat_layers.append(
                 pyg_nn.GATv2Conv(d_model, d_model, heads=nhead, dropout=dropout, add_self_loops=False, edge_dim=edge_attr_dim)
             )
-            self.gat_transforms.append(nn.Linear(nhead * d_model, d_model))
+            self.gat_transforms.append(nn.Sequential(
+                nn.Linear(nhead * d_model, d_model),
+                nn.ReLU()
+            ))
+            self.cross_attn_layers.append(CrossAttentionLayer(d_model, nhead, dropout))
 
         self.pre_pooling_layer_norm = nn.LayerNorm(d_model)
         self.pooling = GlobalAttentionPooling(d_model)
@@ -40,9 +57,11 @@ class HierarchicalGATTransformer(nn.Module):
         x = self.pos_encoder(x)
         x = x.view(-1, 256)
 
-        for i, (gat_layer, gat_transform) in enumerate(zip(self.gat_layers, self.gat_transforms)):
+        for gat_layer, gat_transform, cross_attn_layer in zip(self.gat_layers, self.gat_transforms, self.cross_attn_layers):
+            residual = x
             x = gat_layer(x, edge_index, edge_attr=edge_attr)
             x = gat_transform(x)
+            x = cross_attn_layer(x, x, x) + residual # here, we add a residual connection to origanl embedded features for stability
 
         x = self.pre_pooling_layer_norm(x)
 
