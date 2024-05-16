@@ -556,9 +556,9 @@ class FeatureMaker:
 
             if event_edges.size == 0:
                 event_edges = np.empty((2, 0), dtype=int)
-                event_edge_attr = np.empty((0,), dtype=float)
+                event_edge_attr = np.empty((0,3), dtype=float)
             else:
-                # Compute deltaR
+                # calculate the angular separation (deltaR) for the edges
                 delta_eta = event_eta[event_edges[0]] - event_eta[event_edges[1]]
                 delta_phi = (
                     np.mod(
@@ -567,7 +567,12 @@ class FeatureMaker:
                     )
                     - np.pi
                 )
-                event_edge_attr = np.sqrt(delta_eta**2 + delta_phi**2)
+                delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
+
+                cos_delta_R = np.cos(delta_R)
+                sin_delta_R = np.sin(delta_R)
+
+                event_edge_attr = np.column_stack((delta_eta, delta_phi, delta_R, cos_delta_R, sin_delta_R))
 
             # TODO: add edge types based on the particle indices
             # Determine the edge types based on the particle indices

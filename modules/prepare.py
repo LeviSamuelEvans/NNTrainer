@@ -1,5 +1,6 @@
 from logging import config
 import torch
+import torch.nn.functional as F
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset, random_split
 import torch_geometric.data as geo_data
@@ -848,8 +849,13 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
 
         return X_sig, X_bkg, y_sig, y_bkg, mean, std
 
+    # def normalize_node_features(self, X, mean, std):
+    #     return (X - mean) / (std + 1e-7)
+
     def normalize_node_features(self, X, mean, std):
-        return (X - mean) / (std + 1e-7)
+        # Do not normalise the discrete labels like btagging, MET flag, etc! (add particle ID to this list)
+        X[:, :, :-2] = (X[:, :, :-2] - mean[:, :, :-2]) / (std[:, :, :-2] + 1e-7)
+        return X
 
     def prepare_transformer_gcn_data(
         self, signal_edges, signal_edge_attr, background_edges, background_edge_attr
@@ -863,6 +869,7 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
             f"PreparationFactory :: Normalising the node features using mean and std..."
         )
         # normalise the node features
+
         X_sig = self.normalize_node_features(X_sig, mean, std)
         X_bkg = self.normalize_node_features(X_bkg, mean, std)
 
@@ -939,5 +946,9 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
                 x=x, edge_index=edges, edge_attr=edge_attr, y=y.unsqueeze(0)
             )
             graphs.append(graph)
+
+            logging.debug("Node Features:")
+            logging.debug(graph.x)
+            logging.debug("---------------")
 
         return graphs
