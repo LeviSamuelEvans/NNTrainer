@@ -487,7 +487,7 @@ class FeatureMaker:
         return four_vectors
 
     # TODO: make max_distance configurable and add to the logging
-    def get_angular_separation(self, sample, max_distance=2.0):
+    def get_angular_separation(self, sample, max_distance=3.5):
         """Computes the angular separation (deltaR) between particles (jets and leptons) in each event of the given sample
             and returns the edges, edge attributes, and edge types based on a maximum distance threshold.
         Parameters
