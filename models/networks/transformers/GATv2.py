@@ -9,7 +9,7 @@ from . import GlobalAttentionPooling
 class CrossAttentionLayer(nn.Module):
     def __init__(self, d_model, nhead, dropout):
         super().__init__()
-        self.cross_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=nhead, dropout=dropout)
+        self.cross_attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=2, dropout=dropout)
 
     def forward(self, query, key, value):
         # query: (T, N, E) where T is the sequence length, N is the batch size, E is the embedding dimension
