@@ -36,9 +36,6 @@ def gather_all_labels(loader, device):
             labels = labels.unsqueeze(-1)
         all_labels.append(labels)
 
-    print("Data object attributes:")  # FOR DEBUGGING
-    print(data)
-
     concatenated_labels = torch.cat(all_labels, dim=0)
     return concatenated_labels
 
