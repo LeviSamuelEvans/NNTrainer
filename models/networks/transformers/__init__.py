@@ -25,6 +25,7 @@ from models.networks.classifier.GATv2 import GATv2Classifier
 
 # pooling
 from models.networks.pooling.global_att import GlobalAttentionPooling
+from models.networks.pooling.SAG import SAGPooling
 
 __all__ = [
     "MultiHeadAdditiveAttention",

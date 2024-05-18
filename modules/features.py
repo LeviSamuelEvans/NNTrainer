@@ -5,20 +5,6 @@ from tqdm import tqdm
 import time
 from scipy.spatial import cKDTree
 
-# from tabulate import tabulate
-# from joblib import Parallel, delayed -> improve edge feature creation speeds
-
-"""
-TODO:
-    - Higgs decay angles (use bitwise operations of truth matching) (old CMS BDT for ttH)
-        - boost to rest frame of Higgs
-        - boost to rest frame of top (and take left-over)
-    - Jet substructure variables
-    - Energy flow correlations (no clue: https://arxiv.org/pdf/1305.0007.pdf;
-      https://jduarte.physics.ucsd.edu/iaifi-summer-school/1.1_tabular_data_efps.html)
-    - 2neutrino scanning method (https://indico.cern.ch/event/1032082/#2-dilepton-ttbar-reconstruction)
-"""
-
 # Objects for matching
 matching_objects = ["H", "b_had_top", "b_lep_top", "W"]
 
@@ -134,11 +120,11 @@ class FeatureFactory:
                     logging.info(
                         f"FeatureFactory :: Constructing the angular separation features..."
                     )
-                    signal_edges, signal_edge_attr = (
-                        feature_maker.get_angular_separation(signal_data)
+                    signal_edges, signal_edge_attr = feature_maker.construct_edges(
+                        signal_data
                     )
                     background_edges, background_edge_attr = (
-                        feature_maker.get_angular_separation(background_data)
+                        feature_maker.construct_edges(background_data)
                     )
                     logging.info(
                         "FeatureFactory :: Angular separation features successfully constructed!"
@@ -305,6 +291,35 @@ class FeatureMaker:
             out[i, : len(lepton_data)] = lepton_data
 
         return out
+
+    def _get_basic_four_vectors(self, sample):
+        """Get basic four-vectors from the input sample."""
+        # lepton and jet info
+        lep_pt = self.compute_lepton_arrays(sample, "pt")
+        lep_eta = self.compute_lepton_arrays(sample, "eta")
+        lep_phi = self.compute_lepton_arrays(sample, "phi")
+        lep_e = self.compute_lepton_arrays(sample, "e")
+
+        max_jets = self.max_particles - self.n_leptons
+        jet_pt = self.get_jet_features(sample, "jet_pt", max_jets)
+        jet_eta = self.get_jet_features(sample, "jet_eta", max_jets)
+        jet_phi = self.get_jet_features(sample, "jet_phi", max_jets)
+        jet_e = self.get_jet_features(sample, "jet_e", max_jets)
+
+        # concatenate the lepton and jet info
+        p_pt = np.hstack((lep_pt, jet_pt))
+        p_eta = np.hstack((lep_eta, jet_eta))
+        p_phi = np.hstack((lep_phi, jet_phi))
+        p_e = np.hstack((lep_e, jet_e))
+
+        # calculate px, py, pz from pt, eta, phi
+        p_px = p_pt * np.cos(p_phi)
+        p_py = p_pt * np.sin(p_phi)
+        p_pz = p_pt * np.sinh(p_eta)
+
+        # stack the four vectors
+        # basic_four_vectors = np.stack((p_px, p_py, p_pz, p_e), axis=-1)
+        return p_px, p_py, p_pz, p_e
 
     # TODO: refactor this met
     def get_four_vectors(self, sample):
@@ -486,47 +501,28 @@ class FeatureMaker:
         print(four_vectors[:1])
         return four_vectors
 
-    # TODO: make max_distance configurable and add to the logging
-    def get_angular_separation(self, sample, max_distance=3.5):
-        """Computes the angular separation (deltaR) between particles (jets and leptons) in each event of the given sample
-            and returns the edges, edge attributes, and edge types based on a maximum distance threshold.
-        Parameters
-        ----------
-        sample : numpy.ndarray
-            The input sample containing particle data.
-        max_distance : float, optional
-            The maximum angular separation threshold for considering
-            two particles as connected by an edge. Default is 3.5.
-
-        Returns
-        -------
-        tuple
-            A tuple containing:
-            - edges (list): A list of numpy.ndarray, where each array represents the edges for an event
-            and has shape (2, num_edges_in_event).
-            - edge_attr (list): A list of numpy.ndarray, where each array represents the angular separation (deltaR)
-            for the edges in an event and has shape (num_edges_in_event,).
-
-        Notes
-        -----
-        This method uses a KDTree data structure from the scipy.spatial module for efficient nearest neighbor search.
-        It computes the angular separation (deltaR) between particles (jets and leptons) based on their eta and phi values.
-        If no edges are found within the specified maximum distance threshold for an event, empty arrays are used
-        for edges, edge_attr.
-
-        [deltaR = sqrt(delta_eta^2 + delta_phi^2)]
-
-        FUTURE -> Edge types:
-        - 1: jet-jet
-        - 2: jet-lepton
-        """
-
+    def construct_edges(self, sample, max_distance=3.5):
+        """Constructs the edges between particles (jets and leptons) in each event of the given sample."""
         start_time = time.time()
+        p_px, p_py, p_pz, p_e = self._get_basic_four_vectors(sample)
+        edges_list, edge_attr_list = self._get_angular_separation(
+            sample, p_px, p_py, p_pz, p_e, max_distance
+        )
 
+        end_time = time.time()
+        execution_time = end_time - start_time
+        logging.info(
+            f"FeatureFactory :: Constructing egdes -> Execution time: {execution_time:.2f} seconds"
+        )
+
+        return edges_list, edge_attr_list
+
+    def _get_angular_separation(self, sample, p_px, p_py, p_pz, p_e, max_distance=3.5):
+        """Computes the angular separation (deltaR) and invariant mass between particles (jets and leptons)
+        in each event of the given sample and returns the edges and edge attributes."""
         num_events = sample.shape[0]
         edges_list = []
         edge_attr_list = []
-        # edge_type_list = []
 
         # precompute jet and lepton features for all events
         jet_eta = self.get_jet_features(sample, "jet_eta", self.max_particles).astype(
@@ -546,57 +542,138 @@ class FeatureMaker:
             event_eta = particle_eta[event_idx]
             event_phi = particle_phi[event_idx]
 
-            # KDTree for nearest neighbor search
-            points = np.column_stack((event_eta, event_phi))
-            tree = cKDTree(points)
+            event_px = p_px[event_idx]
+            event_py = p_py[event_idx]
+            event_pz = p_pz[event_idx]
+            event_e = p_e[event_idx]
 
-            # query the tree for pairs of points within the maximum distance
-            event_edges = tree.query_pairs(max_distance)
-            event_edges = np.array(list(event_edges)).T
-
-            if event_edges.size == 0:
-                event_edges = np.empty((2, 0), dtype=int)
-                event_edge_attr = np.empty((0,3), dtype=float)
-            else:
-                # calculate the angular separation (deltaR) for the edges
-                delta_eta = event_eta[event_edges[0]] - event_eta[event_edges[1]]
-                delta_phi = (
-                    np.mod(
-                        event_phi[event_edges[0]] - event_phi[event_edges[1]] + np.pi,
-                        2 * np.pi,
-                    )
-                    - np.pi
-                )
-                delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
-
-                cos_delta_R = np.cos(delta_R)
-                sin_delta_R = np.sin(delta_R)
-
-                event_edge_attr = np.column_stack((delta_eta, delta_phi, delta_R, cos_delta_R, sin_delta_R))
-
-            # TODO: add edge types based on the particle indices
-            # Determine the edge types based on the particle indices
-            # event_edge_type = np.where(
-            #     (event_edges[0] < num_jets) & (event_edges[1] < num_jets),
-            #     1,  # jet-jet
-            #     np.where(
-            #         ((event_edges[0] < num_jets) & (event_edges[1] >= num_jets)) |
-            #         ((event_edges[0] >= num_jets) & (event_edges[1] < num_jets)),
-            #         2,  # jet-lepton
-            #         3   # lepton-lepton (only relevant for n_leptons > 1 i.e dilepton events)
-            #     )
-            # )
+            event_edges, event_edge_attr = self._compute_event_edges(
+                event_px,
+                event_py,
+                event_pz,
+                event_e,
+                event_idx,
+                event_eta,
+                event_phi,
+                max_distance,
+            )
 
             edges_list.append(event_edges)
             edge_attr_list.append(event_edge_attr)
-            # edge_type_list.append(event_edge_type)
-            # print(f"Event {event_idx} :: Edges: {event_edges}, Edge Attr: {event_edge_attr}, Edge Type: {event_edge_type}")
-
-        end_time = time.time()
-        execution_time = end_time - start_time
-        print(f"Execution time: {execution_time:.2f} seconds")
 
         return edges_list, edge_attr_list
+
+    def _compute_event_edges(
+        self,
+        event_px,
+        event_py,
+        event_pz,
+        event_e,
+        event_idx,
+        event_eta,
+        event_phi,
+        max_distance,
+    ):
+        """Computes the edges and edge attributes for a single event."""
+        # KDTree for nearest neighbor search
+        points = np.column_stack((event_eta, event_phi))
+        tree = cKDTree(points)
+
+        # query the tree for pairs of points within the maximum distance
+        event_edges = tree.query_pairs(max_distance)
+        event_edges = np.array(list(event_edges)).T
+
+        # we need to make sure we only use valid edges for the inv. mass calc
+        valid_edges = (event_edges[0] < event_px.shape[0]) & (
+            event_edges[1] < event_px.shape[0]
+        )
+        event_edges = event_edges[:, valid_edges]
+
+        if event_edges.size == 0:
+            event_edges = np.empty((2, 0), dtype=int)
+            event_edge_attr = np.empty((0, 6), dtype=float)
+        else:
+            event_edge_attr = self._compute_edge_attributes(
+                event_px,
+                event_py,
+                event_pz,
+                event_e,
+                event_idx,
+                event_edges,
+                event_eta,
+                event_phi,
+            )
+
+        return event_edges, event_edge_attr
+
+    def _compute_edge_attributes(
+        self,
+        event_px,
+        event_py,
+        event_pz,
+        event_e,
+        event_idx,
+        event_edges,
+        event_eta,
+        event_phi,
+    ):
+        """Computes the edge attributes (angular separation and invariant mass) for a single event."""
+        delta_eta = event_eta[event_edges[0]] - event_eta[event_edges[1]]
+        delta_phi = (
+            np.mod(
+                event_phi[event_edges[0]] - event_phi[event_edges[1]] + np.pi, 2 * np.pi
+            )
+            - np.pi
+        )
+        delta_R = np.sqrt(delta_eta**2 + delta_phi**2)
+
+        cos_delta_R = np.cos(delta_R)
+        sin_delta_R = np.sin(delta_R)
+
+        p1_px = event_px[event_edges[0]]
+        p1_py = event_py[event_edges[0]]
+        p1_pz = event_pz[event_edges[0]]
+        p1_e = event_e[event_edges[0]]
+
+        p2_px = event_px[event_edges[1]]
+        p2_py = event_py[event_edges[1]]
+        p2_pz = event_pz[event_edges[1]]
+        p2_e = event_e[event_edges[1]]
+
+        invariant_mass = np.sqrt(
+            np.maximum(
+                0, 2 * (p1_e * p2_e - (p1_px * p2_px + p1_py * p2_py + p1_pz * p2_pz))
+            )
+        )
+
+        event_edge_attr = np.column_stack(
+            (delta_eta, delta_phi, delta_R, cos_delta_R, sin_delta_R, invariant_mass)
+        )
+        return event_edge_attr
+
+    def _compute_inv_mass(self, event_particles, event_idx, event_edges):
+        """Compute the invariant mass for pairs of particles in an event."""
+        # Ensure that basic_four_vectors is an array and event_idx is used correctly
+        if isinstance(event_particles, np.ndarray) and event_particles.ndim == 3:
+            event_particles = event_particles[event_idx]
+        else:
+            raise ValueError("Invalid shape for four_vectors. Expected a 3D array.")
+
+        p1 = event_particles[event_edges[0]]  # Shape: (num_edges, 4)
+        p2 = event_particles[event_edges[1]]  # Shape: (num_edges, 4)
+
+        # Calculate invariant mass
+        invariant_mass = np.sqrt(
+            np.maximum(
+                0,
+                2
+                * (
+                    p1[:, 3] * p2[:, 3]
+                    - (p1[:, 0] * p2[:, 0] + p1[:, 1] * p2[:, 1] + p1[:, 2] * p2[:, 2])
+                ),
+            )
+        )
+        return invariant_mass
 
     def get_matched_objetcs():
         return None  # TODO: implement method (for the Higgs decay angles and other matching tasks)
@@ -749,3 +826,15 @@ class FeatureMaker:
                 ]
             )
             log_summary("All Quantities Combined", combined_data)
+
+
+"""
+TODO:
+    - Higgs decay angles (use bitwise operations of truth matching) (old CMS BDT for ttH)
+        - boost to rest frame of Higgs
+        - boost to rest frame of top (and take left-over)
+    - Jet substructure variables
+    - Energy flow correlations (no clue: https://arxiv.org/pdf/1305.0007.pdf;
+      https://jduarte.physics.ucsd.edu/iaifi-summer-school/1.1_tabular_data_efps.html)
+    - 2neutrino scanning method (https://indico.cern.ch/event/1032082/#2-dilepton-ttbar-reconstruction)
+"""
