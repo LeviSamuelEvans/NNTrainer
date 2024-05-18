@@ -321,8 +321,29 @@ class BaseDataPreparation:
         train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
         return train_dataset, val_dataset
 
+    def normalize_features(self, X, mean, std):
+        """Normalises the input features in the data using mean and standard deviation.
+
+        Note: This assumes we are running with MET and btagging as the last two columns.
+
+        This will work regardless of the type of 4vec representations we decide to use,
+        but for tests without b-tagging and MET, we should have a work around for this
+        in the future.
+        """
+        # squeeze the mean and std tensors to remove additional dimensions
+        mean_squeezed = mean.squeeze()
+        std_squeezed = std.squeeze()
+
+        # Do not normalise the discrete labels like btagging, MET flag, etc! (add particle ID to this list)
+        X[:, :-2] = (X[:, :-2] - mean_squeezed[:9]) / (std_squeezed[:9] + 1e-7)
+        return X
+
     def normalize_data(self, train_dataset, val_dataset):
         """Normalises the data in the train and validation datasets using mean and standard deviation.
+
+        We normalise the validation dataset using the mean and standard deviation from the training dataset.
+        We can view the standardisation as part of the model building process, and as such we should include this
+        when assessing the model.
 
         Parameters
         ----------
@@ -337,15 +358,19 @@ class BaseDataPreparation:
             A tuple containing the normalised training and validation datasets.
         """
         logging.info(" Normalising the input data...")
+        # normalise the training data
         X_train = [x[0] for x in train_dataset]
-        mean = torch.stack(X_train).mean(dim=0, keepdim=True)
-        std = torch.stack(X_train).std(dim=0, keepdim=True)
+        X_train_stacked = torch.stack(X_train)
+        mean_train = X_train_stacked[:, :-2].mean(dim=(0, 1), keepdim=True)
+        std_train = X_train_stacked[:, :-2].std(dim=(0, 1), keepdim=True)
 
         train_dataset = [
-            (((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in train_dataset
+            (self.normalize_features(x, mean_train, std_train).squeeze(), y) for x, y in train_dataset
         ]
+
+        # normalise the validation data using the mean and std from the training data
         val_dataset = [
-            (((x - mean) / (std + 1e-7)).squeeze(), y) for x, y in val_dataset
+            (self.normalize_features(x, mean_train, std_train).squeeze(), y) for x, y in val_dataset
         ]
         return train_dataset, val_dataset
 
