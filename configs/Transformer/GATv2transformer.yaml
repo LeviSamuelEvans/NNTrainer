@@ -12,7 +12,7 @@
 # Model Block #
 #=============#
 model:
-  name: 'HierarchicalGATTransformer'
+  name: 'GATtransformer'
   input_dim: 8
   d_model: 256
   nhead: 4
@@ -23,18 +23,8 @@ model:
 # Data Block #
 #============#
 data:
-  #signal_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttH_4vec_btag_500k_12j.h5 6841346 01:52:31
-  #background_path: /scratch4/levans/tth-network/Datasets/dev/05_04_24/ttbb_4vec_btag_500k_12j.h5
-  #signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_10k_10j.h5
-  #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_10k_10j.h5
-  #signal_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttH_4vec_btag_50k_10j.h5
-  #background_path: /scratch4/levans/tth-network/Datasets/dev/14_04_24_GCN/ttbb_4vec_btag_50k_10j.h5
-  # signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_30k_12j.h5
-  # background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_30k_12j.h5
-  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_all_events_12j.h5
-  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_all_events_12j.h5
-  # signal_path: /scratch4/levans/tth-network/Datasets/dev/27_04_24/ttH_4vec_btag_250k_12j.h5
-  # background_path: /scratch4/levans/tth-network/Datasets/dev/27_04_24/ttbb_4vec_btag_250k_12j.h5
+  signal_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttH_4vec_dev_30k_12j.h5
+  background_path: /scratch4/levans/tth-network/Datasets/dev/NEW_30_04_24/ttbb_4vec_dev_30k_12j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
@@ -150,10 +140,10 @@ preparation:
 # Training Block #
 #================#
 training:
-  num_epochs: 22
+  num_epochs: 20
   learning_rate: 0.00001
   weight_decay: 0.001
-  batch_size: 128
+  batch_size: 64
   patience: 10
   early_stopping: True
   use_scheduler: False
@@ -162,15 +152,15 @@ training:
   balance_classes: True
   criterion: 'BCELoss'
   use_cosine_burnin: True
-  lr_init: 1e-10
-  lr_max: 4e-5
-  lr_final: 2e-9
+  lr_init: 1e-8
+  lr_max: 2e-5
+  lr_final: 1e-10
   burn_in: 2
   ramp_up: 4
   plateau: 6
-  ramp_down: 9
+  ramp_down: 8
   gradient_clipping: True
-  max_norm: 5.0
+  max_norm: 1.0
   model_save_path: /scratch4/levans/tth-network/models/outputs/
 
 #==================#

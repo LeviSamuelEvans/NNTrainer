@@ -19,7 +19,7 @@ class CrossAttentionLayer(nn.Module):
         return attn_output
 
 class GATtransformer(nn.Module):
-    def __init__(self, input_dim, d_model, nhead, num_layers, dropout, edge_attr_dim=5):
+    def __init__(self, input_dim, d_model, nhead, num_layers, dropout, edge_attr_dim=6):
         super().__init__()
         self.input_embedding = nn.Sequential(
             nn.Linear(input_dim, d_model), nn.LayerNorm(d_model)
