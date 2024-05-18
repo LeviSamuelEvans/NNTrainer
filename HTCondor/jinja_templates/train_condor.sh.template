@@ -1,0 +1,23 @@
+#!/bin/bash
+# Path to the environment we need
+CONDA_INSTALL_DIR="{{ conda_install_dir }}"
+export PATH="$CONDA_INSTALL_DIR/bin:$PATH"
+
+# Source the conda environment
+source "$CONDA_INSTALL_DIR/etc/profile.d/conda.sh"
+echo "Setting up the correct environment..."
+
+# Activate the environment
+conda activate {{ env_name }}
+echo "Environment activated."
+
+# Go to the framework directory
+cd {{ framework_dir }}
+echo "Checking current directory and its contents:"
+pwd
+ls -l
+
+# Train the model with provided configuration file
+echo "Starting training with configuration file: $1"
+$CONDA_INSTALL_DIR/envs/{{ env_name }}/bin/python main.py -c $1
+echo "Training completed"
