@@ -2,6 +2,8 @@ import argparse
 import os
 from pathlib import Path
 import logging
+import jinja2
+import subprocess
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -9,7 +11,6 @@ logging.basicConfig(
 # /afs/cern.ch/user/l/leevans/miniconda3
 # /afs/cern.ch/user/l/leevans/NNTrainer/tth-network
 # MLenv
-
 
 class Submission:
     """
@@ -27,6 +28,10 @@ class Submission:
             The directory of the framework.
         config_files : List[str]
             List of configuration files.
+        request_memory : str
+            Amount of memory to request for the job.
+        run_time : str
+            The walltime for the job in seconds
 
     Attributes
     ---------
@@ -48,11 +53,13 @@ class Submission:
             The path to the job arguments file.
         sub_file_path : Path
             The path to the HTCondor submission file.
+        request_memory : str
+            Amount of memory to request for the job.
+        run_time : str
+            The walltime for the job in seconds
     """
 
-    def __init__(
-        self, working_dir, conda_install_dir, env_name, framework_dir, config_files
-    ):
+    def __init__(self, working_dir, conda_install_dir, env_name, framework_dir, config_files, request_memory, run_time):
         self.working_dir = Path(working_dir)
         self.conda_install_dir = conda_install_dir
         self.env_name = env_name
@@ -62,49 +69,42 @@ class Submission:
         self.bash_script_path = self.working_dir / "train_condor.sh"
         self.job_args_file = self.working_dir / "job_args.txt"
         self.sub_file_path = self.working_dir / "train_condor.sub"
+        self.request_memory = request_memory
+        self.run_time = run_time
+        self.template_env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'))
+
+        logging.info("Submission configuration:")
+        logging.info(f"  Working directory: {self.working_dir}")
+        logging.info(f"  Conda installation directory: {self.conda_install_dir}")
+        logging.info(f"  Conda environment name: {self.env_name}")
+        logging.info(f"  Framework directory: {self.framework_dir}")
+        logging.info(f"  Configuration files: {', '.join(self.config_files)}")
+        logging.info(f"  Request memory: {self.request_memory}")
+        logging.info(f"  Run time (s): {self.run_time}")
 
     def write_bash_script(self):
-        """Writes the bash script for the job."""
-        with open(self.bash_script_path, "w") as f:
-            f.write("#!/bin/bash\n")
-            f.write("# Path to the environment we need\n")
-            f.write(f'CONDA_INSTALL_DIR="{self.conda_install_dir}"\n')
-            f.write('export PATH="$CONDA_INSTALL_DIR/bin:$PATH"\n\n')
-            f.write("# Source the conda environment\n")
-            f.write('source "$CONDA_INSTALL_DIR/etc/profile.d/conda.sh"\n')
-            f.write('echo "Setting up the correct environment..."\n\n')
-            f.write("# Activate the environment\n")
-            f.write(f"conda activate {self.env_name}\n")
-            f.write('echo "Environment activated! :D"\n\n')
-            f.write("# Go to the framework directory\n")
-            f.write(f"cd {self.framework_dir}\n")
-            f.write('echo "Checking current directory and its contents:"\n')
-            f.write("pwd\n")
-            f.write("ls -l\n\n")
-            f.write("# Train the model with provided configuration file\n")
-            f.write('echo "Starting training with configuration file: $1"\n')
-            f.write(
-                f"$CONDA_INSTALL_DIR/envs/{self.env_name}/bin/python main.py -c $1\n"
-            )
-            f.write('echo "Training completed"\n')
+        """Writes the bash script for the job using Jinja2 templating."""
+        template = self.template_env.get_template('jinja_templates/train_condor.sh.template')
+        bash_script = template.render(
+            conda_install_dir=self.conda_install_dir,
+            env_name=self.env_name,
+            framework_dir=self.framework_dir
+        )
+        with open(self.bash_script_path, 'w') as f:
+            f.write(bash_script)
 
     def write_sub_file(self):
-        """Writes the HTCondor submission file."""
-        with open(self.sub_file_path, "w") as f:
-            f.write("universe = vanilla\n")
-            f.write(f"executable = {self.bash_script_path}\n")
-            f.write("getenv = True\n")
-            f.write("Request_GPUs = 1\n")
-            f.write("request_CPUs = 1\n")
-            f.write(f"request_memory = 24 GB\n")
-            f.write(f"output = {self.log_dir}/$(ClusterId).$(ProcId).out\n")
-            f.write(f"error = {self.log_dir}/$(ClusterId).$(ProcId).err\n")
-            f.write(f"log = {self.log_dir}/$(ClusterId).log\n")
-            f.write("should_transfer_files = YES\n")
-            f.write("when_to_transfer_output = ON_EXIT\n")
-            f.write('+JobFlavour = "workday"\n')
-            f.write("arguments = $(config_file)\n")
-            f.write(f"queue config_file from {self.job_args_file}\n")
+        """Writes the HTCondor submission file using Jinja2 templating."""
+        template = self.template_env.get_template('jinja_templates/train_condor.sub.template')
+        sub_file = template.render(
+            bash_script_path=self.bash_script_path,
+            log_dir=self.log_dir,
+            job_args_file=self.job_args_file,
+            request_memory=self.request_memory,
+            run_time=self.run_time
+        )
+        with open(self.sub_file_path, 'w') as f:
+            f.write(sub_file)
 
     def setup_job_args(self):
         """Sets up the job arguments file."""
@@ -178,6 +178,23 @@ def main():
         help="List of configuration file paths.",
     )
     parser.add_argument(
+        "-m",
+        "--request_memory",
+        type=str,
+        default="24 GB",
+        help="Amount of memory to request for the job. e.g. 40 GB"
+        "Default is 24 GB."
+    )
+    parser.add_argument(
+        "-r",
+        "--run_time",
+        type=str,
+        default="43200",
+        help="The run time in seconds for the job."
+        "Default is 12hrs (43200s)."
+    )
+
+    parser.add_argument(
         "-n",
         "--dry_run",
         action="store_true",
@@ -192,6 +209,8 @@ def main():
         args.env_name,
         args.framework_dir,
         args.config_files,
+        args.request_memory,
+        args.run_time
     )
     submission.setup_job_args()
     submission.write_bash_script()
