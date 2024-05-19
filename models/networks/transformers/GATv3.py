@@ -11,7 +11,7 @@ class CrossAttentionLayer(nn.Module):
     def __init__(self, d_model, nhead, dropout):
         super().__init__()
         self.cross_attn = nn.MultiheadAttention(
-            embed_dim=d_model, num_heads=nhead, dropout=dropout
+            embed_dim=d_model, num_heads=2, dropout=dropout
         )
 
     def forward(self, query, key, value):
@@ -53,7 +53,7 @@ class GATtransformerv3(nn.Module):
                 pyg_nn.GATv2Conv(
                     d_model,
                     d_model,
-                    heads=nhead,
+                    heads=2,
                     dropout=dropout,
                     add_self_loops=False,
                     edge_dim=edge_attr_dim,
@@ -97,15 +97,14 @@ class GATtransformerv3(nn.Module):
             self.layer_norms,
         ):
             residual = x
-            x = gat_layer(x, edge_index, edge_attr=edge_attr)
-            x = layer_norm(x)
-            x = transformer_layer(x, edge_index, edge_attr=edge_attr)
-            x = layer_norm(x)
+            x_gat = gat_layer(x, edge_index, edge_attr=edge_attr)
+            x_gat = layer_norm(x_gat)
+            x_transformer = transformer_layer(x_gat, edge_index, edge_attr=edge_attr)
+            x_transformer = layer_norm(x_transformer)
             if self.use_cross_attention:
-                x = cross_attn_layer(x, x, x) + residual
+                x = cross_attn_layer(x_transformer, x_gat, x) + residual
 
         x = self.pre_pooling_layer_norm(x)
         x_pooled = self.pooling(x, batch)
         x = self.classifier(x_pooled)
-        print(f"x shape after classifier: {x.shape}")
         return x
