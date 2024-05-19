@@ -882,6 +882,17 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
         X[:, :, :-2] = (X[:, :, :-2] - mean[:, :, :-2]) / (std[:, :, :-2] + 1e-7)
         return X
 
+    def normalize_invariant_mass_min_max(self, edge_attr):
+        """Normalises the last value (invariant mass) in the edge attributes using min-max normalisation.
+        This is done to prevent non-physical negative values from arising.
+        """
+        invariant_mass = edge_attr[:, -1]
+        min_val = invariant_mass.min()
+        max_val = invariant_mass.max()
+        normalized_mass = (invariant_mass - min_val) / (max_val - min_val)
+        edge_attr[:, -1] = normalized_mass
+        return edge_attr
+
     def prepare_transformer_gcn_data(
         self, signal_edges, signal_edge_attr, background_edges, background_edge_attr
     ):
@@ -913,6 +924,13 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
         logging.info(
             f"PreparationFactory :: Splitting the data into training and validation datasets..."
         )
+
+        print("signal_edge_attr:", signal_edge_attr[0])
+
+        # Normalize the invariant mass in the edge attributes
+        signal_edge_attr = [self.normalize_invariant_mass_min_max(attr) for attr in signal_edge_attr]
+        background_edge_attr = [self.normalize_invariant_mass_min_max(attr) for attr in background_edge_attr]
+
         # split data
         train_dataset_sig, val_dataset_sig = self.split_data(X_sig, y_sig)
         train_dataset_bkg, val_dataset_bkg = self.split_data(X_bkg, y_bkg)
@@ -972,8 +990,23 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
             )
             graphs.append(graph)
 
-            logging.debug("Node Features:")
-            logging.debug(graph.x)
-            logging.debug("---------------")
+        self._example_graph(num_printed=0, num_examples=2, graph=graph)
 
         return graphs
+
+    def _example_graph(self, num_printed, num_examples, graph):
+        "Inspect the first few graphs in the dataset."
+        if num_printed < num_examples:
+            logging.info(f"Example Graph {num_printed + 1}:")
+            logging.info("Node Features (x):")
+            logging.info(graph.x)
+            logging.info("Edge Indices (edge_index):")
+            logging.info(graph.edge_index)
+            logging.info("Edge Attributes (edge_attr):")
+            logging.info(graph.edge_attr)
+            logging.info("Graph Label (y):")
+            logging.info(graph.y)
+            logging.info("---------------")
+            num_printed += 1
+
+
