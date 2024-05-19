@@ -8,6 +8,8 @@ from . import GATv2Classifier
 from . import ResidualBlockv2
 from . import GlobalAttentionPooling
 
+# https://arxiv.org/pdf/2106.05234
+
 class CrossAttentionLayer(nn.Module):
     def __init__(self, d_model, nhead, dropout):
         super().__init__()
