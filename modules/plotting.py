@@ -427,6 +427,7 @@ class DataPlotter:
         )
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/accuracy.png")
+        plt.savefig(f"{self.plot_save_path}Validation/accuracy.pdf")
         logging.info(f"DataPlotter :: Accuracy plot saved to {self.plot_save_path}Validation/accuracy.png")
 
     # =========================================================================
@@ -453,6 +454,7 @@ class DataPlotter:
         )
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/learning_rate.png")
+        plt.savefig(f"{self.plot_save_path}Validation/learning_rate.pdf")
         logging.info(f"DataPlotter :: Learning rate plot saved to {self.plot_save_path}Validation/learning_rate.png")
 
     # =========================================================================
@@ -494,6 +496,7 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.png")
+        plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.pdf")
         logging.info(f"DataPlotter :: ROC curve plot produced and saved to '{self.plot_save_path}Evaluation/roc_curve.png'")
 
     # =========================================================================
@@ -530,6 +533,7 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.png")
+        plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.pdf")
         logging.info(f"DataPlotter :: Confusion matrix plot produced and saved as '{self.plot_save_path}Evaluation/confusion_matrix.png'")
 
 
@@ -568,6 +572,7 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal", fontsize=12)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.png")
+        plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.pdf")
         logging.info(f"DataPlotter :: Precision-Recall curve plot produced and saved to '{self.plot_save_path}Evaluation/pr_curve.png")
 
     # =========================================================================
@@ -597,6 +602,7 @@ class DataPlotter:
         plt.ylabel('Normalised Entries')
         plt.legend(loc='best')
         plt.savefig(f"{self.plot_save_path}Evaluation/score_distribution.png")
+        plt.savefig(f"{self.plot_save_path}Evaluation/score_distribution.pdf")
         logging.info(f"DataPlotter :: Score distribution plot saved to '{self.plot_save_path}Evaluation/score_distribution.png'")
 
     # =========================================================================
