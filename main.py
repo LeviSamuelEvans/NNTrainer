@@ -24,6 +24,7 @@ from modules import LoadingFactory, PreparationFactory, FeatureFactory, DataPlot
 from modules import Augmenter
 from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
+from modules.hyperparameter_tuning import tune_hyperparameters
 from insights.att_maps import AttentionMap
 from insights.embed_maps import EmbeddingMaps
 
@@ -190,7 +191,6 @@ def main(config, config_path):
             sys.exit(0)
 
 
-
     #================================================================================================
     # MODEL TRAINING
 
@@ -209,6 +209,26 @@ def main(config, config_path):
         logging.error(f"Failed to iterate over train_loader: {e}")
 
     logging.info(f"Model '{config['model']['name']}' loaded. Starting training.")
+
+
+    #=============================================================================
+    # Parameter optimising via optuna ---> configure study options and name study
+    try:
+        if config["model"].get("tune_hyperparams", False):
+            logging.info("Proceeding to hyperparameter tuning...")
+            best_params, best_value = tune_hyperparameters(config, train_loader, val_loader, network_type)
+            print(f"Best hyperparameters: {best_params}")
+            print(f"Best value: {best_value}")
+
+            config["model"]["d_model"] = best_params["d_model"]
+            config["model"]["nhead"] = best_params["nhead"]
+            config["model"]["num_encoder_layers"] = best_params["num_layers"]
+            config["model"]["dropout"] = best_params["dropout"]
+        else:
+            logging.info("Skipping hyperparameter tuning.")
+    except Exception as e:
+        logging.error(f"Failed to tune hyperparameters: {e}")
+    #=============================================================================
 
 
     # prepare the arguments to pass to the Trainer class

@@ -37,3 +37,6 @@ TrainingLogs/*
 # HTCondor
 HTCondor/logs
 HTCondor/TEST
+
+# Tuning
+tuning_tests/*
