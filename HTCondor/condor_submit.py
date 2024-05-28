@@ -8,8 +8,8 @@ import subprocess
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
-# /afs/cern.ch/user/l/leevans/miniconda3
-# /afs/cern.ch/user/l/leevans/NNTrainer/tth-network
+# /eos/user/l/leevans/miniconda3
+# /eos/user/l/leevans/NNTrainer/tth-network
 # MLenv
 
 class Submission:

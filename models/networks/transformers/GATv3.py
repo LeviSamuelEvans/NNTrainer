@@ -11,7 +11,7 @@ class CrossAttentionLayer(nn.Module):
     def __init__(self, d_model, nhead, dropout):
         super().__init__()
         self.cross_attn = nn.MultiheadAttention(
-            embed_dim=d_model, num_heads=2, dropout=dropout
+            embed_dim=d_model, num_heads=nhead, dropout=dropout
         )
 
     def forward(self, query, key, value):
@@ -53,7 +53,7 @@ class GATtransformerv3(nn.Module):
                 pyg_nn.GATv2Conv(
                     d_model,
                     d_model,
-                    heads=2,
+                    heads=nhead,
                     dropout=dropout,
                     add_self_loops=False,
                     edge_dim=edge_attr_dim,

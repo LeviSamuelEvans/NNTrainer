@@ -1,4 +1,4 @@
-name: MLenv
+name: /eos/user/l/leevans/miniconda3/envs/MLenv
 channels:
   - defaults
 dependencies:
@@ -42,6 +42,7 @@ dependencies:
       - importlib-resources==6.4.0
       - jinja2==3.1.3
       - joblib==1.4.0
+      - kaleido==0.2.1
       - kiwisolver==1.4.5
       - mako==1.3.5
       - markupsafe==2.1.5
@@ -68,9 +69,11 @@ dependencies:
       - nvidia-nvjitlink-cu12==12.4.127
       - nvidia-nvtx-cu12==12.1.105
       - optuna==3.6.1
+      - optuna-integration==3.6.0
       - packaging==24.0
       - pandas==2.2.2
       - pillow==10.3.0
+      - plotly==5.22.0
       - prettytable==3.10.0
       - psutil==5.9.8
       - py-cpuinfo==9.0.0
@@ -86,6 +89,7 @@ dependencies:
       - sqlalchemy==2.0.30
       - sympy==1.12
       - tables==3.9.2
+      - tenacity==8.3.0
       - termcolor==2.4.0
       - threadpoolctl==3.5.0
       - torch==2.3.0
@@ -99,4 +103,4 @@ dependencies:
       - wcwidth==0.2.13
       - yarl==1.9.4
       - zipp==3.18.1
-prefix: /afs/cern.ch/user/l/leevans/miniconda3/envs/MLenv
+prefix: /eos/user/l/leevans/miniconda3/envs/MLenv

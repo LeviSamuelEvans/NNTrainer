@@ -1,7 +1,15 @@
 #!/bin/bash
 
-# directory to install Miniconda
-CONDA_INSTALL_DIR="$HOME/miniconda3"
+# Usage: ./create_miniconda.sh [CONDA_INSTALL_DIR] [ENV_YAML] [ENV_NAME]
+
+# directory to install Miniconda, default is $HOME/miniconda3
+CONDA_INSTALL_DIR="${1:-$HOME/miniconda3}"
+
+# path to our environment YAML file, default is $HOME/NNTrainer/tth-network/enviroment/enviroment.yml
+ENV_YAML="${2:-$HOME/NNTrainer/tth-network/enviroment/enviroment.yml}"
+
+# The name of our conda environment, default is MLenv
+ENV_NAME="${3:-MLenv}"
 
 # check first if Miniconda is already installed...
 if [ ! -d "$CONDA_INSTALL_DIR" ]; then
@@ -17,9 +25,6 @@ fi
 source "$CONDA_INSTALL_DIR/etc/profile.d/conda.sh"
 conda init
 
-# path to our environment YAML file
-ENV_YAML="/afs/cern.ch/user/l/leevans/NNTrainer/tth-network/enviroment/enviroment.yml"
-
 # Now, create or update the Conda environment
 if [ -f "$ENV_YAML" ]; then
   echo "Creating or updating environment from $ENV_YAML..."
@@ -28,15 +33,11 @@ else
   echo "Environment YAML file not found at $ENV_YAML"
 fi
 
-# The name of our conda environment
-ENV_NAME="MLenv"
-
 # activate
 echo "Activating environment '$ENV_NAME'..."
 conda activate $ENV_NAME
 
 echo "Setup complete. Virtual environment '$ENV_NAME' is ready to use! Happy ML'ing! :D"
-
 
 ## == Some Useful Commands ==
 
