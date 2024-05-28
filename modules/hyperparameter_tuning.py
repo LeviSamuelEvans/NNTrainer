@@ -5,6 +5,7 @@ from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
 from utils import TrainerArgs
 import matplotlib.pyplot as plt
+import os
 
 def objective(trial, config, train_loader, val_loader, network_type):
     """
@@ -30,15 +31,15 @@ def objective(trial, config, train_loader, val_loader, network_type):
     """
     # parameters to optimise
     d_model = trial.suggest_categorical("d_model", [32, 64, 128, 256])
-    nhead = trial.suggest_int("nhead", 1, 8)
+    nhead = trial.suggest_int("nhead", 1, 6)
     # Ensure nhead is a divisor of d_model
     if d_model % nhead != 0:
         # Adjust nhead to the closest divisor of d_model
         divisors = [i for i in range(1, 9) if d_model % i == 0]
         nhead = min(divisors, key=lambda x: abs(x - nhead))
 
-    num_layers = trial.suggest_int("num_layers", 1, 8)
-    dropout = trial.suggest_float("dropout", 0.01, 0.30)
+    num_layers = trial.suggest_int("num_layers", 1, 6)
+    dropout = trial.suggest_float("dropout", 0.01, 0.25)
     #learning_rate = trial.suggest_loguniform("learning_rate", 1e-5, 1e-3)
 
 
@@ -83,13 +84,19 @@ def tune_hyperparameters(config, train_loader, val_loader, network_type):
     """
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, config, train_loader, val_loader, network_type), n_trials=60)
+    study.optimize(lambda trial: objective(trial, config, train_loader, val_loader, network_type), n_trials=30)
 
     best_params = study.best_params
     best_value = study.best_value
 
     print("Best hyperparameters:", best_params)
     print("Best value:", best_value)
+
+    with open('tuning_results.txt', 'w') as f:
+        f.write("Best hyperparameters:\n")
+        for key, value in best_params.items():
+            f.write(f"{key}: {value}\n")
+        f.write(f"\nBest value: {best_value}\n")
 
     # Save the optimization history plot as a PNG file
     fig = plot_optimization_history(study)
