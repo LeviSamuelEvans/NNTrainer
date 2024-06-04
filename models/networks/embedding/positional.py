@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
+
 class PositionalEncoding(nn.Module):
     """Positional encoding module for Transformer models.
 

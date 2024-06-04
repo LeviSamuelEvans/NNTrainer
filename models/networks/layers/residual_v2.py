@@ -1,5 +1,6 @@
 import torch.nn as nn
 
+
 class ResidualBlockv2(nn.Module):
     """
     A residual block module that performs residual connection in a neural network.
@@ -16,7 +17,7 @@ class ResidualBlockv2(nn.Module):
             nn.GELU(),
             nn.Linear(dim, dim),
             nn.LayerNorm(dim),
-            nn.GELU()
+            nn.GELU(),
         )
 
     def forward(self, x):

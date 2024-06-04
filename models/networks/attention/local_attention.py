@@ -6,7 +6,7 @@ class LocalAttention(nn.Module):
     def __init__(self, d_model, n_heads, window_size, dropout=0.1):
         super(LocalAttention, self).__init__()
         self.attention = nn.MultiheadAttention(d_model, n_heads, dropout=dropout)
-        self.window_size = window_size # make this configurable
+        self.window_size = window_size  # make this configurable
 
     def forward(self, query, key, value):
         # local attention only within a window around each token

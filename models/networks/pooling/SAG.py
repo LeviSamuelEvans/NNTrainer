@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 import torch_geometric.nn as pyg_nn
-#from torch_geometric.utils import topk, filter_adj
+
+# from torch_geometric.utils import topk, filter_adj
+
 
 class SAGPooling(nn.Module):
     """
@@ -37,6 +39,7 @@ class SAGPooling(nn.Module):
         x = x[perm] * self.non_linearity(score[perm]).view(-1, 1)
         batch = batch[perm]
         edge_index, edge_attr = pyg_nn.pool.filter_adj(
-            edge_index, edge_attr, perm, num_nodes=score.size(0))
+            edge_index, edge_attr, perm, num_nodes=score.size(0)
+        )
 
         return x, edge_index, edge_attr, batch

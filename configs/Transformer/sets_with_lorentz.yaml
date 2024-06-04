@@ -2,6 +2,11 @@
 # Set Transformer Testing Configuration File #
 # ========================================== #
 
+
+# Information
+# -----------
+# models/networks/transformers/sets_transformer.py
+
 # --------------------------------------------------------------------------------------
 
 #=============#

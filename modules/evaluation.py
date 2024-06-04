@@ -42,6 +42,7 @@ class ModelEvaluator:
         average_precision:
             Average precision score.
     """
+
     def __init__(self, config, model, val_loader=None, criterion=None):
         self.config = config
         self.val_loader = val_loader
@@ -59,7 +60,7 @@ class ModelEvaluator:
         self.inputs = None
         self.labels = None
         self.score = None
-        self.network_type=None,
+        self.network_type = (None,)
 
         if config.get("evaluation", {}).get("use_saved_model", False):
             saved_model_path = config["evaluation"]["saved_model_path"]
@@ -81,14 +82,19 @@ class ModelEvaluator:
         negative_examples = float((all_labels == 0).sum())
 
         if positive_examples == 0 or negative_examples == 0:
-            raise ValueError("Dataset contains no positive or no negative examples, cannot compute pos_weight.")
+            raise ValueError(
+                "Dataset contains no positive or no negative examples, cannot compute pos_weight."
+            )
 
         # Simplified computation logic with logging
-        weight = positive_examples / negative_examples if positive_examples > negative_examples else negative_examples / positive_examples
-        logging.debug(f"Computed pos_weight: {weight}, Positives: {positive_examples}, Negatives: {negative_examples}")
-        print(f"Positive examples: {positive_examples}")
-        print(f"Negative examples: {negative_examples}")
-        print(f"Computed pos_weight: {weight}")
+        weight = (
+            positive_examples / negative_examples
+            if positive_examples > negative_examples
+            else negative_examples / positive_examples
+        )
+        logging.debug(
+            f"Computed pos_weight: {weight}, Positives: {positive_examples}, Negatives: {negative_examples}"
+        )
 
         return torch.tensor([weight])
 
@@ -114,17 +120,15 @@ class ModelEvaluator:
 
         # get device of our model after training
         device = next(self.model.parameters()).device
-        # all_labels = np.concatenate([labels.cpu().numpy() for _, labels in self.val_loader])
-        # pos_weight = self._compute_pos_weight(all_labels)
-        # pos_weight = pos_weight.to(self.device)
-        # self.criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         with torch.no_grad():
             for batch_data in self.val_loader:
                 if isinstance(batch_data, tuple):
                     inputs, labels = batch_data
                     inputs = inputs.to(device)
                     labels = labels.to(device)
-                elif isinstance(batch_data, list) and all(isinstance(x, torch.Tensor) for x in batch_data):
+                elif isinstance(batch_data, list) and all(
+                    isinstance(x, torch.Tensor) for x in batch_data
+                ):
                     batch_data = [x.to(device) for x in batch_data]
                     inputs, labels = batch_data
                 else:
@@ -133,18 +137,32 @@ class ModelEvaluator:
                     labels = batch_data.y
                     edge_index = batch_data.edge_index
                     edge_attr = batch_data.edge_attr
-                    if hasattr(batch_data, 'batch'):
-                        batch = batch_data.batch  # for batch-wise operations in GNNs
+                    if hasattr(batch_data, "batch"):
+                        batch = batch_data.batch
+
                 # process the data based on the network type
                 if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
-                    # our graph-based models
-                    outputs = self.model(inputs, edge_index, edge_attr, batch) if hasattr(batch_data, 'batch') else self.model(inputs, edge_index)
+                    # for our graph-based models
+                    outputs = (
+                        self.model(inputs, edge_index, edge_attr, batch)
+                        if hasattr(batch_data, "batch")
+                        else self.model(inputs, edge_index)
+                    )
                     scores = torch.sigmoid(outputs).cpu().numpy()
                 elif self.network_type == "FFNN":
-                    if self.model.__class__.__name__ in ["TransformerClassifier2", "SetsTransformerClassifier", "TransformerClassifier5"]:
-                        outputs = self.model(inputs, inputs,)
+                    if self.model.__class__.__name__ in [
+                        "TransformerClassifier2",
+                        "SetsTransformerClassifier",
+                        "TransformerClassifier5",
+                    ]:
+                        outputs = self.model(
+                            inputs,
+                            inputs,
+                        )
                     elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
-                        outputs = self.model(inputs, inputs, labels)  # pass inputs twice for x and x_coords!
+                        outputs = self.model(
+                            inputs, inputs, labels
+                        )  # pass inputs twice for x and x_coords!
                     else:
                         outputs = self.model(inputs)
 
@@ -186,7 +204,15 @@ class ModelEvaluator:
         avg_loss = total_loss / len(self.val_loader)
         logging.info(f"Average loss on validation set: {avg_loss:.4f}")
 
-        return accuracy, self.roc_auc, self.average_precision, self.model, self.criterion, self.inputs, self.labels
+        return (
+            accuracy,
+            self.roc_auc,
+            self.average_precision,
+            self.model,
+            self.criterion,
+            self.inputs,
+            self.labels,
+        )
 
     def calculate_accuracy(self, y_true, y_scores, threshold=0.5):
         y_pred = [1 if score > threshold else 0 for score in y_scores]

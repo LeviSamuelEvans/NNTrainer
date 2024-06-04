@@ -44,7 +44,6 @@ features:
   - Centrality_all
   - dEtabb_MaxdEta_70
   - L2_Reco_higgs_pt
-  - L2_Class_ttH_discriminant # some fun :p
 
 #===================#
 # Preparation Block #
@@ -87,8 +86,6 @@ training:
 # Evaluation Block #
 #==================#
 evaluation:
-  # save_frequency: 5
-  #saved_model_path: /scratch4/levans/tth-network/models/outputs/model.pt
   use_saved_model: False
   plot_loss_landscape: False
 

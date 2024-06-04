@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 
+
 class LorentzInvariantAttention(nn.Module):
     """Lorentz invariant attention module for Transformer models.
 
@@ -54,7 +55,6 @@ class LorentzInvariantAttention(nn.Module):
         )
 
         return inner_prod
-
 
     def forward(self, x, x_coords_list):
         """Forward pass of the LorentzInvariantAttention module.

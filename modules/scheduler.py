@@ -32,6 +32,7 @@ class CosineRampUpDownLR(_LRScheduler):
     last_epoch : int, optional
         The index of the last epoch. Default is -1.
     """
+
     def __init__(
         self,
         optimizer,

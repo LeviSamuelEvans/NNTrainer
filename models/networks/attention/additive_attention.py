@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class AdditiveAttention(nn.Module):
     def __init__(self, d_model):
         super(AdditiveAttention, self).__init__()
@@ -16,7 +17,9 @@ class AdditiveAttention(nn.Module):
         projected_value = self.value_proj(value)
 
         # compute the additive attention scores
-        scores = self.score_proj(torch.tanh(projected_query.unsqueeze(-2) + projected_key.unsqueeze(-3))).squeeze(-1)
+        scores = self.score_proj(
+            torch.tanh(projected_query.unsqueeze(-2) + projected_key.unsqueeze(-3))
+        ).squeeze(-1)
 
         # qpply the mask if provided
         if mask is not None:
@@ -24,7 +27,9 @@ class AdditiveAttention(nn.Module):
 
         # apply softmax to compute the attention weights and compute values
         attention_weights = nn.functional.softmax(scores, dim=-1)
-        attended_values = torch.matmul(attention_weights.unsqueeze(-2), projected_value).squeeze(-2)
+        attended_values = torch.matmul(
+            attention_weights.unsqueeze(-2), projected_value
+        ).squeeze(-2)
 
         return attended_values, attention_weights
 

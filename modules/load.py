@@ -33,7 +33,9 @@ class DataLoadingFactory:
                 config["data"]["background_path"],
                 features=config["features"],
             )
-            logging.info(f"DataLoadingFactory :: Loading data for {network_type} network")
+            logging.info(
+                f"DataLoadingFactory :: Loading data for {network_type} network"
+            )
 
         elif network_type in ["GNN", "LENN"]:
             loader = DataLoader(
@@ -41,7 +43,9 @@ class DataLoadingFactory:
                 config["data"]["background_path"],
                 features=config["features"],
             )
-            logging.info(f"DataLoadingFactory :: Loading data for {network_type} network")
+            logging.info(
+                f"DataLoadingFactory :: Loading data for {network_type} network"
+            )
 
         elif network_type == "TransformerGCN":
             loader = TransformerGCNDataLoader(
@@ -49,7 +53,9 @@ class DataLoadingFactory:
                 config["data"]["background_path"],
                 features=config["features"],
             )
-            logging.info(f"DataLoadingFactory :: Loading data for {network_type} network")
+            logging.info(
+                f"DataLoadingFactory :: Loading data for {network_type} network"
+            )
 
         else:
             raise ValueError("Invalid network type")
@@ -58,7 +64,9 @@ class DataLoadingFactory:
 
         # Move logging to after load_data()
         if network_type in ["GNN", "LENN"]:
-            logging.info(f"DataLoadingFactory:: Loading data for {network_type} network")
+            logging.info(
+                f"DataLoadingFactory:: Loading data for {network_type} network"
+            )
             logging.info(
                 f"Preparing data for GNN/LENN with node_features_signal shape: {loader.node_features_sig.shape}, edge_features_signal shape: {loader.edge_features_sig.shape}"
             )
@@ -92,7 +100,7 @@ class DataLoader:
             + self.features["global_features"]
         ):
             if col not in self.df_sig.columns or col not in self.df_bkg.columns:
-                print(f"Required column {col} not found in dataframes")
+                logging.error(f"Required column {col} not found in dataframes")
                 raise ValueError(
                     "A variable you want to train with was not found in the dataframes!"
                 )
@@ -131,6 +139,7 @@ class DataLoader:
             self.df_bkg,
         )
 
+
 class FFNNDataLoader(DataLoader):
     """A data loader for a FFNN."""
 
@@ -142,6 +151,7 @@ class FFNNDataLoader(DataLoader):
         self.df_bkg = self.df_bkg[self.features]
 
         return self.df_sig, self.df_bkg
+
 
 class TransformerGCNDataLoader(DataLoader):
     """A data loader for a Transformer with GCN."""

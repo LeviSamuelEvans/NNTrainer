@@ -32,7 +32,7 @@ class ModifiedNN(nn.Module):
         self.dropout3 = nn.Dropout(dropout)
 
         self.fc4 = nn.Linear(32, 1)
-        #self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         """Defines the forward pass of the neural network.

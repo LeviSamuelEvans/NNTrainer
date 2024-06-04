@@ -20,7 +20,7 @@ class HierarchicalGATTransformer(nn.Module):
             dim_feedforward=2048,
             dropout=dropout,
             batch_first=True,
-            #activation="gelu",
+            # activation="gelu",
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layers, num_layers)
         self.local_gat = GATv2Classifier(d_model, 128, d_model, dropout)
@@ -41,8 +41,10 @@ class HierarchicalGATTransformer(nn.Module):
     def forward(self, x, edge_index, edge_attr, batch=None):
         x_input = x
         x = self.input_embedding(x)
-        x_input_embedded = self.input_embedding(x_input) # Embed the input for the local GAT so dimensions match when combined with the transformer output
-        #x = self.pos_encoder(x) # REMOVE FOR THIS RUN, the positional information could actually be detrimental...:/
+        x_input_embedded = self.input_embedding(
+            x_input
+        )  # Embed the input for the local GAT so dimensions match when combined with the transformer output
+        # x = self.pos_encoder(x) # REMOVE FOR THIS RUN, the positional information could actually be detrimental...:/
         x = self.transformer_encoder(x)
         # NOTE: the graph attention network is applied to the output of the transformer encoder, and the architecure is sparse in nature via max_distance parameter
         x_local_gat = self.local_gat(

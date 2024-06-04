@@ -1,0 +1,10 @@
+stages:
+  - format
+
+black:
+  stage: format
+  image: python:3.9 
+  before_script:
+    - pip install black
+  script:
+    - black --check .

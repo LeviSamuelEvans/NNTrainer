@@ -15,6 +15,7 @@ class MultiHeadSelfAttention(nn.Module):
         num_heads : int
             The number of attention heads.
     """
+
     def __init__(self, input_dim, num_heads):
         """Initialises the multi-headed self-attention module."""
         super(MultiHeadSelfAttention, self).__init__()

@@ -10,6 +10,7 @@ from sklearn.decomposition import PCA
 from torch import nn
 import seaborn as sns
 
+
 class EmbeddingMaps:
     """Class to extract the positional embeddings from a transformer model and
     perform PCA on them, to visualise class separability.
@@ -29,6 +30,7 @@ class EmbeddingMaps:
     Implement slicing for different parts of the phase-space
 
     """
+
     def __init__(self, model, network_type, config_dict):
         self.network_type = network_type
         self.config_dict = config_dict
@@ -39,7 +41,9 @@ class EmbeddingMaps:
 
         model = self.model
 
-        state_dict = torch.load("/scratch4/levans/tth-network/plots/Archives/transformer5/07_05_24_part2/models/model_state_dict.pt")
+        state_dict = torch.load(
+            "/scratch4/levans/tth-network/plots/Archives/transformer5/07_05_24_part2/models/model_state_dict.pt"
+        )
         model.load_state_dict(state_dict)
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -51,15 +55,15 @@ class EmbeddingMaps:
         """Extract embeddings from specified stage."""
         with torch.no_grad():
             x = self.model.input_embedding(x)
-            if stage == 'post_input':
+            if stage == "post_input":
                 return x.unsqueeze(1)
 
             x = self.model.pos_encoder(x)
-            if stage == 'post_positional_encoding':
+            if stage == "post_positional_encoding":
                 return x.unsqueeze(1)
 
             x = self.model.transformer_encoder(x)
-            if stage == 'post_encoder':
+            if stage == "post_encoder":
                 return x.unsqueeze(1)
 
         return x
@@ -89,11 +93,21 @@ class EmbeddingMaps:
         class_1_indices = labels == 0
         class_2_indices = labels == 1
 
-        plt.scatter(pca_embeddings[class_1_indices, 0], pca_embeddings[class_1_indices, 1], color='blue', label='Class 1')
-        plt.scatter(pca_embeddings[class_2_indices, 0], pca_embeddings[class_2_indices, 1], color='red', label='Class 2')
+        plt.scatter(
+            pca_embeddings[class_1_indices, 0],
+            pca_embeddings[class_1_indices, 1],
+            color="blue",
+            label="Class 1",
+        )
+        plt.scatter(
+            pca_embeddings[class_2_indices, 0],
+            pca_embeddings[class_2_indices, 1],
+            color="red",
+            label="Class 2",
+        )
 
-        plt.xlabel('PC1')
-        plt.ylabel('PC2')
+        plt.xlabel("PC1")
+        plt.ylabel("PC2")
         plt.title(title)
         plt.legend()
         plt.savefig(filename)
@@ -103,10 +117,10 @@ class EmbeddingMaps:
         plt.figure(figsize=(10, 8))
         ax = sns.heatmap(embeddings, vmin=vmin, vmax=vmax, cmap="viridis", cbar=True)
         ax.set_title(f"Heatmap of Embeddings - {stage}")
-        plt.savefig(f'heatmap_{stage}.png')
+        plt.savefig(f"heatmap_{stage}.png")
 
     def analyse_embeddings(self, embeddings):
-        stages = ['post_input', 'post_positional_encoding', 'post_encoder']
+        stages = ["post_input", "post_positional_encoding", "post_encoder"]
         for stage in stages:
             normalized_embeddings = self.normalize_embeddings(embeddings)
             mean_embeddings = normalized_embeddings.mean(dim=0)
@@ -115,9 +129,10 @@ class EmbeddingMaps:
 
     def run(self, x, labels):
         """Execute embedding extraction, PCA, and plotting for different stages."""
-        stages = ['post_input',
-                  'post_positional_encoding',
-                  'post_encoder',
+        stages = [
+            "post_input",
+            "post_positional_encoding",
+            "post_encoder",
         ]
 
         for stage in stages:
@@ -125,13 +140,13 @@ class EmbeddingMaps:
             pca_embeddings = self.perform_pca(embeddings)
 
             if len(labels) > len(pca_embeddings):
-                labels = labels[:len(pca_embeddings)]
+                labels = labels[: len(pca_embeddings)]
             elif len(labels) < len(pca_embeddings):
                 pad_length = len(pca_embeddings) - len(labels)
-                labels = np.pad(labels, (0, pad_length), mode='constant')
+                labels = np.pad(labels, (0, pad_length), mode="constant")
 
-            title = f'PCA of Embeddings {stage}'
-            filename = f'pca_embeddings_{stage}.png'
+            title = f"PCA of Embeddings {stage}"
+            filename = f"pca_embeddings_{stage}.png"
 
             self.plot_pca(pca_embeddings, labels, title, filename)
             self.analyse_embeddings(embeddings)

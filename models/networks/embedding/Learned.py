@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class LearnedPositionalEncoding(nn.Module):
     """Learned positional encoding.
 
@@ -23,9 +24,9 @@ class LearnedPositionalEncoding(nn.Module):
         https://pytorch.org/docs/stable/generated/torch.nn.Embedding.html
 
     """
+
     def __init__(self, d_model, dropout, max_len):
-        """Initialise the learned positional encoding.
-        """
+        """Initialise the learned positional encoding."""
         super(LearnedPositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
         self.pos_embeddings = nn.Embedding(max_len, d_model)
@@ -66,9 +67,9 @@ class LearnedPositionalEncodingv2(nn.Module):
         https://pytorch.org/docs/stable/generated/torch.nn.Embedding.html
 
     """
+
     def __init__(self, d_model, dropout, max_len):
-        """Initialise the learned positional encoding.
-        """
+        """Initialise the learned positional encoding."""
         super(LearnedPositionalEncodingv2, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
         self.pos_embeddings = nn.Embedding(max_len, d_model)
@@ -85,7 +86,9 @@ class LearnedPositionalEncodingv2(nn.Module):
         position_embeddings = position_embeddings.view(x.shape[0], x.shape[1], -1)
 
         if position_embeddings.size(2) != x.size(1):
-            raise ValueError(f"Dimension mismatch: position_embeddings have {position_embeddings.size(2)} features but x expects {x.size(1)}.")
+            raise ValueError(
+                f"Dimension mismatch: position_embeddings have {position_embeddings.size(2)} features but x expects {x.size(1)}."
+            )
 
         # reduce to the correct feature dimension if necessary...
         position_embeddings = position_embeddings.mean(dim=2)
@@ -94,5 +97,3 @@ class LearnedPositionalEncodingv2(nn.Module):
         x = self.dropout(x)
         x = self.layer_norm(x)
         return x
-
-

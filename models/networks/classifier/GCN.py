@@ -3,6 +3,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 from . import ResidualBlockGCN
 
+
 class GCNClassifier(nn.Module):
     """
     Graph Convolutional Network (GCN) Classifier for use in
@@ -55,7 +56,7 @@ class GCNClassifier(nn.Module):
             nn.BatchNorm1d(256),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(256,256),
+            nn.Linear(256, 256),
             nn.BatchNorm1d(256),
             nn.GELU(),
             nn.Dropout(dropout),
@@ -63,11 +64,10 @@ class GCNClassifier(nn.Module):
         )
 
     def forward(self, x, edge_index, edge_weight=None):
-        """Forward pass of the GCNClassifier.
-        """
+        """Forward pass of the GCNClassifier."""
 
         x = F.relu(self.conv1(x, edge_index, edge_weight))
         x = F.relu(self.conv2(x, edge_index, edge_weight))
         x = self.classifier(x)
 
-        return x #.squeeze(-1)
+        return x  # .squeeze(-1)
