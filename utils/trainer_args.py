@@ -1,6 +1,5 @@
 import torch
 
-
 class TrainerArgs:
     """Class to prepare arguments for the Trainer class."""
 

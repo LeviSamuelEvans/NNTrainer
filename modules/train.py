@@ -2,14 +2,13 @@ import json
 import os
 import time
 import logging
-
 import numpy as np
 import torch
 import torch.nn as nn
 from torch_geometric.data import Batch
 from torch_geometric.loader import DataLoader as GeoDataLoader
 import torch.optim as optim
-
+from torch.cuda.amp import GradScaler, autocast
 from modules import CosineRampUpDownLR
 from utils import (
     gather_all_labels,
@@ -152,12 +151,21 @@ class Trainer:
 
     def _initialise_model(self):
         self.model.to(self.device)
+
+        if torch.cuda.device_count() > 1:
+            self.model = nn.DataParallel(self.model)
+            logging.info("Trainer :: Using DataParallel for multi-GPU training.")
+        else:
+            logging.info("Trainer :: Using single GPU for training.")
+
         lr = float(self.config["training"]["learning_rate"])
         self.optimizer = optim.Adam(
             self.model.parameters(),
             lr=lr,
             weight_decay=self.config["training"]["weight_decay"],
         )
+        # initialise the gradient scaler for mixed precision training
+        self.scaler = GradScaler()
 
     def _initialise_attributes(self):
         for key, value in self.config.items():
@@ -194,7 +202,7 @@ class Trainer:
             logging.info("Trainer :: Initialised BCEWithLogitsLoss with class weights.")
         else:
             self.criterion = torch.nn.BCELoss()
-            #self.criterion = torch.nn.BCEWithLogitsLoss()
+            # self.criterion = torch.nn.BCEWithLogitsLoss()
 
     def _initialise_scheduler(self):
         if self.use_scheduler:
@@ -334,14 +342,8 @@ class Trainer:
         positive_examples = float((all_labels == 1).sum())
         negative_examples = float((all_labels == 0).sum())
         if positive_examples > negative_examples:
-            print("Positive examples > Negative examples")
-            print(f"Positive examples: {positive_examples}")
-            print(f"Negative examples: {negative_examples}")
             return torch.tensor([positive_examples / negative_examples])
         else:
-            print("N examples > P examples")
-            print(f"Positive examples: {positive_examples}")
-            print(f"Negative examples: {negative_examples}")
             return torch.tensor([negative_examples / positive_examples])
 
     def _print_optimizer_params(self):
@@ -371,18 +373,19 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
-                outputs = self._forward_pass(inputs, edge_index, edge_attr, batch)
+            with autocast():
+                if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+                    outputs = self._forward_pass(inputs, edge_index, edge_attr, batch)
+                elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
+                    outputs = self._forward_pass(inputs, labels=labels)  # TEMP
+                else:
+                    outputs = self._forward_pass(inputs)  # TEMP
 
-            elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
-                outputs = self._forward_pass(inputs, labels=labels)  # TEMP
+                loss = self.criterion(outputs, labels)
 
-            else:
-                outputs = self._forward_pass(inputs)  # TEMP
-
-            loss = self.criterion(outputs, labels)
-            loss.backward()
-            self.optimizer.step()
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
 
             running_loss += loss.item() * inputs.size(0)
             predicted = self._get_predictions(outputs)
@@ -412,29 +415,27 @@ class Trainer:
 
         with torch.no_grad():
             for batch_data in self.val_loader:
-                if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
-                    inputs, labels, edge_index, edge_attr, batch = (
-                        self._process_batch_data(batch_data)
-                    )
-                    outputs = self._forward_pass(inputs, edge_index, edge_attr, batch)
-                elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
-                    inputs, labels, edge_index, edge_attr, batch = self._process_batch_data(
-                        batch_data
-                    )
-                    outputs = self._forward_pass(inputs, labels=labels)  # TEMPPP
-                else:
-                    inputs, labels, edge_index, edge_attr, batch = self._process_batch_data(
-                        batch_data
-                    )
-                    outputs = self._forward_pass(inputs)  # TEMPPP
+                inputs, labels, edge_index, edge_attr, batch = self._process_batch_data(
+                    batch_data
+                )
 
-                loss = self.criterion(outputs, labels)
-                val_loss += loss.item() * inputs.size(0)
-                predictions = self._get_predictions(outputs)
-                correct += (predictions == labels.view_as(predictions)).sum().item()
+                with autocast():
+                    if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
+                        outputs = self._forward_pass(
+                            inputs, edge_index, edge_attr, batch
+                        )
+                    elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
+                        outputs = self._forward_pass(inputs, labels=labels)  # TEMPPP
+                    else:
+                        outputs = self._forward_pass(inputs)  # TEMPPP
 
-                total += labels.size(0)
-                tot_samples += inputs.size(0)
+                    loss = self.criterion(outputs, labels)
+                    val_loss += loss.item() * inputs.size(0)
+                    predictions = self._get_predictions(outputs)
+                    correct += (predictions == labels.view_as(predictions)).sum().item()
+
+                    total += labels.size(0)
+                    tot_samples += inputs.size(0)
 
         if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
             val_loss /= tot_samples
