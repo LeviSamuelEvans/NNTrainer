@@ -5,7 +5,9 @@ from modules.train import Trainer
 from modules.evaluation import ModelEvaluator
 from utils import TrainerArgs
 import matplotlib.pyplot as plt
-import os
+import joblib
+from joblib import Parallel, delayed
+import torch
 
 def objective(trial, config, train_loader, val_loader, network_type):
     """
@@ -84,7 +86,14 @@ def tune_hyperparameters(config, train_loader, val_loader, network_type):
     """
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(lambda trial: objective(trial, config, train_loader, val_loader, network_type), n_trials=30)
+    num_trials = 10
+    n_jobs = torch.cuda.device_count()
+
+    with joblib.parallel_backend('multiprocessing'):
+        Parallel(n_jobs=n_jobs)(
+            delayed(study.optimize)(objective, n_trials=num_trials // n_jobs, catch=(Exception,))
+            for _ in range(n_jobs)
+        )
 
     best_params = study.best_params
     best_value = study.best_value
