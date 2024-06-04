@@ -1,10 +1,10 @@
-# ==================================================== #
-# Transformer Classifier 5 Testing Configuration File  #
-# =====================================================#
+# ====================== #
+# The GATformer with CA
+# ====================== #
 
 # Information
 # -----------
-# * applies cross-attention
+# * /models/networks/transformers/GATv3.py
 
 # --------------------------------------------------------------------------------------
 

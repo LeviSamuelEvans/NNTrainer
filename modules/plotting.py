@@ -95,8 +95,14 @@ class DataPlotter:
             The name of the feature to remove outliers from.
         """
         # calculate z-scores for signal and background
-        z_scores_sig = np.abs((self.df_sig[feature] - self.df_sig[feature].mean()) / self.df_sig[feature].std())
-        z_scores_bkg = np.abs((self.df_bkg[feature] - self.df_bkg[feature].mean()) / self.df_bkg[feature].std())
+        z_scores_sig = np.abs(
+            (self.df_sig[feature] - self.df_sig[feature].mean())
+            / self.df_sig[feature].std()
+        )
+        z_scores_bkg = np.abs(
+            (self.df_bkg[feature] - self.df_bkg[feature].mean())
+            / self.df_bkg[feature].std()
+        )
 
         # now remove the outliers for plotting
         self.df_sig = self.df_sig[(z_scores_sig < 3)]
@@ -126,7 +132,9 @@ class DataPlotter:
             return r"$\it{H_{T}^{\text{all}}}$" + " [GeV]"
         elif any(re.match(prefix + ".*", feature) for prefix in prefix_pt):
             if "jet" in feature:
-                return r"Jet $p_{T}$" + " " + feature.split("_")[2].capitalize() + " [GeV]"
+                return (
+                    r"Jet $p_{T}$" + " " + feature.split("_")[2].capitalize() + " [GeV]"
+                )
             if "el" in feature:
                 return r"Electron $p_{T}$" + " " + " [GeV]"
             if "mu" in feature:
@@ -147,7 +155,9 @@ class DataPlotter:
                 return r"Muon $\eta$" + " " + feature.split("_")[2].capitalize()
         elif any(re.match(prefix + ".*", feature) for prefix in prefix_e):
             if "jet" in feature:
-                return r"Jet Energy" + " " + feature.split("_")[2].capitalize() + " [GeV]"
+                return (
+                    r"Jet Energy" + " " + feature.split("_")[2].capitalize() + " [GeV]"
+                )
             if "el" in feature:
                 return r"Electron Energy" + " " + " [GeV]"
             if "mu" in feature:
@@ -173,7 +183,9 @@ class DataPlotter:
 
     def setup_data_plotter(self):
 
-        self.plot_save_path = self.config_dict.get("data", {}).get("plot_save_path", "plots/")
+        self.plot_save_path = self.config_dict.get("data", {}).get(
+            "plot_save_path", "plots/"
+        )
 
         plt.style.use(hep.style.ROOT)
 
@@ -212,12 +224,16 @@ class DataPlotter:
                 direction[name] = torch.randn_like(param)
         return direction
 
-    def compute_loss_landscape(self, model, criterion, data, target, alpha_range, num_points):
+    def compute_loss_landscape(
+        self, model, criterion, data, target, alpha_range, num_points
+    ):
         """Computes the loss landscape along a random direction."""
         losses = []
         direction = self.random_direction(model)
         for alpha in np.linspace(alpha_range[0], alpha_range[1], num_points):
-            interpolated_state_dict = self.interpolate_models(model.state_dict(), direction, alpha)
+            interpolated_state_dict = self.interpolate_models(
+                model.state_dict(), direction, alpha
+            )
             model.load_state_dict(interpolated_state_dict)
             model.eval()
             with torch.no_grad():
@@ -264,12 +280,8 @@ class DataPlotter:
         os.makedirs(f"{self.plot_save_path}Inputs/", exist_ok=True)
 
         plt.figure()
-        logging.debug(
-            self.df_sig.head()
-        )  # Print the first few rows of the signal DataFrame
-        logging.debug(
-            self.df_bkg.head()
-        )  # Print the first few rows of the background DataFrame
+        logging.debug(self.df_sig.head())
+        logging.debug(self.df_bkg.head())
         # Set the number of bins
         num_bins = 50
 
@@ -311,7 +323,9 @@ class DataPlotter:
         plt.legend(loc="upper right")
         hep.atlas.label(loc=0, label="Internal", lumi="140.0", com="13")
         plt.savefig(f"{self.plot_save_path}Inputs/{feature}.png")
-        logging.info(f"DataPlotter :: Plot of {feature} saved to {self.plot_save_path}Inputs/{feature}.png")
+        logging.info(
+            f"DataPlotter :: Plot of {feature} saved to {self.plot_save_path}Inputs/{feature}.png"
+        )
         # Close the plot to free up memory
         plt.close()
 
@@ -344,7 +358,6 @@ class DataPlotter:
 
         # Compute the correlation matrix
         corr_matrix = data[self.features].corr()
-        # print(corr_matrix, "Correlation matrix:")
 
         # Plot the heatmap
         plt.figure(figsize=(10, 8))  # Adjust the size as needed
@@ -363,7 +376,9 @@ class DataPlotter:
         hep.atlas.label(loc=0, label="Internal")
         plt.tight_layout()
         plt.savefig(save_path)
-        logging.info(f"DataPlotter :: Correlation matrix for {data_type} saved to {save_path}")
+        logging.info(
+            f"DataPlotter :: Correlation matrix for {data_type} saved to {save_path}"
+        )
         plt.close()
 
     # =========================================================================
@@ -395,7 +410,9 @@ class DataPlotter:
         )
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/loss.png")
-        logging.info(f"DataPlotter :: Loss plot saved to {self.plot_save_path}Validation/loss.png")
+        logging.info(
+            f"DataPlotter :: Loss plot saved to {self.plot_save_path}Validation/loss.png"
+        )
 
     # =========================================================================
     # PLOT ACCURACY
@@ -428,7 +445,9 @@ class DataPlotter:
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/accuracy.png")
         plt.savefig(f"{self.plot_save_path}Validation/accuracy.pdf")
-        logging.info(f"DataPlotter :: Accuracy plot saved to {self.plot_save_path}Validation/accuracy.png")
+        logging.info(
+            f"DataPlotter :: Accuracy plot saved to {self.plot_save_path}Validation/accuracy.png"
+        )
 
     # =========================================================================
     # PLOT LEARNING-RATE CURVE
@@ -455,7 +474,9 @@ class DataPlotter:
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/learning_rate.png")
         plt.savefig(f"{self.plot_save_path}Validation/learning_rate.pdf")
-        logging.info(f"DataPlotter :: Learning rate plot saved to {self.plot_save_path}Validation/learning_rate.png")
+        logging.info(
+            f"DataPlotter :: Learning rate plot saved to {self.plot_save_path}Validation/learning_rate.png"
+        )
 
     # =========================================================================
     # PLOT ROC CURVE
@@ -471,7 +492,9 @@ class DataPlotter:
         os.makedirs(f"{self.plot_save_path}Evaluation/", exist_ok=True)
 
         if self.evaluator is None or self.evaluator.roc_auc is None:
-            logging.warning("Evaluator or ROC AUC data not available. Cannot plot ROC curve.")
+            logging.warning(
+                "Evaluator or ROC AUC data not available. Cannot plot ROC curve."
+            )
             return
 
         fpr = self.evaluator.fpr
@@ -497,7 +520,9 @@ class DataPlotter:
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.png")
         plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.pdf")
-        logging.info(f"DataPlotter :: ROC curve plot produced and saved to '{self.plot_save_path}Evaluation/roc_curve.png'")
+        logging.info(
+            f"DataPlotter :: ROC curve plot produced and saved to '{self.plot_save_path}Evaluation/roc_curve.png'"
+        )
 
     # =========================================================================
     # PLOT CONFUSION MATRIX
@@ -505,8 +530,14 @@ class DataPlotter:
     def plot_confusion_matrix(self):
         """Plots the confusion matrix for binary classification models."""
 
-        if self.evaluator is None or self.evaluator.y_true is None or self.evaluator.y_pred is None:
-            logging.warning("Evaluator or confusion matrix data not available. Cannot plot confusion matrix.")
+        if (
+            self.evaluator is None
+            or self.evaluator.y_true is None
+            or self.evaluator.y_pred is None
+        ):
+            logging.warning(
+                "Evaluator or confusion matrix data not available. Cannot plot confusion matrix."
+            )
             return
 
         y_true = self.evaluator.y_true
@@ -526,7 +557,7 @@ class DataPlotter:
             cbar=False,
             annot_kws={"size": 12},
             xticklabels=[0, 1],
-            yticklabels=[0, 1]
+            yticklabels=[0, 1],
         )
         plt.xlabel("Predicted labels")
         plt.ylabel("True labels")
@@ -534,8 +565,9 @@ class DataPlotter:
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.png")
         plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.pdf")
-        logging.info(f"DataPlotter :: Confusion matrix plot produced and saved as '{self.plot_save_path}Evaluation/confusion_matrix.png'")
-
+        logging.info(
+            f"DataPlotter :: Confusion matrix plot produced and saved as '{self.plot_save_path}Evaluation/confusion_matrix.png'"
+        )
 
     # =========================================================================
     # PLOT PRECISION_RECALL CURVE
@@ -543,8 +575,14 @@ class DataPlotter:
     def plot_pr_curve(self):
         """Plots the Precision-Recall curve for binary classification models."""
 
-        if self.evaluator is None or self.evaluator.precision is None or self.evaluator.recall is None:
-            logging.warning("Evaluator or PR curve data not available. Cannot plot PR curve.")
+        if (
+            self.evaluator is None
+            or self.evaluator.precision is None
+            or self.evaluator.recall is None
+        ):
+            logging.warning(
+                "Evaluator or PR curve data not available. Cannot plot PR curve."
+            )
             return
 
         precision = self.evaluator.precision
@@ -573,7 +611,9 @@ class DataPlotter:
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.png")
         plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.pdf")
-        logging.info(f"DataPlotter :: Precision-Recall curve plot produced and saved to '{self.plot_save_path}Evaluation/pr_curve.png")
+        logging.info(
+            f"DataPlotter :: Precision-Recall curve plot produced and saved to '{self.plot_save_path}Evaluation/pr_curve.png"
+        )
 
     # =========================================================================
     # PLOT SCORE DISTRIBUTION
@@ -596,23 +636,44 @@ class DataPlotter:
         background_indices = np.where(true_labels == 0)[0]
 
         plt.figure()
-        plt.hist(scores[signal_indices], bins=50, alpha=0.5, label='Signal', color='blue', density=True)
-        plt.hist(scores[background_indices], bins=50, alpha=0.5, label='Background', color='red', density=True)
-        plt.xlabel('Score')
-        plt.ylabel('Normalised Entries')
-        plt.legend(loc='best')
+        plt.hist(
+            scores[signal_indices],
+            bins=50,
+            alpha=0.5,
+            label="Signal",
+            color="blue",
+            density=True,
+        )
+        plt.hist(
+            scores[background_indices],
+            bins=50,
+            alpha=0.5,
+            label="Background",
+            color="red",
+            density=True,
+        )
+        plt.xlabel("Score")
+        plt.ylabel("Normalised Entries")
+        plt.legend(loc="best")
         plt.savefig(f"{self.plot_save_path}Evaluation/score_distribution.png")
         plt.savefig(f"{self.plot_save_path}Evaluation/score_distribution.pdf")
-        logging.info(f"DataPlotter :: Score distribution plot saved to '{self.plot_save_path}Evaluation/score_distribution.png'")
+        logging.info(
+            f"DataPlotter :: Score distribution plot saved to '{self.plot_save_path}Evaluation/score_distribution.png'"
+        )
 
     # =========================================================================
     # PLOT LOSS FUNCTION
 
-    def plot_loss_landscape(self, model, criterion, data, target,
-                            alpha_range=[-1.0, 1.0],
-                            beta_range=[-1.0, 1.0] ,
-                            num_points=100):
-
+    def plot_loss_landscape(
+        self,
+        model,
+        criterion,
+        data,
+        target,
+        alpha_range=[-1.0, 1.0],
+        beta_range=[-1.0, 1.0],
+        num_points=100,
+    ):
         """Plots the loss landscape for a given model and data."""
 
         model = self.evaluator.model
@@ -631,18 +692,24 @@ class DataPlotter:
             for j in range(num_points):
                 alpha = alphas[i, j]
                 beta = betas[i, j]
-                losses[i, j] = self.compute_loss_landscape(model, criterion, data, target, [alpha, beta], 1)[0]
+                losses[i, j] = self.compute_loss_landscape(
+                    model, criterion, data, target, [alpha, beta], 1
+                )[0]
 
         fig = plt.figure(figsize=(10, 8))
-        ax = fig.add_subplot(111, projection='3d')
-        loss_plot = ax.plot_surface(alphas, betas, losses, cmap='viridis', edgecolor='none', alpha=0.6)
+        ax = fig.add_subplot(111, projection="3d")
+        loss_plot = ax.plot_surface(
+            alphas, betas, losses, cmap="viridis", edgecolor="none", alpha=0.6
+        )
         ax.set_xlabel("alpha", fontsize=12)
         ax.set_ylabel("beta", fontsize=12)
-        ax.set_zlabel('Loss', fontsize=12)
+        ax.set_zlabel("Loss", fontsize=12)
         fig.colorbar(loss_plot, shrink=0.5, aspect=5)
         ax.view_init(elev=30, azim=30)
         plt.tight_layout()
 
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/loss_landscape.png")
-        logging.info(f"DataPlotter :: Loss landscape plot saved to '{self.plot_save_path}Evaluation/loss_landscape.png'")
+        logging.info(
+            f"DataPlotter :: Loss landscape plot saved to '{self.plot_save_path}Evaluation/loss_landscape.png'"
+        )

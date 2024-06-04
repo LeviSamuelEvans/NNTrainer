@@ -2,6 +2,11 @@
 # Lorentz Transformer Configuration File #
 # ====================================== #
 
+
+# Information
+# -----------
+# models/networks/transformers/lorentz_transformer.py
+
 # --------------------------------------------------------------------------------------
 
 #=============#

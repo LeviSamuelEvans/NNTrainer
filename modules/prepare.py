@@ -365,12 +365,14 @@ class BaseDataPreparation:
         std_train = X_train_stacked[:, :-2].std(dim=(0, 1), keepdim=True)
 
         train_dataset = [
-            (self.normalize_features(x, mean_train, std_train).squeeze(), y) for x, y in train_dataset
+            (self.normalize_features(x, mean_train, std_train).squeeze(), y)
+            for x, y in train_dataset
         ]
 
         # normalise the validation data using the mean and std from the training data
         val_dataset = [
-            (self.normalize_features(x, mean_train, std_train).squeeze(), y) for x, y in val_dataset
+            (self.normalize_features(x, mean_train, std_train).squeeze(), y)
+            for x, y in val_dataset
         ]
         return train_dataset, val_dataset
 
@@ -842,8 +844,6 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
         if isinstance(self.features_or_fvectors, list):
             logging.info("Using the pre-defined features...")
 
-            print("self.df_sig:", self.df_sig)
-            print("self.df_bkg:", self.df_bkg)
             # Use the pre-defined features
             X_sig = torch.tensor(
                 self.df_sig[self.features_or_fvectors].values, dtype=torch.float32
@@ -925,11 +925,13 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
             f"PreparationFactory :: Splitting the data into training and validation datasets..."
         )
 
-        print("signal_edge_attr:", signal_edge_attr[0])
-
         # Normalize the invariant mass in the edge attributes
-        signal_edge_attr = [self.normalize_invariant_mass_min_max(attr) for attr in signal_edge_attr]
-        background_edge_attr = [self.normalize_invariant_mass_min_max(attr) for attr in background_edge_attr]
+        signal_edge_attr = [
+            self.normalize_invariant_mass_min_max(attr) for attr in signal_edge_attr
+        ]
+        background_edge_attr = [
+            self.normalize_invariant_mass_min_max(attr) for attr in background_edge_attr
+        ]
 
         # split data
         train_dataset_sig, val_dataset_sig = self.split_data(X_sig, y_sig)
@@ -975,8 +977,6 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
             torch.max(edges).item() for edges in background_edges if edges.numel() > 0
         )
 
-        print("Max edge index:", max_index_sig, max_index_bkg)
-
         return train_graphs, val_graphs
 
     def _prepare_graphs(self, dataset, edges_list, edge_attr_list):
@@ -1008,5 +1008,3 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
             logging.info(graph.y)
             logging.info("---------------")
             num_printed += 1
-
-

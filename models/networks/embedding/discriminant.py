@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class Discriminant(nn.Module):
     def __init__(self, d_model):
         super(Discriminant, self).__init__()
@@ -22,6 +23,7 @@ class Discriminant(nn.Module):
 
         return selected_probs
 
+
 class LearnedPositionalEncodingWithDiscriminant(nn.Module):
     def __init__(self, d_model, dropout, max_len=10):
         super(LearnedPositionalEncodingWithDiscriminant, self).__init__()
@@ -32,7 +34,11 @@ class LearnedPositionalEncodingWithDiscriminant(nn.Module):
 
     def forward(self, x, labels):
         seq_len = x.size(1)
-        positions = torch.arange(seq_len, dtype=torch.long, device=x.device).unsqueeze(0).expand(x.size(0), -1)
+        positions = (
+            torch.arange(seq_len, dtype=torch.long, device=x.device)
+            .unsqueeze(0)
+            .expand(x.size(0), -1)
+        )
         position_embeddings = self.pos_embeddings(positions)
 
         # apply Discriminant

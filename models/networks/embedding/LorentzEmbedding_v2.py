@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import math
 
+
 class LorentzInvariantPositionalEncodingv2(nn.Module):
     """Lorentz-invariant positional encoding module for Transformer models."""
 
@@ -14,8 +15,10 @@ class LorentzInvariantPositionalEncodingv2(nn.Module):
         # NOTE: try remove this transformation layer in the debugging
         self.transform = nn.Sequential(
             nn.Linear(1, d_model),
-            nn.LeakyReLU(0.01), # we use a leaky ReLU activation function here to preserve negative values
-            nn.Linear(d_model, d_model)
+            nn.LeakyReLU(
+                0.01
+            ),  # we use a leaky ReLU activation function here to preserve negative values
+            nn.Linear(d_model, d_model),
         )
 
     def forward(self, x, x_coords):
@@ -25,8 +28,13 @@ class LorentzInvariantPositionalEncodingv2(nn.Module):
         x_coords_diff = x_coords.unsqueeze(1) - x_coords.unsqueeze(2)
         epsilon = 1e-6
         # compute the Lorentz distances and clip to avoid NaNs
-        lorentz_distances = torch.sum(x_coords_diff[:, :, :, 1:] ** 2, dim=-1) - x_coords_diff[:, :, :, 0] ** 2
-        lorentz_distances = torch.sqrt(torch.clamp(lorentz_distances, min=0.0) + epsilon)
+        lorentz_distances = (
+            torch.sum(x_coords_diff[:, :, :, 1:] ** 2, dim=-1)
+            - x_coords_diff[:, :, :, 0] ** 2
+        )
+        lorentz_distances = torch.sqrt(
+            torch.clamp(lorentz_distances, min=0.0) + epsilon
+        )
 
         print(lorentz_distances[:10])
 

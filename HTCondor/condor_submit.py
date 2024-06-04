@@ -12,6 +12,7 @@ logging.basicConfig(
 # /eos/user/l/leevans/NNTrainer/tth-network
 # MLenv
 
+
 class Submission:
     """
     Submit NNTrainer Jobs to HTCondor batch systems.
@@ -59,7 +60,16 @@ class Submission:
             The walltime for the job in seconds
     """
 
-    def __init__(self, working_dir, conda_install_dir, env_name, framework_dir, config_files, request_memory, run_time):
+    def __init__(
+        self,
+        working_dir,
+        conda_install_dir,
+        env_name,
+        framework_dir,
+        config_files,
+        request_memory,
+        run_time,
+    ):
         self.working_dir = Path(working_dir)
         self.conda_install_dir = conda_install_dir
         self.env_name = env_name
@@ -71,7 +81,7 @@ class Submission:
         self.sub_file_path = self.working_dir / "train_condor.sub"
         self.request_memory = request_memory
         self.run_time = run_time
-        self.template_env = jinja2.Environment(loader=jinja2.FileSystemLoader('.'))
+        self.template_env = jinja2.Environment(loader=jinja2.FileSystemLoader("."))
 
         logging.info("Submission configuration:")
         logging.info(f"  Working directory: {self.working_dir}")
@@ -84,26 +94,30 @@ class Submission:
 
     def write_bash_script(self):
         """Writes the bash script for the job using Jinja2 templating."""
-        template = self.template_env.get_template('jinja_templates/train_condor.sh.template')
+        template = self.template_env.get_template(
+            "jinja_templates/train_condor.sh.template"
+        )
         bash_script = template.render(
             conda_install_dir=self.conda_install_dir,
             env_name=self.env_name,
-            framework_dir=self.framework_dir
+            framework_dir=self.framework_dir,
         )
-        with open(self.bash_script_path, 'w') as f:
+        with open(self.bash_script_path, "w") as f:
             f.write(bash_script)
 
     def write_sub_file(self):
         """Writes the HTCondor submission file using Jinja2 templating."""
-        template = self.template_env.get_template('jinja_templates/train_condor.sub.template')
+        template = self.template_env.get_template(
+            "jinja_templates/train_condor.sub.template"
+        )
         sub_file = template.render(
             bash_script_path=self.bash_script_path,
             log_dir=self.log_dir,
             job_args_file=self.job_args_file,
             request_memory=self.request_memory,
-            run_time=self.run_time
+            run_time=self.run_time,
         )
-        with open(self.sub_file_path, 'w') as f:
+        with open(self.sub_file_path, "w") as f:
             f.write(sub_file)
 
     def setup_job_args(self):
@@ -182,16 +196,14 @@ def main():
         "--request_memory",
         type=str,
         default="24 GB",
-        help="Amount of memory to request for the job. e.g. 40 GB"
-        "Default is 24 GB."
+        help="Amount of memory to request for the job. e.g. 40 GB" "Default is 24 GB.",
     )
     parser.add_argument(
         "-r",
         "--run_time",
         type=str,
         default="43200",
-        help="The run time in seconds for the job."
-        "Default is 12hrs (43200s)."
+        help="The run time in seconds for the job." "Default is 12hrs (43200s).",
     )
 
     parser.add_argument(
@@ -210,7 +222,7 @@ def main():
         args.framework_dir,
         args.config_files,
         args.request_memory,
-        args.run_time
+        args.run_time,
     )
     submission.setup_job_args()
     submission.write_bash_script()

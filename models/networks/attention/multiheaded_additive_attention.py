@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 
+
 class MultiHeadAdditiveAttention(nn.Module):
     """
     Multi-Head Additive Attention module.
@@ -65,12 +66,26 @@ class MultiHeadAdditiveAttention(nn.Module):
         batch_size, seq_len, _ = query.size()
 
         # project the query, key, and value matrices into the multi-head space
-        projected_query = self.query_proj(query).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        projected_key = self.key_proj(key).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
-        projected_value = self.value_proj(value).view(batch_size, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
+        projected_query = (
+            self.query_proj(query)
+            .view(batch_size, seq_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        projected_key = (
+            self.key_proj(key)
+            .view(batch_size, seq_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
+        projected_value = (
+            self.value_proj(value)
+            .view(batch_size, seq_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+        )
 
         # compute the additive attention scores
-        scores = self.score_proj(torch.tanh(projected_query.unsqueeze(-2) + projected_key.unsqueeze(-3))).squeeze(-1)
+        scores = self.score_proj(
+            torch.tanh(projected_query.unsqueeze(-2) + projected_key.unsqueeze(-3))
+        ).squeeze(-1)
 
         # apply a mask if provided
         if mask is not None:
@@ -79,7 +94,12 @@ class MultiHeadAdditiveAttention(nn.Module):
 
         # apply softmax to compute the attention weights
         attention_weights = nn.functional.softmax(scores, dim=-1)
-        attended_values = torch.matmul(attention_weights.unsqueeze(-2), projected_value).transpose(1, 2).contiguous().view(batch_size, seq_len, -1)
+        attended_values = (
+            torch.matmul(attention_weights.unsqueeze(-2), projected_value)
+            .transpose(1, 2)
+            .contiguous()
+            .view(batch_size, seq_len, -1)
+        )
 
         # projection of the attended values using the output projection
         output = self.output_proj(attended_values)

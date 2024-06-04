@@ -486,9 +486,6 @@ class FeatureMaker:
             logging.info("FeatureFactory :: Using only the four-vectors in the model.")
             four_vectors = np.stack((p_px, p_py, p_pz, p_e), axis=-1)
 
-        print(four_vectors.shape)  # TEST
-        print(p_flag.shape)  # TEST
-
         if self.include_met:
             four_vectors = np.concatenate(
                 (four_vectors, p_flag[:, :, np.newaxis]), axis=-1
@@ -498,7 +495,6 @@ class FeatureMaker:
         #   p_pt, p_eta, p_phi, p_e, p_px, p_py, p_pz, p_theta, p_mass, p_E_over_m, p_pT_over_m,
         #   p_log_pT, p_log_m)
 
-        print(four_vectors[:1])
         return four_vectors
 
     def construct_edges(self, sample, max_distance=3.5):

@@ -23,6 +23,7 @@ class ResidualGNN1(nn.Module):
             The probability of an element to be zeroed in dropout layers.
 
     """
+
     def __init__(self, input_dim, dropout_prob=0.5):
         """Initialises the graph neural network."""
         super(ResidualGNN1, self).__init__()

@@ -10,6 +10,8 @@ Notes: x_coords represents the coordinate features of the objects in the higher 
 that preserves Lorentz invariance.
 
 """
+
+
 class TransformerClassifier2(nn.Module):
     """Transformer classifier 2 module."""
 
@@ -32,7 +34,7 @@ class TransformerClassifier2(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(128, 1),
-            #nn.Sigmoid(),
+            # nn.Sigmoid(),
         )
 
     def forward(self, x, x_coords):

@@ -110,7 +110,13 @@ class DataImporter(object):
     # ==============================================================================
 
     def getDataFrameFromRootfile(
-        self, filepath, fixed_jet_length, max_events=None, max_jets=12, order_jets=False, run_option="baseline",
+        self,
+        filepath,
+        fixed_jet_length,
+        max_events=None,
+        max_jets=12,
+        order_jets=False,
+        run_option="baseline",
     ):
         """Convert a ROOT file into a Pandas dataframe and save it to the HDF5 store.
 
@@ -236,7 +242,9 @@ class DataImporter(object):
                     df.drop(columns=[col], inplace=True)
 
             if run_option == "signal":
-                print("INFO: Applying signal region selection: nJets >= 6 and nBTags_DL1r_70 >= 4")
+                print(
+                    "INFO: Applying signal region selection: nJets >= 6 and nBTags_DL1r_70 >= 4"
+                )
                 df = df[(df["nJets"] >= 6) & (df["nBTags_DL1r_70"] >= 4)]
             elif run_option == "baseline":
                 print("INFO: No additional selection applied for the baseline option.")
@@ -269,7 +277,9 @@ class DataImporter(object):
 
     # ==============================================================================
 
-    def processAllFiles(self, max_events=None, max_jets=12, order_jets=False, run_option="baseline"):
+    def processAllFiles(
+        self, max_events=None, max_jets=12, order_jets=False, run_option="baseline"
+    ):
         """Process all ROOT files in the specified directory and display a progress bar."""
         fixed_jet_length = max_jets
         filepaths = self.getRootFilepaths()
@@ -281,8 +291,14 @@ class DataImporter(object):
             unit_divisor=60,
         ):
             self.getDataFrameFromRootfile(
-                filepath, fixed_jet_length, max_events, max_jets, order_jets, run_option,
+                filepath,
+                fixed_jet_length,
+                max_events,
+                max_jets,
+                order_jets,
+                run_option,
             )
+
     # ==============================================================================
 
     def order_jets(self, df, max_jets):
@@ -343,7 +359,9 @@ class DataImporter(object):
                 ]
 
         return df
+
     # ==============================================================================
+
 
 def handleCommandLineArgs():
     """Parse and handle command-line arguments.
@@ -392,8 +410,8 @@ def handleCommandLineArgs():
     )
     parser.add_argument(
         "--order-jets",
-        dest='order_jets',
-        action='store_true',
+        dest="order_jets",
+        action="store_true",
         help="Order jets in each event by b-tagging score and pT (default: True).\n"
         "This is useful when using --max-jets option to avoid losing important jets.",
     )

@@ -17,6 +17,7 @@ class DataAugmentation:
     otherwise an error will be raised.
 
     """
+
     def __init__(
         self,
         use_four_vectors,
@@ -26,9 +27,11 @@ class DataAugmentation:
         scale_std=0.1,
     ):
         if not use_four_vectors:
-            raise ValueError("Augmentation requires `use_four_vectors` to be True!"
-                             "Please set `use_four_vectors` to True in the configuration,"
-                             "or disable the data augmentation.")
+            raise ValueError(
+                "Augmentation requires `use_four_vectors` to be True!"
+                "Please set `use_four_vectors` to True in the configuration,"
+                "or disable the data augmentation."
+            )
         """
         Initialise the DataAugmentation class with configuration for augmentations.
 
@@ -99,18 +102,22 @@ class DataAugmentation:
         augmented_signal_features, augmented_background_features = self.reflect_eta(
             augmented_signal_features, augmented_background_features
         )
-        augmented_signal_features, augmented_background_features = self.translate_eta_phi(
-            augmented_signal_features, augmented_background_features
+        augmented_signal_features, augmented_background_features = (
+            self.translate_eta_phi(
+                augmented_signal_features, augmented_background_features
+            )
         )
-        augmented_signal_features, augmented_background_features = self.scale_energy_momentum(
-            augmented_signal_features, augmented_background_features
+        augmented_signal_features, augmented_background_features = (
+            self.scale_energy_momentum(
+                augmented_signal_features, augmented_background_features
+            )
         )
         return augmented_signal_features, augmented_background_features
 
     # ==============================================================================
     # PHI-ROTATIONS
 
-    def rotate_phi(self, signal_features, background_features)-> tuple:
+    def rotate_phi(self, signal_features, background_features) -> tuple:
         """
         Apply phi rotation augmentation to the input features.
 
@@ -136,7 +143,9 @@ class DataAugmentation:
         """
 
         if not self.use_four_vectors:
-            raise ValueError("Phi rotation augmentation requires `use_four_vectors` to be True.")
+            raise ValueError(
+                "Phi rotation augmentation requires `use_four_vectors` to be True."
+            )
 
         logging.info("Augmenter :: Applying phi-rotations...")
         # get number of events
@@ -191,13 +200,12 @@ class DataAugmentation:
         rotated_features[:, :, 0] = rotated_px
         rotated_features[:, :, 1] = rotated_py
 
-
         return rotated_features
 
     # ==============================================================================
     # ETA-REFLECTIONS
 
-    def reflect_eta(self, signal_features, background_features)-> tuple:
+    def reflect_eta(self, signal_features, background_features) -> tuple:
         """
         Apply eta reflection augmentation to the input features.
 
@@ -218,7 +226,9 @@ class DataAugmentation:
                     The augmented background features.
         """
         if not self.use_four_vectors:
-            raise ValueError("Eta reflection augmentation requires `use_four_vectors` to be True.")
+            raise ValueError(
+                "Eta reflection augmentation requires `use_four_vectors` to be True."
+            )
 
         logging.info("Augmenter :: Applying eta-reflections...")
         # generate some random reflection flags for each event
@@ -269,7 +279,7 @@ class DataAugmentation:
     # ==============================================================================
     # ETA-PHI TRANSLATIONS
 
-    def translate_eta_phi(self, signal_features, background_features)-> tuple:
+    def translate_eta_phi(self, signal_features, background_features) -> tuple:
         """
         Apply eta-phi translation augmentation to the input features.
 
@@ -291,7 +301,9 @@ class DataAugmentation:
         """
 
         if not self.use_four_vectors:
-            raise ValueError("Eta-phi translation augmentation requires `use_four_vectors` to be True.")
+            raise ValueError(
+                "Eta-phi translation augmentation requires `use_four_vectors` to be True."
+            )
 
         logging.info("Augmenter :: Applying eta-phi translations...")
         # generate a random shift in eta and phi for each event
@@ -362,7 +374,7 @@ class DataAugmentation:
     # ==============================================================================
     # ENERGY-MOMENTUM SCALING
 
-    def scale_energy_momentum(self, signal_features, background_features)-> tuple:
+    def scale_energy_momentum(self, signal_features, background_features) -> tuple:
         """
         Apply energy/momentum scaling augmentation to the input features.
 
@@ -383,7 +395,9 @@ class DataAugmentation:
                     The augmented background features.
         """
         if not self.use_four_vectors:
-            raise ValueError("Energy-momentum scaling augmentation requires `use_four_vectors` to be True.")
+            raise ValueError(
+                "Energy-momentum scaling augmentation requires `use_four_vectors` to be True."
+            )
 
         logging.info("Augmenter :: Applying energy-momentum scaling...")
         # generate random scaling factors for each event
@@ -438,4 +452,3 @@ class DataAugmentation:
         scaled_features[:, :, 3] = scaled_energy
 
         return scaled_features
-

@@ -36,7 +36,7 @@ class SelfAttention(nn.Module):
                 The output tensor after applying self-attention.
         """
         Q = self.query(x)  # les requêtes
-        K = self.key(x)    # les clés
+        K = self.key(x)  # les clés
         V = self.value(x)  # les valeurs
 
         attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / (x.size(-1) ** 0.5)

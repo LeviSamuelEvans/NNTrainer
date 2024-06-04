@@ -16,6 +16,7 @@ class SimpleGCN(nn.Module):
         output_dim : int
             The dimension of the output tensor.
     """
+
     def __init__(self, input_dim, hidden_dim=64, output_dim=1):
         """Initialises the simple graph convolutional network."""
         super(SimpleGCN, self).__init__()
@@ -29,6 +30,7 @@ class SimpleGCN(nn.Module):
         x = self.conv2(x, edge_index)
 
         return F.log_softmax(x, dim=1)
+
 
 # Instantiate the model
 model = SimpleGCN(input_dim=4)

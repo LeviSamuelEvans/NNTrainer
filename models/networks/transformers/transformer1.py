@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from . import PositionalEncoding
 
+
 class TransformerClassifier1(nn.Module):
     """Transformer-based classifier model 1.
 
@@ -47,15 +48,14 @@ class TransformerClassifier1(nn.Module):
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(128, 1),
-            #nn.Sigmoid() # REMOVE AS USING BCEwithLogitsLoss when balancing classes
+            # nn.Sigmoid() # REMOVE AS USING BCEwithLogitsLoss when balancing classes
         )
 
     def forward(self, x):
-        """Forward pass of the TransformerClassifier1 model.
-        """
+        """Forward pass of the TransformerClassifier1 model."""
 
-        x = self.input_embedding(x)      # notes: embed input features to d_model dimensions
-        x = self.pos_encoder(x)          # notes: apply positional encoding
+        x = self.input_embedding(x)  # notes: embed input features to d_model dimensions
+        x = self.pos_encoder(x)  # notes: apply positional encoding
         x = self.transformer_encoder(x)  # notes: pass through transformer encoder
 
         # global average pooling over the sequence dimension (i.e. using mean)

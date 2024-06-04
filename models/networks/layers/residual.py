@@ -3,6 +3,7 @@ import torch.nn as nn
 # He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep residual learning for image recognition pp. 5934-5938
 # arXiv:1810.04805.
 
+
 class ResidualBlock(nn.Module):
     """
     A residual block module that performs residual connection in a neural network.
@@ -10,6 +11,7 @@ class ResidualBlock(nn.Module):
     Args:
         channels (int): The number of input and output channels.
     """
+
     def __init__(self, channels):
         super(ResidualBlock, self).__init__()
         self.fc1 = nn.Linear(channels, channels)
@@ -33,6 +35,7 @@ class ResidualBlock(nn.Module):
         x += residual
         x = self.relu(x)
         return x
+
 
 class ResidualBlockGCN(nn.Module):
     """

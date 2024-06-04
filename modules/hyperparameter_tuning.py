@@ -9,6 +9,7 @@ import joblib
 from joblib import Parallel, delayed
 import torch
 
+
 def objective(trial, config, train_loader, val_loader, network_type):
     """
     Objective function for hyperparameter tuning.
@@ -34,7 +35,7 @@ def objective(trial, config, train_loader, val_loader, network_type):
     # parameters to optimise
     d_model = trial.suggest_categorical("d_model", [32, 64, 128, 256])
     nhead = trial.suggest_int("nhead", 1, 6)
-    # Ensure nhead is a divisor of d_model
+    # Ensure nhead is a divisor of d_model!!
     if d_model % nhead != 0:
         # Adjust nhead to the closest divisor of d_model
         divisors = [i for i in range(1, 9) if d_model % i == 0]
@@ -42,8 +43,7 @@ def objective(trial, config, train_loader, val_loader, network_type):
 
     num_layers = trial.suggest_int("num_layers", 1, 6)
     dropout = trial.suggest_float("dropout", 0.01, 0.25)
-    #learning_rate = trial.suggest_loguniform("learning_rate", 1e-5, 1e-3)
-
+    # learning_rate = trial.suggest_loguniform("learning_rate", 1e-5, 1e-3)
 
     # configuration dictionary with the suggested hyperparameters
     config["model"]["d_model"] = d_model
@@ -55,16 +55,17 @@ def objective(trial, config, train_loader, val_loader, network_type):
     network_importer = NetworkImporter("models")
     model = network_importer.create_model(config)
 
-    # prepare the TrainerArgs object
     trainer_args = TrainerArgs(config, model, train_loader, val_loader, network_type)
 
-    # Create the Trainer instance
     trainer = Trainer(**trainer_args.prepare_trainer_args())
     trainer.train_model()
-    evaluator = ModelEvaluator(config, trainer.model, trainer.val_loader, trainer.criterion)
+    evaluator = ModelEvaluator(
+        config, trainer.model, trainer.val_loader, trainer.criterion
+    )
     accuracy, roc_auc, average_precision, _, _, _, _ = evaluator.evaluate_model()
 
     return roc_auc
+
 
 def tune_hyperparameters(config, train_loader, val_loader, network_type):
     """
@@ -89,33 +90,32 @@ def tune_hyperparameters(config, train_loader, val_loader, network_type):
     num_trials = 10
     n_jobs = torch.cuda.device_count()
 
-    with joblib.parallel_backend('multiprocessing'):
+    with joblib.parallel_backend("multiprocessing"):
         Parallel(n_jobs=n_jobs)(
-            delayed(study.optimize)(objective, n_trials=num_trials // n_jobs, catch=(Exception,))
+            delayed(study.optimize)(
+                objective, n_trials=num_trials // n_jobs, catch=(Exception,)
+            )
             for _ in range(n_jobs)
         )
 
     best_params = study.best_params
     best_value = study.best_value
 
-    print("Best hyperparameters:", best_params)
-    print("Best value:", best_value)
+    logging.info("Tuning :: Best hyperparameters:", best_params)
+    logging.info("Tuning :: Best value:", best_value)
 
-    with open('tuning_results.txt', 'w') as f:
+    with open("tuning_results.txt", "w") as f:
         f.write("Best hyperparameters:\n")
         for key, value in best_params.items():
             f.write(f"{key}: {value}\n")
         f.write(f"\nBest value: {best_value}\n")
 
-    # Save the optimization history plot as a PNG file
     fig = plot_optimization_history(study)
-    fig.write_image('optimisation_history.png')
-    fig.write_image('optimisation_history.pdf')
+    fig.write_image("optimisation_history.png")
+    fig.write_image("optimisation_history.pdf")
 
-    # Save the parallel coordinate plot as a PNG file
     fig = plot_parallel_coordinate(study)
-    fig.write_image('parallel_coordinate.png')
-    fig.write_image('parallel_coordinate.pdf')
-
+    fig.write_image("parallel_coordinate.png")
+    fig.write_image("parallel_coordinate.pdf")
 
     return best_params, best_value

@@ -12,5 +12,7 @@ class SparseAttention(nn.Module):
         # randomly drop attention connections
         batch_size, seq_len, _ = query.size()
         mask = torch.rand(batch_size, seq_len, seq_len) < self.sparsity_factor
-        attn_output, attn_output_weights = self.attention(query, key, value, attn_mask=mask)
+        attn_output, attn_output_weights = self.attention(
+            query, key, value, attn_mask=mask
+        )
         return attn_output

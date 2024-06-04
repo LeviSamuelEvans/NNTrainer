@@ -38,7 +38,7 @@ class ComplexNN(nn.Module):
         self.dropout5 = nn.Dropout(dropout)
 
         self.fc6 = nn.Linear(32, 1)
-        #self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         """Performs a forward pass through the neural network.
@@ -70,5 +70,5 @@ class ComplexNN(nn.Module):
         x = self.dropout5(x)
 
         x = self.fc6(x)
-        #x = self.sigmoid(self.fc6(x))
+        # x = self.sigmoid(self.fc6(x))
         return x

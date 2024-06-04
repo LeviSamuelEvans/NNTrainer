@@ -1,6 +1,8 @@
 # Attention
 from models.networks.attention.lorentz_attention import LorentzInvariantAttention
-from models.networks.attention.multiheaded_additive_attention import MultiHeadAdditiveAttention
+from models.networks.attention.multiheaded_additive_attention import (
+    MultiHeadAdditiveAttention,
+)
 
 # Embeddings
 from models.networks.embedding.LorentzEmbedding_v2 import (
@@ -10,7 +12,9 @@ from models.networks.embedding.positional import PositionalEncoding
 from models.networks.embedding.Learned import LearnedPositionalEncoding
 from models.networks.embedding.Learned import LearnedPositionalEncodingv2
 from models.networks.embedding.fusion import AttentionFusion
-from models.networks.embedding.discriminant import LearnedPositionalEncodingWithDiscriminant
+from models.networks.embedding.discriminant import (
+    LearnedPositionalEncodingWithDiscriminant,
+)
 
 # layers
 from models.networks.layers.residual import (
@@ -38,5 +42,5 @@ __all__ = [
     "ResidualBlockv2",
     "ResidualBlockGCN",
     "GCNClassifier",
-    "GATv2Classifier"
+    "GATv2Classifier",
 ]

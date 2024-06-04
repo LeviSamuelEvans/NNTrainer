@@ -13,7 +13,7 @@ def iqr_pooling(tensor, dim):
 
 
 class ResidualComplexNNwith_MH_attention(nn.Module):
-    """ Residual Complex Neural Network with Multi-Head Attention.
+    """Residual Complex Neural Network with Multi-Head Attention.
 
     Parameters
     ----------
@@ -65,7 +65,7 @@ class ResidualComplexNNwith_MH_attention(nn.Module):
         self.dropout6 = nn.Dropout(dropout_prob)
 
         self.fc7 = nn.Linear(32, 1)
-        #self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         """Performs a forward pass through the neural network."""

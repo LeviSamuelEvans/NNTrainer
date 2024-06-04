@@ -9,6 +9,7 @@ import re
 
 class NetworkImporter:
     "A class for importing networks."
+
     def __init__(self, directory):
         self.directory = directory
         self.networks = {}
@@ -63,11 +64,13 @@ class NetworkImporter:
         # TODO: add better logic here for extra_feats and graphs!
         # at the moment, we just assume that if we are using extra
         # features we also use more representations
-        if config.get("preparation", {}).get("use_four_vectors", False) \
-        and config.get("preparation", {}).get("use_representations", False):
+        if config.get("preparation", {}).get("use_four_vectors", False) and config.get(
+            "preparation", {}
+        ).get("use_representations", False):
             return 8
-        if config.get("preparation", {}).get("use_four_vectors", False) \
-        and config.get("preparation", {}).get("use_all_representations", False):
+        if config.get("preparation", {}).get("use_four_vectors", False) and config.get(
+            "preparation", {}
+        ).get("use_all_representations", False):
             return 11
         elif config.get("preparation", {}).get("use_four_vectors", False):
             return 4
@@ -75,7 +78,7 @@ class NetworkImporter:
             return len(config["features"])
 
     def create_model(self, config):
-        """ Create a model based on the configuration.
+        """Create a model based on the configuration.
 
         Parameters
         ----------

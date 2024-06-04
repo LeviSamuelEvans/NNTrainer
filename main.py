@@ -53,17 +53,16 @@ def main(config, config_path):
     # Print configuration summary
     print_config_summary(config_dict)
 
-    #================================================================================================
+    # ================================================================================================
     # DATA LOADING
 
     # Get the network type from the config file
-    network_type = config_dict["Network_type"][0]  # 'FFNN' or 'GNN' currently
+    network_type = config_dict["Network_type"][0]
 
     # Employ the appropriate data loader and data preparation classes
     loaded_data = LoadingFactory.load_data(network_type, config_dict)
 
     # Unpack the loaded data into signal and background DataFrames
-
     if network_type == "FFNN" or network_type == "TransformerGCN":
         signal_data, background_data = loaded_data
     elif network_type == "GNN" or network_type == "LENN":
@@ -78,18 +77,22 @@ def main(config, config_path):
             labels_background,
         ) = loaded_data
 
-    #================================================================================================
+    # ================================================================================================
     # FEATURE EXTRACTION
 
     # extract features using the FeatureFactory
-    signal_fvectors, background_fvectors, signal_edges, signal_edge_attr, background_edges, background_edge_attr = FeatureFactory.extract_features(
-    config_dict, signal_data, background_data
-    )
+    (
+        signal_fvectors,
+        background_fvectors,
+        signal_edges,
+        signal_edge_attr,
+        background_edges,
+        background_edge_attr,
+    ) = FeatureFactory.extract_features(config_dict, signal_data, background_data)
 
     use_four_vectors = config["preparation"].get("use_four_vectors", False)
 
-
-    #================================================================================================
+    # ================================================================================================
     # DATA AUGMENTATION
 
     try:
@@ -98,23 +101,35 @@ def main(config, config_path):
             augmenter = Augmenter.standard_augmentation(use_four_vectors)
 
             if "augmentation_methods" not in config["preparation"]:
-                augmenter.perform_all_augmentations(signal_fvectors, background_fvectors)
+                augmenter.perform_all_augmentations(
+                    signal_fvectors, background_fvectors
+                )
             else:
-                if config["preparation"]["augmentation_methods"].get("phi-rotation", False):
+                if config["preparation"]["augmentation_methods"].get(
+                    "phi-rotation", False
+                ):
                     augmenter.rotate_phi(signal_fvectors, background_fvectors)
-                if config["preparation"]["augmentation_methods"].get("eta-reflection", False):
+                if config["preparation"]["augmentation_methods"].get(
+                    "eta-reflection", False
+                ):
                     augmenter.reflect_eta(signal_fvectors, background_fvectors)
-                if config["preparation"]["augmentation_methods"].get("translate_eta_phi", False):
+                if config["preparation"]["augmentation_methods"].get(
+                    "translate_eta_phi", False
+                ):
                     augmenter.translate_eta_phi(signal_fvectors, background_fvectors)
-                if config["preparation"]["augmentation_methods"].get("energy-variation", False):
-                    augmenter.scale_energy_momentum(signal_fvectors, background_fvectors)
+                if config["preparation"]["augmentation_methods"].get(
+                    "energy-variation", False
+                ):
+                    augmenter.scale_energy_momentum(
+                        signal_fvectors, background_fvectors
+                    )
             logging.info("Augmenter :: Data augmentation complete.")
         else:
             logging.info("Augmenter :: Skipping data augmentation.")
     except Exception as e:
         logging.error(f"Failed to augment the input data: {e}")
 
-    #================================================================================================
+    # ================================================================================================
     # DATA PREPARATION
 
     # prepare the data using the PreparationFactory
@@ -130,7 +145,7 @@ def main(config, config_path):
         background_edge_attr,
     )
 
-    #================================================================================================
+    # ================================================================================================
     # INPUT PLOTTING
 
     # Plotting inputs
@@ -142,12 +157,12 @@ def main(config, config_path):
     else:
         logging.info("DataPlotter :: Skipping plotting of inputs")
 
-    #================================================================================================
+    # ================================================================================================
 
     network_importer = NetworkImporter("models")
     model = network_importer.create_model(config)
 
-    #================================================================================================
+    # ================================================================================================
     # INSIGHTS (WIP!!)
 
     def get_run_mode():
@@ -161,21 +176,27 @@ def main(config, config_path):
         elif run_mode == "attention_map":
             attention_map = AttentionMap(network_type, config_dict)
             loaded_model = attention_map.load_model()
-            attention_weights = attention_map.get_attention_weights(val_loader, loaded_model)
+            attention_weights = attention_map.get_attention_weights(
+                val_loader, loaded_model
+            )
             feature_names = config_dict["features"]
 
             # plot attention weights and entropy
             attention_map.plot_attention_weights(attention_weights, feature_names)
             attention_map.plot_attention_entropy(attention_weights, feature_names)
-            sys.exit(0) # now, exit, as that's all we wanted to do :p
+            sys.exit(0)  # now, exit, as that's all we wanted to do :p
 
         elif run_mode == "evaluate":
             logging.info(f"Proceeding to evaluation without training...")
-            logging.info(f"Using the model from {config_dict['evaluation']['saved_model_path']}")
+            logging.info(
+                f"Using the model from {config_dict['evaluation']['saved_model_path']}"
+            )
             break
 
         elif run_mode == "embed_maps":
-            logging.info("Proceeding to extract and visualise the positional embeddings...")
+            logging.info(
+                "Proceeding to extract and visualise the positional embeddings..."
+            )
             embed_maps = EmbeddingMaps(model, network_type, config_dict)
 
             for batch in val_loader:
@@ -184,14 +205,13 @@ def main(config, config_path):
                 break
 
             embed_maps.run(x, labels)
-            sys.exit(0) # now, exit, as that's all we wanted to do :p
+            sys.exit(0)  # now, exit, as that's all we wanted to do :p
 
         else:
             logging.error(f"Invalid run mode: {run_mode}")
             sys.exit(0)
 
-
-    #================================================================================================
+    # ================================================================================================
     # MODEL TRAINING
 
     logging.info("Starting the training process...")
@@ -210,13 +230,14 @@ def main(config, config_path):
 
     logging.info(f"Model '{config['model']['name']}' loaded. Starting training.")
 
-
-    #=============================================================================
+    # =============================================================================
     # Parameter optimising via optuna ---> configure study options and name study
     try:
         if config["model"].get("tune_hyperparams", False):
             logging.info("Proceeding to hyperparameter tuning...")
-            best_params, best_value = tune_hyperparameters(config, train_loader, val_loader, network_type)
+            best_params, best_value = tune_hyperparameters(
+                config, train_loader, val_loader, network_type
+            )
             print(f"Best hyperparameters: {best_params}")
             print(f"Best value: {best_value}")
 
@@ -228,8 +249,7 @@ def main(config, config_path):
             logging.info("Skipping hyperparameter tuning.")
     except Exception as e:
         logging.error(f"Failed to tune hyperparameters: {e}")
-    #=============================================================================
-
+    # =============================================================================
 
     # prepare the arguments to pass to the Trainer class
     trainer_args = TrainerArgs(config, model, train_loader, val_loader, network_type)
@@ -247,7 +267,7 @@ def main(config, config_path):
         # save metadata to JSON for further use...
         trainer.save_metrics_to_json(f"{trainer.model_save_path}/metadata.json")
 
-    #================================================================================================
+    # ================================================================================================
     # MODEL EVALUATION
 
     evaluator = ModelEvaluator(
@@ -261,7 +281,9 @@ def main(config, config_path):
         criterion=trainer.criterion,
     )
 
-    accuracy, roc_auc, average_precision, model, criterion, inputs, labels = evaluator.evaluate_model()
+    accuracy, roc_auc, average_precision, model, criterion, inputs, labels = (
+        evaluator.evaluate_model()
+    )
 
     # pass the trainer, evaluator to the DataPlotter
     plotter = DataPlotter(config_dict, trainer, evaluator)
@@ -278,22 +300,20 @@ def main(config, config_path):
     logging.info(f"Evaluator :: Final AUC: {roc_auc:.4f}")
     logging.info(f"Evaluator :: Average Precision: {average_precision:.4f}")
     logging.info("Program finished successfully!")
-    #================================================================================================
+    # ================================================================================================
 
 
 if __name__ == "__main__":
 
-    configure_logging()  # Set up logging
+    configure_logging()
 
     network_importer = NetworkImporter("models")
 
     # load the models from the models directory
     all_networks = network_importer.load_networks_from_directory()
 
-    # print the dictionary of models
     logging.debug(all_networks)
 
     config, config_path = handleCommandLineArgs()
 
-    # call main
     main(config, config_path)

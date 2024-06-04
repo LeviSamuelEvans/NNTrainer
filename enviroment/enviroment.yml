@@ -27,9 +27,11 @@ dependencies:
       - alembic==1.13.1
       - async-timeout==4.0.3
       - attrs==23.2.0
+      - black==24.4.2
       - blosc2==2.5.1
       - certifi==2024.2.2
       - charset-normalizer==3.3.2
+      - click==8.1.7
       - colorlog==6.8.2
       - contourpy==1.2.1
       - cycler==0.12.1
@@ -52,6 +54,7 @@ dependencies:
       - mpmath==1.3.0
       - msgpack==1.0.8
       - multidict==6.0.5
+      - mypy-extensions==1.0.0
       - ndindex==1.8
       - networkx==3.2.1
       - numexpr==2.10.0
@@ -72,7 +75,9 @@ dependencies:
       - optuna-integration==3.6.0
       - packaging==24.0
       - pandas==2.2.2
+      - pathspec==0.12.1
       - pillow==10.3.0
+      - platformdirs==4.2.2
       - plotly==5.22.0
       - prettytable==3.10.0
       - psutil==5.9.8
@@ -92,6 +97,7 @@ dependencies:
       - tenacity==8.3.0
       - termcolor==2.4.0
       - threadpoolctl==3.5.0
+      - tomli==2.0.1
       - torch==2.3.0
       - torch-geometric==2.5.3
       - tqdm==4.66.2
