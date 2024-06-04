@@ -1,4 +1,4 @@
-name: /eos/user/l/leevans/miniconda3/envs/MLenv
+name: MLenv
 channels:
   - defaults
 dependencies:

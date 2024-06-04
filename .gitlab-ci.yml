@@ -1,10 +1,60 @@
 stages:
   - format
+  - setup
+  - test
+
+# ======
+# format
 
 black:
   stage: format
-  image: python:3.9 
+  image: python:3.9
   before_script:
     - pip install black
   script:
     - black --check .
+  only:
+    changes:
+      - '**/*.py'
+
+# ================
+# enviroment setup
+
+setup:
+  stage: setup
+  image: continuumio/miniconda3
+  before_script:
+    - conda update -n base -c defaults conda
+  script:
+    - conda env create -f environment/environment.yml -p /opt/conda/envs/MLenv
+    - echo "Setup complete"
+  cache:
+    key: ${CI_PROJECT_NAME}
+    paths:
+      - /opt/conda/envs/MLenv
+  artifacts:
+    paths:
+      - /opt/conda/envs/MLenv
+    expire_in: 1 hour
+
+
+# ========
+# main run
+
+# run_main:
+#   stage: test
+#   image: continuumio/miniconda3
+#   dependencies:
+#     - setup
+#   before_script:
+#     - conda init bash
+#     - source ~/.bashrc
+#     - conda activate /opt/conda/envs/MLenv || source activate /opt/conda/envs/MLenv
+#     - git lfs install
+#     - git lfs pull
+#   script:
+#     - python main.py -c tests/test_config.yaml
+#   artifacts:
+#     paths:
+#       - tests/outputs/
+#     expire_in: 1 day

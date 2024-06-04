@@ -1,0 +1,169 @@
+# ============================== #
+# An Example Configuration File  #
+# ===============================#
+
+# Information
+# -----------
+# Add info here.
+
+# --------------------------------------------------------------------------------------
+
+#=============#
+# Model Block #
+#=============#
+model:
+  name: 'TransformerClassifier1'
+  input_dim: 8
+  d_model: 256
+  nhead: 1
+  num_encoder_layers: 1
+  dropout: 0.05
+  tune_hyperparams: False
+
+#============#
+# Data Block #
+#============#
+data:
+  signal_path: tth-network/tests/data/ttbb_4vec_dev_10k_12j.h5
+  background_path: tth-network/tests/data/ttbb_4vec_dev_10k_12j.h5
+  train_ratio: 0.8
+  value_threshold: 1e-6
+  plot_inputs: False
+  plot_save_path: tth-network/tests/outputs/plots
+
+#===============#
+# Network Block #
+#===============#
+Network_type:
+  - FFNN
+
+#===============#
+# Feature Block #
+#===============#
+features:
+  - jet_pt_1
+  - jet_pt_2
+  - jet_pt_3
+  - jet_pt_4
+  - jet_pt_5
+  - jet_pt_6
+  - jet_pt_7
+  - jet_pt_8
+  - jet_pt_9
+  - jet_pt_10
+  - jet_pt_11
+  - jet_eta_1
+  - jet_eta_2
+  - jet_eta_3
+  - jet_eta_4
+  - jet_eta_5
+  - jet_eta_6
+  - jet_eta_7
+  - jet_eta_8
+  - jet_eta_9
+  - jet_eta_10
+  - jet_eta_11
+  - jet_phi_1
+  - jet_phi_2
+  - jet_phi_3
+  - jet_phi_4
+  - jet_phi_5
+  - jet_phi_6
+  - jet_phi_7
+  - jet_phi_8
+  - jet_phi_9
+  - jet_phi_10
+  - jet_phi_11
+  - jet_e_1
+  - jet_e_2
+  - jet_e_3
+  - jet_e_4
+  - jet_e_5
+  - jet_e_6
+  - jet_e_7
+  - jet_e_8
+  - jet_e_9
+  - jet_e_10
+  - jet_e_11
+  - jet_tagWeightBin_DL1r_Continuous_1
+  - jet_tagWeightBin_DL1r_Continuous_2
+  - jet_tagWeightBin_DL1r_Continuous_3
+  - jet_tagWeightBin_DL1r_Continuous_4
+  - jet_tagWeightBin_DL1r_Continuous_5
+  - jet_tagWeightBin_DL1r_Continuous_6
+  - jet_tagWeightBin_DL1r_Continuous_7
+  - jet_tagWeightBin_DL1r_Continuous_8
+  - jet_tagWeightBin_DL1r_Continuous_9
+  - jet_tagWeightBin_DL1r_Continuous_10
+  - jet_tagWeightBin_DL1r_Continuous_11
+  - mu_pt_0
+  - mu_eta_0
+  - mu_phi_0
+  - mu_e_0
+  - el_pt_0
+  - el_eta_0
+  - el_phi_0
+  - el_e_0
+  - nElectrons
+  - nMuons
+  - met_met
+  - met_phi
+
+#===================#
+# Preparation Block #
+#===================#
+preparation:
+  feature_maker: True
+  feature_type: '4-vectors'
+  use_representations: False
+  use_all_representations: True
+  use_extra_feats: True
+  extra_feats: btag
+  include_met: True
+  use_angular_separation: False
+  max_particles: 5
+  n_leptons: 1
+  append_four_vectors: False
+  use_four_vectors: True
+  augment_data: True
+  augmentation_methods:
+    phi-rotation: True
+    eta-reflection: True
+    translate_eta_phi: True
+    energy-variation: True
+
+#================#
+# Training Block #
+#================#
+training:
+  num_epochs: 2
+  learning_rate: 0.00001
+  weight_decay: 0.001
+  batch_size: 256
+  patience: 15
+  early_stopping: True
+  use_scheduler: False
+  factor: 0.5
+  initialise_weights: True
+  balance_classes: True
+  criterion: 'BCELoss'
+  use_cosine_burnin: True
+  lr_init: 1e-10
+  lr_max: 3e-5
+  lr_final: 2e-9
+  burn_in: 1
+  ramp_up: 1
+  plateau: 2
+  ramp_down: 1
+  gradient_clipping: True
+  max_norm: 5.0
+  model_save_path: tth-network/tests/outputs/model/
+
+#==================#
+# Evaluation Block #
+#==================#
+evaluation:
+  use_saved_model: False
+  saved_model_path: ""
+
+# --------------------------------------------------------------------------------------
