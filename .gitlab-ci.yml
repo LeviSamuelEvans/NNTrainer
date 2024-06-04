@@ -3,9 +3,6 @@ stages:
   - setup
   - test
 
-# ======
-# format
-
 black:
   stage: format
   image: python:3.9
