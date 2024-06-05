@@ -5,8 +5,8 @@ import logging
 import sys
 from utils.config_utils import print_config_summary, print_intro
 from models.importer import NetworkImporter
-from modules.cli import handleCommandLineArgs
-from modules.logging import configure_logging
+from modules.utils.cli import handleCommandLineArgs
+from modules.utils.logging import configure_logging
 from modules.runners.load_data import load_data
 from modules.runners.extract_features import extract_features
 from modules.runners.augment_data import augment_data
