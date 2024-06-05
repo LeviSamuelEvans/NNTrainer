@@ -24,8 +24,8 @@ model:
 # Data Block #
 #============#
 data:
-  signal_path: tth-network/tests/data/ttbb_4vec_dev_10k_12j.h5
-  background_path: tth-network/tests/data/ttbb_4vec_dev_10k_12j.h5
+  signal_path: tests/data/ttbb_4vec_dev_10k_12j.h5
+  background_path: tests/data/ttbb_4vec_dev_10k_12j.h5
   train_ratio: 0.8
   value_threshold: 1e-6
   plot_inputs: False
