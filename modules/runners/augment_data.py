@@ -1,6 +1,7 @@
 import logging
 from modules import Augmenter
 
+
 def augment_data(config, use_four_vectors, features):
     """Augment the data using the Augmenter."""
     try:
@@ -11,7 +12,9 @@ def augment_data(config, use_four_vectors, features):
             augmentation_methods = config["preparation"].get("augmentation_methods", {})
 
             if not augmentation_methods:
-                augmenter.perform_all_augmentations(signal_fvectors, background_fvectors)
+                augmenter.perform_all_augmentations(
+                    signal_fvectors, background_fvectors
+                )
             else:
                 if augmentation_methods.get("phi-rotation", False):
                     augmenter.rotate_phi(signal_fvectors, background_fvectors)
@@ -20,7 +23,9 @@ def augment_data(config, use_four_vectors, features):
                 if augmentation_methods.get("translate_eta_phi", False):
                     augmenter.translate_eta_phi(signal_fvectors, background_fvectors)
                 if augmentation_methods.get("energy-variation", False):
-                    augmenter.scale_energy_momentum(signal_fvectors, background_fvectors)
+                    augmenter.scale_energy_momentum(
+                        signal_fvectors, background_fvectors
+                    )
 
             logging.info("Augmenter :: Data augmentation complete.")
         else:
