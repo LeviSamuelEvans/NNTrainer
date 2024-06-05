@@ -17,7 +17,6 @@ import re
 import torch
 from mpl_toolkits.mplot3d import Axes3D
 
-plt.rcParams["text.usetex"] = True
 
 
 class DataPlotter:
@@ -340,7 +339,7 @@ class DataPlotter:
         plt.xlabel(feature_xlabel)
         plt.ylabel("Probability Density")
         plt.legend(loc="upper right")
-        hep.atlas.label(loc=0, label="Internal", lumi="140.0", com="13")
+        hep.atlas.label(loc=0,label="Private Work", lumi="140.0", com="13")
         plt.savefig(f"{self.plot_save_path}Inputs/{feature}.png")
         logging.info(
             f"DataPlotter :: Plot of {feature} saved to {self.plot_save_path}Inputs/{feature}.png"
@@ -392,7 +391,7 @@ class DataPlotter:
         plt.xticks(rotation=45, ha="right")
         # Add title and show plot
         # plt.title(f'{data_type.capitalize()} Linear Correlation Matrix')
-        hep.atlas.label(loc=0, label="Internal")
+        hep.atlas.label(loc=0, label="Private Work")
         plt.tight_layout()
         plt.savefig(save_path)
         logging.info(
@@ -462,8 +461,8 @@ class DataPlotter:
             self.val_accuracies,
             label="Validation accuracy",
         )
-        plt.xlabel("Epoch")
-        plt.ylabel("Accuracy")
+        plt.xlabel("Epoch [-]", fontsize=16)
+        plt.ylabel("Accuracy [%]", fontsize=16)
         plt.legend()
         hep.atlas.label(
             loc=0,
@@ -489,15 +488,12 @@ class DataPlotter:
         plt.plot(
             np.arange(self.num_epochs),
             self.learning_rates,
-            label="Learning Rate",
+            label="Learning Rate Schedule",
         )
-        plt.xlabel("Epoch")
-        plt.ylabel("Learning Rate")
+        plt.xlabel("Epoch [-]", fontsize=16)
+        plt.ylabel("Learning Rate [-]", fontsize=16)
         plt.legend()
-        hep.atlas.label(
-            loc=0,
-            label="Internal",
-        )
+        hep.atlas.label(loc=2, label="Private Work", fontsize=14)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Validation/learning_rate.png")
         plt.savefig(f"{self.plot_save_path}Validation/learning_rate.pdf")
@@ -529,21 +525,39 @@ class DataPlotter:
         roc_auc = self.evaluator.roc_auc
 
         plt.style.use(hep.style.ROOT)
-        plt.figure()
-        plt.plot(
+        fig, ax = plt.subplots()
+        ax.plot(
             fpr,
             tpr,
             color="darkorange",
             lw=2,
-            label="ROC curve (area = %0.2f)" % roc_auc,
+            label="AUC = %0.2f" % roc_auc,
         )
-        plt.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
-        plt.xlim([0.0, 1.0])
-        plt.ylim([0.0, 1.05])
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.legend(loc="lower right")
-        hep.atlas.label(loc=0, label="Internal", fontsize=12)
+        ax.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--")
+        ax.set_xlim([0.0, 1.0])
+        ax.set_ylim([0.0, 1.05])
+        ax.set_xlabel("False Positive Rate", fontsize=18)
+        ax.set_ylabel("True Positive Rate", fontsize=18)
+        ax.legend(loc="lower right")
+        hep.atlas.label(loc=2, label="Private Work", fontsize=18)
+        ax.text(
+            0.19,
+            0.85,
+            r'$≥5j, \; ≥3b \; @70\% \; DL1r$',
+            horizontalalignment="center",
+            verticalalignment="center",
+            transform=ax.transAxes,
+            fontsize=18,
+        )
+        ax.text(
+            0.19,
+            0.75,
+            'Single-lepton resolved',
+            horizontalalignment="center",
+            verticalalignment="center",
+            transform=ax.transAxes,
+            fontsize=18,
+        )
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.png")
         plt.savefig(f"{self.plot_save_path}Evaluation/roc_curve.pdf")
@@ -584,11 +598,11 @@ class DataPlotter:
             cbar=False,
             annot_kws={"size": 12},
             xticklabels=[r"$\mathit{t\bar{t}+\geq1b}$", r"$\mathit{t\bar{t}H}$"],
-            yticklabels=[r"$\mathit{t\bar{t}+\geq1b$}", r"$\mathit{t\bar{t}H}$"],
+            yticklabels=[r"$\mathit{t\bar{t}+\geq1b}$", r"$\mathit{t\bar{t}H}$"],
         )
-        plt.xlabel("Predicted labels")
-        plt.ylabel("True labels")
-        hep.atlas.label(loc=0, label="Internal", fontsize=12)
+        plt.xlabel("Predicted labels", fontsize=14)
+        plt.ylabel("True labels", fontsize=14)
+        hep.atlas.label(loc=0, label="Private Work", fontsize=12, lumi_format="{0:.1f}")
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.png")
         plt.savefig(f"{self.plot_save_path}Evaluation/confusion_matrix.pdf")
@@ -631,10 +645,10 @@ class DataPlotter:
         )
         plt.xlim([0.0, 1.0])
         plt.ylim([0.0, 1.05])
-        plt.xlabel("Recall")
-        plt.ylabel("Precision")
+        plt.xlabel("Recall", fontsize=18)
+        plt.ylabel("Precision", fontsize=18)
         plt.legend(loc="lower left")
-        hep.atlas.label(loc=0, label="Internal", fontsize=12)
+        hep.atlas.label(loc=2, label="Private Work", fontsize=18)
         plt.tight_layout()
         plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.png")
         plt.savefig(f"{self.plot_save_path}Evaluation/pr_curve.pdf")
@@ -679,7 +693,8 @@ class DataPlotter:
             color="red",
             density=True,
         )
-        plt.xlabel("Score")
+        hep.atlas.label(loc=1, label="Private Work", fontsize=18)
+        plt.xlabel("NN Score")
         plt.ylabel("Normalised Entries")
         plt.legend(loc="best")
         plt.savefig(f"{self.plot_save_path}Evaluation/score_distribution.png")
