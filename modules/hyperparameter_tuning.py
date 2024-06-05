@@ -87,19 +87,22 @@ def tune_hyperparameters(config, train_loader, val_loader, network_type):
     """
 
     study = optuna.create_study(direction="maximize")
-    num_trials = 10
+    num_trials = 20
     n_jobs = torch.cuda.device_count()
 
-    with joblib.parallel_backend("multiprocessing"):
-        Parallel(n_jobs=n_jobs)(
-            delayed(study.optimize)(
-                objective, n_trials=num_trials // n_jobs, catch=(Exception,)
-            )
-            for _ in range(n_jobs)
+    def worker(trial):
+        return study.optimize(
+            lambda trial: objective(
+                trial, config, train_loader, val_loader, network_type
+            ),
+            n_trials=num_trials // n_jobs,
+            catch=(Exception,),
         )
 
-    best_params = study.best_params
-    best_value = study.best_value
+    with joblib.parallel_backend("multiprocessing"):
+        Parallel(n_jobs=n_jobs)(delayed(worker)(trial) for trial in range(n_jobs))
+        best_params = study.best_params
+        best_value = study.best_value
 
     logging.info("Tuning :: Best hyperparameters:", best_params)
     logging.info("Tuning :: Best value:", best_value)
