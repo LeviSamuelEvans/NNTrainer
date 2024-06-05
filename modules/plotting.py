@@ -18,7 +18,6 @@ import torch
 from mpl_toolkits.mplot3d import Axes3D
 
 
-
 class DataPlotter:
     """A class for plotting data distributions and model performance.
 
@@ -339,7 +338,7 @@ class DataPlotter:
         plt.xlabel(feature_xlabel)
         plt.ylabel("Probability Density")
         plt.legend(loc="upper right")
-        hep.atlas.label(loc=0,label="Private Work", lumi="140.0", com="13")
+        hep.atlas.label(loc=0, label="Private Work", lumi="140.0", com="13")
         plt.savefig(f"{self.plot_save_path}Inputs/{feature}.png")
         logging.info(
             f"DataPlotter :: Plot of {feature} saved to {self.plot_save_path}Inputs/{feature}.png"
@@ -543,7 +542,7 @@ class DataPlotter:
         ax.text(
             0.19,
             0.85,
-            r'$≥5j, \; ≥3b \; @70\% \; DL1r$',
+            r"$≥5j, \; ≥3b \; @70\% \; DL1r$",
             horizontalalignment="center",
             verticalalignment="center",
             transform=ax.transAxes,
@@ -552,7 +551,7 @@ class DataPlotter:
         ax.text(
             0.20,
             0.81,
-            'Single-lepton resolved',
+            "Single-lepton resolved",
             horizontalalignment="center",
             verticalalignment="center",
             transform=ax.transAxes,
