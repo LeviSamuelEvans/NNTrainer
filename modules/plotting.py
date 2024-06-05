@@ -3,6 +3,7 @@ import re
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+
 import mplhep as hep
 import logging
 import seaborn as sns
@@ -15,6 +16,8 @@ from sklearn.metrics import roc_curve, auc
 import re
 import torch
 from mpl_toolkits.mplot3d import Axes3D
+
+plt.rcParams["text.usetex"] = True
 
 
 class DataPlotter:
@@ -76,6 +79,22 @@ class DataPlotter:
         self.config_dict = config_dict
         self.trainer = trainer
         self.evaluator = evaluator
+
+        if self.trainer is not None:
+            self.train_losses = self.trainer.train_losses
+            self.val_losses = self.trainer.val_losses
+            self.train_accuracies = self.trainer.train_accuracies
+            self.val_accuracies = self.trainer.val_accuracies
+            self.learning_rates = self.trainer.learning_rates
+            self.num_epochs = self.trainer.num_epochs
+        else:
+            self.train_losses = []
+            self.val_losses = []
+            self.train_accuracies = []
+            self.val_accuracies = []
+            self.learning_rates = []
+            self.num_epochs = 0
+
         self.setup_data_plotter()
 
     # =========================================================================
@@ -390,29 +409,37 @@ class DataPlotter:
         The losses are expected to be stored in the `train_losses` and `val_losses`
         attributes of this object.
         """
+        if hasattr(self, "train_losses") and hasattr(self, "val_losses"):
+            # make the directory if it does not exist
+            os.makedirs(f"{self.plot_save_path}Validation/", exist_ok=True)
 
-        # make the directory if it does not exist
-        os.makedirs(f"{self.plot_save_path}Validation/", exist_ok=True)
+            # Determine the number of epochs based on the length of train_losses (e.g if Early Stopping is used, this will be less than num_epochs)
+            actual_epochs = len(self.train_losses)
+            self.num_epochs = actual_epochs
 
-        # Determine the number of epochs based on the length of train_losses (e.g if Early Stopping is used, this will be less than num_epochs)
-        actual_epochs = len(self.train_losses)
-        self.num_epochs = actual_epochs
-
-        plt.style.use(hep.style.ATLAS)
-        plt.plot(np.arange(self.num_epochs), self.train_losses, label="Training loss")
-        plt.plot(np.arange(self.num_epochs), self.val_losses, label="Validation loss")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.legend()
-        hep.atlas.label(
-            loc=0,
-            label="Internal",
-        )
-        plt.tight_layout()
-        plt.savefig(f"{self.plot_save_path}Validation/loss.png")
-        logging.info(
-            f"DataPlotter :: Loss plot saved to {self.plot_save_path}Validation/loss.png"
-        )
+            plt.style.use(hep.style.ATLAS)
+            plt.plot(
+                np.arange(self.num_epochs), self.train_losses, label="Training loss"
+            )
+            plt.plot(
+                np.arange(self.num_epochs), self.val_losses, label="Validation loss"
+            )
+            plt.xlabel("Epoch")
+            plt.ylabel("Loss")
+            plt.legend()
+            hep.atlas.label(
+                loc=0,
+                label="Internal",
+            )
+            plt.tight_layout()
+            plt.savefig(f"{self.plot_save_path}Validation/loss.png")
+            logging.info(
+                f"DataPlotter :: Loss plot saved to {self.plot_save_path}Validation/loss.png"
+            )
+        else:
+            logging.warning(
+                "Train losses and validation losses are not available for plotting."
+            )
 
     # =========================================================================
     # PLOT ACCURACY
@@ -556,8 +583,8 @@ class DataPlotter:
             cmap="Blues",
             cbar=False,
             annot_kws={"size": 12},
-            xticklabels=[0, 1],
-            yticklabels=[0, 1],
+            xticklabels=[r"$\mathit{t\bar{t}+\geq1b}$", r"$\mathit{t\bar{t}H}$"],
+            yticklabels=[r"$\mathit{t\bar{t}+\geq1b$}", r"$\mathit{t\bar{t}H}$"],
         )
         plt.xlabel("Predicted labels")
         plt.ylabel("True labels")
