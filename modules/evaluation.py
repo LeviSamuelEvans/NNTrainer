@@ -52,6 +52,7 @@ class ModelEvaluator:
         self.roc_auc = None
         self.y_true = None
         self.y_pred = None
+        self.y_scores = None
         self.precision = None
         self.recall = None
         self.average_precision = None
