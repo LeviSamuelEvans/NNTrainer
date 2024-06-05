@@ -1,21 +1,9 @@
 import logging
 from modules.evaluation import ModelEvaluator
-from modules import DataPlotter
 
 
-def evaluate_model(config, trainer, plotter):
+def evaluate_model(config, trainer, plotter, evaluator):
     """Evaluate the model."""
-    evaluator = ModelEvaluator(
-        config=config,
-        model=(
-            trainer.model
-            if not config["evaluation"].get("use_saved_model", False)
-            else trainer.model
-        ),
-        val_loader=trainer.val_loader,
-        criterion=trainer.criterion,
-    )
-
     accuracy, roc_auc, average_precision, model, criterion, inputs, labels = (
         evaluator.evaluate_model()
     )
