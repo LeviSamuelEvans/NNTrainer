@@ -40,3 +40,6 @@ HTCondor/TEST
 
 # Tuning
 tuning_tests/*
+
+# docs in dev
+docs/
