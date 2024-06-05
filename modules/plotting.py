@@ -550,8 +550,8 @@ class DataPlotter:
             fontsize=18,
         )
         ax.text(
-            0.19,
-            0.75,
+            0.20,
+            0.81,
             'Single-lepton resolved',
             horizontalalignment="center",
             verticalalignment="center",
