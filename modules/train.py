@@ -368,7 +368,7 @@ class Trainer:
                     raise ValueError(
                         f"NaN or Inf in gradients of {name}. Aborting training."
                     )
-                logging.deug(f"Gradient norm of {name}: {grad_norm}")
+                logging.debug(f"Gradient norm of {name}: {grad_norm}")
 
     def _train_epoch(self, epoch):
         self.model.train()
