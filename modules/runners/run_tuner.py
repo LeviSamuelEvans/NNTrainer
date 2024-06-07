@@ -1,5 +1,6 @@
 import logging
 from modules.hyperparameter_tuning import tune_hyperparameters
+import sys
 
 
 def hyper_tuning(config, train_loader, val_loader, network_type):
@@ -11,8 +12,13 @@ def hyper_tuning(config, train_loader, val_loader, network_type):
                 config, train_loader, val_loader, network_type
             )
             logging.info(f"Best hyperparameters: {best_params}")
-            logging.info(f"Best value: {best_value}")
+            logging.info("Tuning :: Best value: %s", best_value)
 
             config["model"].update(best_params)
         except Exception as e:
             logging.error(f"Failed to tune hyperparameters: {e}")
+
+        logging.info("Best configuration saved to txt file.")
+        logging.info("Hyperparameter tuning completed. Exiting...")
+        # exit after performing the tuning study
+        sys.exit()
