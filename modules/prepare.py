@@ -874,23 +874,41 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
 
         return X_sig, X_bkg, y_sig, y_bkg, mean, std
 
-    # def normalize_node_features(self, X, mean, std):
-    #     return (X - mean) / (std + 1e-7)
+    @staticmethod
+    def check_for_nans_and_infs(tensor, tensor_name):
+        if torch.isnan(tensor).any():
+            logging.error(f"NaNs found in {tensor_name}")
+        if torch.isinf(tensor).any():
+            logging.error(f"Infs found in {tensor_name}")
+
+    def normalize_node_features(self, X, mean, std):
+        return (X - mean) / (std + 1e-7)
 
     def normalize_node_features(self, X, mean, std):
         # Do not normalise the discrete labels like btagging, MET flag, etc! (add particle ID to this list)
         X[:, :, :-2] = (X[:, :, :-2] - mean[:, :, :-2]) / (std[:, :, :-2] + 1e-7)
+        self.check_for_nans_and_infs(X, "Normalized Node Features")
         return X
 
     def normalize_invariant_mass_min_max(self, edge_attr):
-        """Normalises the last value (invariant mass) in the edge attributes using min-max normalisation.
+        """Normalizes the last value (invariant mass) in the edge attributes using min-max normalization.
         This is done to prevent non-physical negative values from arising.
         """
         invariant_mass = edge_attr[:, -1]
         min_val = invariant_mass.min()
         max_val = invariant_mass.max()
-        normalized_mass = (invariant_mass - min_val) / (max_val - min_val)
-        edge_attr[:, -1] = normalized_mass
+
+        # Handle the case where min_val and max_val are the same to avoid division by zero
+        if min_val == max_val:
+            logging.warning(
+                f"Min and Max values are the same: {min_val}. Setting normalized mass to zero."
+            )
+            edge_attr[:, -1] = 0
+        else:
+            normalized_mass = (invariant_mass - min_val) / (max_val - min_val)
+            edge_attr[:, -1] = normalized_mass
+
+        self.check_for_nans_and_infs(edge_attr, "Normalized Edge Attributes")
         return edge_attr
 
     def prepare_transformer_gcn_data(
@@ -925,13 +943,14 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
             f"PreparationFactory :: Splitting the data into training and validation datasets..."
         )
 
-        # Normalize the invariant mass in the edge attributes
-        signal_edge_attr = [
-            self.normalize_invariant_mass_min_max(attr) for attr in signal_edge_attr
-        ]
-        background_edge_attr = [
-            self.normalize_invariant_mass_min_max(attr) for attr in background_edge_attr
-        ]
+        # commented out for tests with dynamic edge scores
+        # Normalise the invariant mass in the edge attributes
+        # signal_edge_attr = [
+        #     self.normalize_invariant_mass_min_max(attr) for attr in signal_edge_attr
+        # ]
+        # background_edge_attr = [
+        #     self.normalize_invariant_mass_min_max(attr) for attr in background_edge_attr
+        # ]
 
         # split data
         train_dataset_sig, val_dataset_sig = self.split_data(X_sig, y_sig)
@@ -985,6 +1004,9 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
         for (x, y), edges, edge_attr in tqdm(
             zip(dataset, edges_list, edge_attr_list), desc="Preparing Graphs"
         ):
+            self.check_for_nans_and_infs(x, "Node Features")
+            self.check_for_nans_and_infs(edges, "Edge Indices")
+            self.check_for_nans_and_infs(edge_attr, "Edge Attributes")
             graph = geo_data.Data(
                 x=x, edge_index=edges, edge_attr=edge_attr, y=y.unsqueeze(0)
             )
