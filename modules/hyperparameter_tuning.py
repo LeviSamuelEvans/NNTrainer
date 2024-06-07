@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import joblib
 from joblib import Parallel, delayed
 import torch
+import logging
 
 
 def objective(trial, config, train_loader, val_loader, network_type):
@@ -87,7 +88,7 @@ def tune_hyperparameters(config, train_loader, val_loader, network_type):
     """
 
     study = optuna.create_study(direction="maximize")
-    num_trials = 20
+    num_trials = 10
     n_jobs = torch.cuda.device_count()
 
     def worker(trial):
@@ -103,9 +104,6 @@ def tune_hyperparameters(config, train_loader, val_loader, network_type):
         Parallel(n_jobs=n_jobs)(delayed(worker)(trial) for trial in range(n_jobs))
         best_params = study.best_params
         best_value = study.best_value
-
-    logging.info("Tuning :: Best hyperparameters:", best_params)
-    logging.info("Tuning :: Best value:", best_value)
 
     with open("tuning_results.txt", "w") as f:
         f.write("Best hyperparameters:\n")
