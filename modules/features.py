@@ -642,34 +642,13 @@ class FeatureMaker:
             )
         )
 
+        invariant_mass = invariant_mass * 0.001  # convert to GeV
+
         event_edge_attr = np.column_stack(
             (delta_eta, delta_phi, delta_R, cos_delta_R, sin_delta_R, invariant_mass)
         )
         return event_edge_attr
 
-    def _compute_inv_mass(self, event_particles, event_idx, event_edges):
-        """Compute the invariant mass for pairs of particles in an event."""
-        # Ensure that basic_four_vectors is an array and event_idx is used correctly
-        if isinstance(event_particles, np.ndarray) and event_particles.ndim == 3:
-            event_particles = event_particles[event_idx]
-        else:
-            raise ValueError("Invalid shape for four_vectors. Expected a 3D array.")
-
-        p1 = event_particles[event_edges[0]]  # Shape: (num_edges, 4)
-        p2 = event_particles[event_edges[1]]  # Shape: (num_edges, 4)
-
-        # Calculate invariant mass
-        invariant_mass = np.sqrt(
-            np.maximum(
-                0,
-                2
-                * (
-                    p1[:, 3] * p2[:, 3]
-                    - (p1[:, 0] * p2[:, 0] + p1[:, 1] * p2[:, 1] + p1[:, 2] * p2[:, 2])
-                ),
-            )
-        )
-        return invariant_mass
 
     def get_matched_objetcs():
         return None  # TODO: implement method (for the Higgs decay angles and other matching tasks)
