@@ -165,7 +165,7 @@ class Trainer:
             weight_decay=self.config["training"]["weight_decay"],
         )
         # initialise the gradient scaler for mixed precision training
-        #self.scaler = GradScaler()
+        # self.scaler = GradScaler()
 
     def _initialise_attributes(self):
         for key, value in self.config.items():
@@ -365,7 +365,9 @@ class Trainer:
                 grad_norm = param.grad.norm()
                 if torch.isnan(grad_norm).any() or torch.isinf(grad_norm).any():
                     logging.error(f"NaN or Inf in gradients of {name}")
-                    raise ValueError(f"NaN or Inf in gradients of {name}. Aborting training.")
+                    raise ValueError(
+                        f"NaN or Inf in gradients of {name}. Aborting training."
+                    )
                 logging.deug(f"Gradient norm of {name}: {grad_norm}")
 
     def _train_epoch(self, epoch):
@@ -391,7 +393,7 @@ class Trainer:
                     self.model.parameters(), max_norm=self.max_norm
                 )
 
-            #with autocast():
+            # with autocast():
             if self.network_type in ["GNN", "LENN", "TransformerGCN"]:
                 outputs = self._forward_pass(inputs, edge_index, edge_attr, batch)
             elif self.model.__class__.__name__ in ["TransformerClassifier9"]:
@@ -409,7 +411,7 @@ class Trainer:
                 logging.error("NaN or Inf in loss")
                 continue
 
-            #self.scaler.scale(loss).backward()
+            # self.scaler.scale(loss).backward()
             loss.backward()
 
             for name, param in self.model.named_parameters():
@@ -417,9 +419,9 @@ class Trainer:
                     if torch.isnan(param.grad).any() or torch.isinf(param.grad).any():
                         logging.error(f"NaN or Inf in gradients of {name}")
 
-            #self.scaler.step(self.optimizer)
+            # self.scaler.step(self.optimizer)
             self.optimizer.step()
-            #self.scaler.update()
+            # self.scaler.update()
 
             self.log_gradient_norms()
 
@@ -520,20 +522,22 @@ class Trainer:
             edge_attr = batch_data.edge_attr
             batch = batch_data.batch if hasattr(batch_data, "batch") else None
 
-            self.check_for_nans_and_infs(inputs, 'Processed Inputs')
-            self.check_for_nans_and_infs(labels, 'Processed Labels')
-            self.check_for_nans_and_infs(edge_index, 'Processed Edge Index')
-            self.check_for_nans_and_infs(edge_attr, 'Processed Edge Attributes')
+            self.check_for_nans_and_infs(inputs, "Processed Inputs")
+            self.check_for_nans_and_infs(labels, "Processed Labels")
+            self.check_for_nans_and_infs(edge_index, "Processed Edge Index")
+            self.check_for_nans_and_infs(edge_attr, "Processed Edge Attributes")
 
             return inputs, labels, edge_index, edge_attr, batch
 
         elif isinstance(batch_data, tuple):
             # for our ff networks
             inputs = batch_data[0].to(self.device)
-            labels = batch_data[1].to(self.device).squeeze() if len(batch_data) > 1 else None
+            labels = (
+                batch_data[1].to(self.device).squeeze() if len(batch_data) > 1 else None
+            )
 
-            self.check_for_nans_and_infs(inputs, 'Tuple Inputs')
-            self.check_for_nans_and_infs(labels, 'Tuple Labels')
+            self.check_for_nans_and_infs(inputs, "Tuple Inputs")
+            self.check_for_nans_and_infs(labels, "Tuple Labels")
 
             return inputs, labels, None, None, None
 
@@ -542,24 +546,25 @@ class Trainer:
             inputs = batch_data.to(self.device)
             labels = None
 
-            self.check_for_nans_and_infs(inputs, 'Tensor Inputs')
+            self.check_for_nans_and_infs(inputs, "Tensor Inputs")
 
             return inputs, labels, None, None, None
 
-        elif isinstance(batch_data, list) and all(isinstance(x, torch.Tensor) for x in batch_data):
+        elif isinstance(batch_data, list) and all(
+            isinstance(x, torch.Tensor) for x in batch_data
+        ):
             # Assume batch_data is a list of tensors
             batch_data = [x.to(self.device) for x in batch_data]
             inputs = batch_data[0]
             labels = batch_data[1] if len(batch_data) > 1 else None
 
-            self.check_for_nans_and_infs(inputs, 'List Inputs')
-            self.check_for_nans_and_infs(labels, 'List Labels')
+            self.check_for_nans_and_infs(inputs, "List Inputs")
+            self.check_for_nans_and_infs(labels, "List Labels")
 
             return inputs, labels, None, None, None
 
         else:
             raise ValueError("Unsupported batch data format." + str(type(batch_data)))
-
 
     def _forward_pass(
         self, inputs, edge_index=None, edge_attr=None, batch=None, labels=None
@@ -632,9 +637,7 @@ class Trainer:
 
     def train_model(self):
         """Train the model using the specified criterion, optimiser, and data loaders for a given number of epochs.
-
         Logs training and validation loss and accuracy, and stops early if validation loss doesn't improve for a given number of epochs.
-
         Saves the model and training metrics to a JSON file.
         """
         _print_model_summary(self.model)
