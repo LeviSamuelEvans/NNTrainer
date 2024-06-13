@@ -43,3 +43,7 @@ tuning_tests/*
 
 # docs in dev
 docs/
+
+# misc dev stuff tmp
+models/networks/transformers/dynGATv2.py
+test_log_transforms_idea.py
