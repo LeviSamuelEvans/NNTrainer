@@ -649,7 +649,6 @@ class FeatureMaker:
         )
         return event_edge_attr
 
-
     def get_matched_objetcs():
         return None  # TODO: implement method (for the Higgs decay angles and other matching tasks)
         # once we have the matched objects, boost to relevant rest frame

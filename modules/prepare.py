@@ -881,7 +881,6 @@ class TransformerGCNDataPreparation(BaseDataPreparation):
         if torch.isinf(tensor).any():
             logging.error(f"Infs found in {tensor_name}")
 
-
     def normalize_node_features(self, X, mean, std):
         # Do not normalise the discrete labels like btagging, MET flag, etc! (add particle ID to this list)
         X[:, :, :-2] = (X[:, :, :-2] - mean[:, :, :-2]) / (std[:, :, :-2] + 1e-7)

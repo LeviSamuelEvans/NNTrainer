@@ -9,7 +9,7 @@ import logging
 
 
 class Pooling(nn.Module):
-    """ Pooling layer utilising attention scores to pool the graph node embeddings.
+    """Pooling layer utilising attention scores to pool the graph node embeddings.
 
     - if the input tensor is 3D (seq_len, batch_size, embedding_dim),
       we shape it to 2D (seq_len * batch_size, embedding_dim)
@@ -23,6 +23,7 @@ class Pooling(nn.Module):
       according to the attention scores.
 
     """
+
     def __init__(self, in_channels):
         super().__init__()
         self.in_channels = in_channels
@@ -32,7 +33,7 @@ class Pooling(nn.Module):
         )
 
     def forward(self, x, batch=None):
-        #(seq_len, batch_size, in_channels)
+        # (seq_len, batch_size, in_channels)
         if x.dim() == 3:
             seq_len, batch_size, _ = x.size()
             x = x.view(seq_len * batch_size, self.in_channels)
@@ -41,7 +42,11 @@ class Pooling(nn.Module):
         x = x.unsqueeze(-1) if x.dim() == 1 else x
         score = self.attention(x)
         x = score * x
-        x = torch.zeros(batch.max().item() + 1, x.size(1)).to(x.device).scatter_add_(0, batch.unsqueeze(-1).repeat(1, x.size(1)), x)
+        x = (
+            torch.zeros(batch.max().item() + 1, x.size(1))
+            .to(x.device)
+            .scatter_add_(0, batch.unsqueeze(-1).repeat(1, x.size(1)), x)
+        )
 
         # alternative implementation using broadcasting, more mem efficient but not yet working...
         # -> use broadcasting to sum the embeddings for each batch instead of scatter_add_ and repeat
@@ -49,6 +54,7 @@ class Pooling(nn.Module):
         # out.index_add_(0, batch, x)
 
         return x
+
 
 class CrossAttentionLayer(nn.Module):
     def __init__(self, d_model, nhead, dropout):
@@ -71,12 +77,14 @@ class CrossAttentionLayer(nn.Module):
             num_heads, seq_len, _ = dynamic_scores.size()
 
             # need to match the shape of the attention mask to the query shape
-            #(seq_len, num_heads, seq_len)
+            # (seq_len, num_heads, seq_len)
             dynamic_scores = dynamic_scores.permute(1, 0, 2)
-            #(num_heads, seq_len, seq_len)
+            # (num_heads, seq_len, seq_len)
             dynamic_scores = dynamic_scores.reshape(num_heads, seq_len, seq_len)
 
-            attn_output, _ = self.cross_attn(query, key, value, attn_mask=dynamic_scores)
+            attn_output, _ = self.cross_attn(
+                query, key, value, attn_mask=dynamic_scores
+            )
         else:
             attn_output, _ = self.cross_attn(query, key, value)
 
@@ -122,23 +130,23 @@ class dynGATtransformer(nn.Module):
                     d_model,
                     heads=nhead,
                     dropout=dropout,
-                    add_self_loops=False, # -> :add self loops to the adjacency matrix set to false to avoid duplicate edges
+                    add_self_loops=False,  # -> :add self loops to the adjacency matrix set to false to avoid duplicate edges
                     edge_dim=edge_attr_dim,
                     concat=False,
                 )
             )
             self.transformer_layers.append(
-            # TransformerConv is a generalization of GATConv, replacing the GAT's attention mechanism
-            # with a transformer encoder-style attention. We apply it here to the output of the GAT layer
-            # to capture global dependencies in the graph without needing fixed global graph features.
+                # TransformerConv is a generalization of GATConv, replacing the GAT's attention mechanism
+                # with a transformer encoder-style attention. We apply it here to the output of the GAT layer
+                # to capture global dependencies in the graph without needing fixed global graph features.
                 pyg_nn.TransformerConv(
                     d_model,
                     d_model,
                     heads=nhead,
                     dropout=dropout,
                     edge_dim=edge_attr_dim,
-                    concat=False, # -> :concat = false means we use the average of the attention heads
-                    beta=True, # -> :use beta parameter for edge updates
+                    concat=False,  # -> :concat = false means we use the average of the attention heads
+                    beta=True,  # -> :use beta parameter for edge updates
                 )
             )
             self.cross_attn_layers.append(CrossAttentionLayer(d_model, nhead, dropout))
@@ -212,11 +220,13 @@ class dynGATtransformer(nn.Module):
         # Gaussian-based attention scores
         dynamic_scores = torch.exp(-0.5 * ((invariant_mass - higgs_mass) / sigma) ** 2)
         # now normalise the scores to be between 0 and 1
-        dynamic_scores = (dynamic_scores - dynamic_scores.min()) / (dynamic_scores.max() - dynamic_scores.min())
+        dynamic_scores = (dynamic_scores - dynamic_scores.min()) / (
+            dynamic_scores.max() - dynamic_scores.min()
+        )
 
-        #(inverted scores for attention mask compatibility)
+        # (inverted scores for attention mask compatibility)
         dynamic_scores = 1 - dynamic_scores
 
-        #print("Dynamic scores after all processing")
-        #print(dynamic_scores[:10])
+        # print("Dynamic scores after all processing")
+        # print(dynamic_scores[:10])
         return dynamic_scores
